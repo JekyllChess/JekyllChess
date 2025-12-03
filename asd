@@ -1,0 +1,8 @@
+### your site title here
+
+title: JekyllChess
+
+### exclude the instructions / write-up in the README.md
+
+exclude:
+- README.md

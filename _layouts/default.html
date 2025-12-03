@@ -1,36 +1,10 @@
 <!DOCTYPE html>
 <html>
-
   {% include head.html %}
-
   <body>
 
-<div>
-<strong>Pages:</strong>
-<ul>
-{% for my_page in site.pages %}
-{% if my_page.title %}
-<li>
-<a href="{{ my_page.url | prepend: site.baseurl }}">{{ my_page.title }}</a>
-</li>
-{% endif %}
-{% endfor %}
-</ul>
-</div>
-
-<div>
-<h1><img src="/assets/img/rookpawn.png" style="height:5.5rem;margin-right:1rem;" />{{ site.title }}</h1>
-<h4>{{ site.description }}</h4>
-</div>
-
-<div>
-{% for post in site.posts %}
-{% include post_block.html %}
-{% endfor %}
-</div>
-
-    {% include footer.html %}
-
+    {{ content }}
+    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.12.0/chess.min.js"></script>
     <script src="{{ "/assets/js/figurine.js" | prepend: full_base_url }}"></script>

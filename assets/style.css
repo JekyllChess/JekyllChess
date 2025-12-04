@@ -6,3 +6,4 @@
 /* Optional minimal style for the demo page */
 
 .content{margin-bottom:5rem}h1.header{margin:5rem 0}h1.header img{height:1.5em;margin-right:.5rem}a,a:visited,a:hover,a:active{color:#000}.post-item{margin-bottom:2rem}
+h1{display: inline-block;}

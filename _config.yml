@@ -3,9 +3,3 @@ description: A theme for chess blogging with figurine notation, FEN diagrams, an
 url: "https://jekyllrookpawn.github.io"
 exclude:
 - README.md
-markdown: kramdown
-plugins:
-  - jekyll-remote-theme
-remote_theme: https://github.com/broccolini/athena
-# remote_theme: https://github.com/henrythemes/hello-jekyll-theme
-# remote_theme: https://github.com/henrythemes/jekyll-minimal-theme

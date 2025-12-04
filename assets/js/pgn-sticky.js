@@ -1,5 +1,9 @@
 <script src="pgn.js"></script>
 
+if (!document.querySelector("pgn-sticky")) {
+    return;
+}
+
 (function () {
     "use strict";
 

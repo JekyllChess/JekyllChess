@@ -8,4 +8,4 @@
 
 /* Minimal style for the homepage */
 
-h1.header{margin-top:5rem}h1.header img{height:1em}h1.header a,h1.header a:visited,h1.header a:hover,h1.header a:active{text-decoration:none;color:#000} .post-block h2 a,.post-block h2 a:visited,.post-block h2 a:hover,.post-block h2 a:active{color:black;}
+h1.header{margin-top:5rem}h1.header img{height:1em}h1.header a,h1.header a:visited,h1.header a:hover,h1.header a:active{text-decoration:none;color:#000} .post-block h3 a,.post-block h3 a:visited,.post-block h3 a:hover,.post-block h3 a:active{color:black;}

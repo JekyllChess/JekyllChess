@@ -630,7 +630,7 @@
 }
 
 .pgn-mainline {
-font-weight: 600;}
+}
 
 .pgn-variation{
   margin-left:0;

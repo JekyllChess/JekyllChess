@@ -3,7 +3,7 @@ title: JekyllChess
 layout: default
 ---
 
-<a href="{{ baseurl }}"><h1><img src="/assets/favicon.png" /> {{ site.title }}</h1></a>
+<h1><a href="{{ baseurl }}"><img src="/assets/favicon.png" /> {{ site.title }}</a></h1>
 
 
 

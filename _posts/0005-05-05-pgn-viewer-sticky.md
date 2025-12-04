@@ -5,7 +5,7 @@ date:   0004-04-04
 FEN: r2qk2r/pb1p1pp1/2p4p/4p3/3bP3/2N5/PPP2PPP/R1BQR1K1 w kq - 0 14
 ---
 
-Lorem ipsum dolor sit amet, 7. Nc4 Be7 8. Nce5 O-O 9. Be2 cxd4 10. Qxd4 Qxd4 consectetur adipiscing elit. Donec enim mi, cursus aliquet pharetra sit amet, facilisis vel orci. Duis eget consectetur neque, et vestibulum tortor. Sed a lacus euismod, sagittis mi ut, bibendum turpis. Maecenas massa eros, sagittis ut imperdiet vestibulum, imperdiet vitae nisl. Aenean ac tellus facilisis, sagittis lacus sed, efficitur nisi. Cras et nunc ornare, sodales orci blandit, fringilla augue. Praesent eu elementum diam.
+Lorem ipsum dolor sit amet, 7. Nc4 Be7 8. Nce5 O-O 9. Be2 cxd4 10. Qxd4 Qxd4 consectetur adipiscing elit. Donec enim mi, cursus aliquet pharetra sit amet, facilisis vel orci. Duis eget consectetur neque, et vestibulum tortor. Sed a lacus euismod, sagittis mi ut, bibendum turpis. Maecenas massa eros, sagittis ut imperdiet vestibulum, imperdiet vitae nisl. Aenean ac tellus.
 
 <pgn-sticky>
 [Event "Reykjavik Open 2024"]

@@ -1,7 +1,7 @@
 ---
 layout: post
 title:  Annotated game
-date:   2025-01-03
+date:   0003-03-03
 ---
 
 Lorem ipsum dolor sit amet, 1. Nf3 e6 2. Na3 Qe7 3. Nc4 consectetur adipiscing elit. Donec enim mi, cursus aliquet pharetra sit amet, facilisis vel orci. Duis eget consectetur neque, et vestibulum tortor. Sed a lacus euismod, sagittis mi ut, bibendum turpis. Maecenas massa eros, sagittis ut imperdiet vestibulum, imperdiet vitae nisl. Aenean ac tellus facilisis, sagittis lacus sed, efficitur nisi. Cras et nunc ornare, sodales orci blandit, fringilla augue. Praesent eu elementum diam.

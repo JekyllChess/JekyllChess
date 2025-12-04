@@ -1,405 +1,461 @@
-// ======================================================
-// pgn-sticky.js
-// Renders <pgn-sticky> elements and embeds a single,
-// playable, sticky diagram board under the PGN title.
-// Moves update the board, variations & comments kept.
-// No floating boards, no [D] diagrams.
-// ======================================================
+(function(){ "use strict";
 
-(function () {
-    "use strict";
+const PIECE_THEME_URL="https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png",
+SAN_CORE_REGEX=/^([O0]-[O0](-[O0])?[+#]?|[KQRBN]?[a-h]?[1-8]?x?[a-h][1-8](=[QRBN])?[+#]?|[a-h][1-8](=[QRBN])?[+#]?)$/,
+RESULT_REGEX=/^(1-0|0-1|1\/2-1\/2|½-½|\*)$/,
+MOVE_NUMBER_REGEX=/^(\d+)(\.+)$/,
+NBSP="\u00A0",
+EVAL_TOKEN=/^[A-Za-z0-9\+\-\=∞⯹]+$/,
+NAG_MAP={1:"!",2:"?",3:"‼",4:"⁇",5:"⁉",6:"⁈",13:"→",14:"↑",15:"⇆",16:"⇄",17:"⟂",18:"∞",19:"⟳",20:"⟲",36:"⩲",37:"⩱",38:"±",39:"∓",40:"+=",41:"=+",42:"±",43:"∓",44:"⨀",45:"⨁"};
 
-    // ------------------------------------------------------
-    // Dependency check for chess.js
-    // ------------------------------------------------------
-    if (typeof Chess === "undefined") {
-        console.warn("pgn-sticky.js: chess.js missing");
-        return;
+function ensureDeps(){
+  if(typeof Chess==="undefined"){
+    console.warn("pgn-sticky.js: chess.js missing");
+    return false;
+  }
+  return true;
+}
+function normalizeResult(r){ return r?r.replace(/1\/2-1\/2/g,"½-½"):"";}
+function extractYear(d){ if(!d) return ""; let p=d.split("."); return /^\d{4}$/.test(p[0])?p[0]:"";}
+function flipName(n){ if(!n) return ""; let i=n.indexOf(","); return i===-1?n.trim():n.slice(i+1).trim()+" "+n.slice(0,i).trim();}
+function appendText(el,txt){ if(txt) el.appendChild(document.createTextNode(txt));}
+function makeCastlingUnbreakable(s){
+  return s.replace(/0-0-0|O-O-O/g,m=>m[0]+"\u2011"+m[2]+"\u2011"+m[4])
+          .replace(/0-0|O-O/g,m=>m[0]+"\u2011"+m[2]);
+}
+
+// ★★★★★ NEW EVALUATION SYMBOL MAP ★★★★★
+const EVAL_MAP = {
+  "=": "=",
+  "+/=": "⩲",
+  "=/+": "⩱",
+  "+/-": "±",
+  "+/−": "±",
+  "-/+": "∓",
+  "−/+": "∓",
+  "+-": "+−",
+  "+−": "+−",
+  "-+": "−+",
+  "−+": "−+",
+  "∞": "∞",
+  "=/∞": "⯹"
+};
+// ★★★★★ END NEW MAP ★★★★★
+
+
+// ========================================================================
+//                          Sticky PGN View
+//  - Same parser as PGNGameView in pgn.js
+//  - NO [D] diagrams
+//  - ONE sticky, playable board before moves
+// ========================================================================
+
+class PGNStickyView{
+  constructor(src){
+    this.sourceEl=src;
+    this.wrapper=document.createElement("div");
+    this.wrapper.className="pgn-sticky-block";
+    this.finalResultPrinted=false;
+    this.build();
+    this.applyFigurines();
+  }
+
+  static isSANCore(t){ return SAN_CORE_REGEX.test(t); }
+
+  static split(t){
+    let lines=t.split(/\r?\n/),H=[],M=[],inH=true;
+    for(let L of lines){
+      let T=L.trim();
+      if(inH && T.startsWith("[")&&T.endsWith("]")) H.push(L);
+      else if(inH && T==="") inH=false;
+      else{ inH=false; M.push(L); }
+    }
+    return {headers:H,moveText:M.join(" ").replace(/\s+/g," ").trim()};
+  }
+
+  build(){
+    let raw=this.sourceEl.textContent.trim(),
+        {headers:H,moveText:M}=PGNStickyView.split(raw),
+        pgn=(H.length?H.join("\n")+"\n\n":"")+M,
+        chess=new Chess();
+    chess.load_pgn(pgn,{sloppy:true});
+    let head=chess.header(),
+        res=normalizeResult(head.Result||""),
+        needs=/ (1-0|0-1|1\/2-1\/2|½-½|\*)$/.test(M),
+        movetext=needs?M:M+(res?" "+res:"");
+
+    // header (EXACT same format as pgn.js)
+    this.header(head);
+
+    // sticky playable board UNDER header, BEFORE moves
+    this.createStickyBoard();
+
+    // parse moves/comments/variations (NO [D] diagrams)
+    this.parse(movetext);
+
+    this.sourceEl.replaceWith(this.wrapper);
+  }
+
+  header(h){
+    let W=(h.WhiteTitle?h.WhiteTitle+" ":"")+flipName(h.White||"")+(h.WhiteElo?" ("+h.WhiteElo+")":""),
+        B=(h.BlackTitle?h.BlackTitle+" ":"")+flipName(h.Black||"")+(h.BlackElo?" ("+h.BlackElo+")":""),
+        Y=extractYear(h.Date),
+        line=(h.Event||"")+(Y?", "+Y:""),
+        H=document.createElement("h4");
+    H.appendChild(document.createTextNode(W+" – "+B));
+    H.appendChild(document.createElement("br"));
+    H.appendChild(document.createTextNode(line));
+    this.wrapper.appendChild(H);
+  }
+
+  createStickyBoard(){
+    if(typeof Chessboard==="undefined"){
+      console.warn("pgn-sticky.js: chessboard.js missing");
+      return;
+    }
+    let d=document.createElement("div");
+    d.id="pgn-sticky-board";
+    d.className="pgn-sticky-diagram";
+    this.wrapper.appendChild(d);
+    setTimeout(()=>{ 
+      StickyBoard.board=Chessboard(d,{
+        position:"start",
+        draggable:false,
+        pieceTheme:PIECE_THEME_URL,
+        moveSpeed:200,
+        snapSpeed:20,
+        snapbackSpeed:20,
+        appearSpeed:150
+      });
+    },0);
+  }
+
+  ensure(ctx,cls){
+    if(!ctx.container){
+      let p=document.createElement("p");
+      p.className=cls;
+      this.wrapper.appendChild(p);
+      ctx.container=p;
+    }
+  }
+
+  handleSAN(tok,ctx){
+    let core=tok.replace(/[^a-hKQRBN0-9=O0-]+$/g,"").replace(/0/g,"O");
+    if(!PGNStickyView.isSANCore(core)){ appendText(ctx.container,tok+" "); return null;}
+    let base=ctx.baseHistoryLen||0,
+        count=ctx.chess.history().length,
+        ply=base+count,
+        white=ply%2===0,
+        num=Math.floor(ply/2)+1;
+
+    if(ctx.type==="main"){
+      if(white) appendText(ctx.container,num+"."+NBSP);
+      else if(ctx.lastWasInterrupt) appendText(ctx.container,num+"..."+NBSP);
+    } else{
+      if(white) appendText(ctx.container,num+"."+NBSP);
+      else if(ctx.lastWasInterrupt) appendText(ctx.container,num+"..."+NBSP);
     }
 
-    const PIECE_THEME_URL =
-        "https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png";
+    ctx.prevFen=ctx.chess.fen();
+    ctx.prevHistoryLen=ply;
 
-    // ========================================================================
-    //                           Sticky PGN Renderer
-    // ========================================================================
+    let mv=ctx.chess.move(core,{sloppy:true});
+    if(!mv){ appendText(ctx.container,tok+" "); return null;}
+    ctx.lastWasInterrupt=false;
 
-    class StickyPGNView {
-        constructor(src) {
-            this.src = src;
-            this.wrapper = document.createElement("div");
-            this.wrapper.className = "pgn-sticky-block";
-            this.build();
-        }
+    let span=document.createElement("span");
+    // same as pgn.js, PLUS sticky behavior
+    span.className="pgn-move sticky-move";
+    span.dataset.fen=ctx.chess.fen();
+    span.textContent=makeCastlingUnbreakable(tok)+" ";
+    ctx.container.appendChild(span);
+    return span;
+  }
 
-        build() {
-            const raw = this.src.textContent.trim();
-            const { headers, movetext } = this.splitPGN(raw);
+  parseComment(text,i,ctx){
+    let j=i;
+    while(j<text.length && text[j]!=="}") j++;
+    let raw=text.substring(i,j).trim();
+    if(text[j]=="}") j++;
 
-            // Build PGN string for chess.js
-            const pgn =
-                (headers.length ? headers.join("\n") + "\n\n" : "") +
-                movetext;
+    raw=raw.replace(/\[%.*?]/g,"").trim();
+    if(!raw.length) return j;
 
-            const chess = new Chess();
-            chess.load_pgn(pgn, { sloppy: true });
+    // ⚠ DIFFERENCE FROM pgn.js:
+    // We DO NOT create diagrams for [D] in sticky view.
+    // Strip [D] markers instead of splitting/creating boards.
+    raw=raw.replace(/\[D]/g,"").trim();
+    if(!raw.length) return j;
 
-            const headerObj = chess.header();
-
-            // 1. Title + subtitle
-            this.buildHeader(headerObj);
-
-            // 2. Sticky playable board (ONE board)
-            this.buildStickyPlayableBoard(chess.fen());
-
-            // Reset so we can replay moves for data-fen
-            chess.reset();
-
-            // 3. Moves + variations + comments
-            const movesArea = document.createElement("div");
-            movesArea.className = "pgn-sticky-moves";
-            this.wrapper.appendChild(movesArea);
-
-            this.parseMovetext(movetext, chess, movesArea);
-
-            // Replace the <pgn-sticky> tag
-            this.src.replaceWith(this.wrapper);
-        }
-
-        splitPGN(raw) {
-            const lines = raw.split(/\r?\n/);
-            let headers = [];
-            let moves = [];
-            let inHeader = true;
-
-            for (const L of lines) {
-                const T = L.trim();
-                if (inHeader && T.startsWith("[") && T.endsWith("]")) {
-                    headers.push(T);
-                } else if (T === "") {
-                    inHeader = false;
-                } else {
-                    inHeader = false;
-                    moves.push(T);
-                }
-            }
-
-            return {
-                headers,
-                movetext: moves.join(" ")
-            };
-        }
-
-        buildHeader(h) {
-            const title = document.createElement("h4");
-
-            const W =
-                (h.WhiteTitle ? h.WhiteTitle + " " : "") + (h.White || "");
-            const B =
-                (h.BlackTitle ? h.BlackTitle + " " : "") + (h.Black || "");
-            const Y = (h.Date || "").split(".")[0];
-
-            title.textContent = `${W} – ${B}`;
-
-            const sub = document.createElement("div");
-            sub.className = "pgn-sticky-sub";
-            sub.textContent = (h.Event || "") + (Y ? ", " + Y : "");
-
-            this.wrapper.appendChild(title);
-            this.wrapper.appendChild(sub);
-        }
-
-        // --------------------------------------------------------------
-        // This is now the ONE AND ONLY board, playable & sticky.
-        // StickyBoard.board = this board.
-        // --------------------------------------------------------------
-        buildStickyPlayableBoard(fen) {
-            const d = document.createElement("div");
-            d.id = "pgn-sticky-board";
-            d.className = "pgn-sticky-diagram";
-            this.wrapper.appendChild(d);
-
-            setTimeout(() => {
-                StickyBoard.board = Chessboard(d, {
-                    position: fen,
-                    draggable: false,
-                    pieceTheme: PIECE_THEME_URL,
-                    moveSpeed: 200,
-                    snapSpeed: 20,
-                    snapbackSpeed: 20,
-                    appearSpeed: 150
-                });
-            }, 0);
-        }
-
-        // ------------------------------------------------------
-        // Movetext parser (keeps comments, keeps variations,
-        // removes [D], generates clickable .sticky-move spans)
-        // ------------------------------------------------------
-        parseMovetext(text, chess, container) {
-            let i = 0;
-            let moveNumber = 1;
-            let variationStack = [];
-
-            const newLine = () => {
-                const p = document.createElement("p");
-                container.appendChild(p);
-                return p;
-            };
-
-            let line = newLine();
-
-            while (i < text.length) {
-                const ch = text[i];
-
-                // Skip whitespace
-                if (/\s/.test(ch)) {
-                    i++;
-                    continue;
-                }
-
-                // ==========================================
-                // Comments { ... }
-                // ==========================================
-                if (ch === "{") {
-                    let j = i + 1;
-                    while (j < text.length && text[j] !== "}") j++;
-                    const comment = text.substring(i + 1, j).trim();
-
-                    const p = document.createElement("p");
-                    p.className = "pgn-comment";
-                    p.textContent = comment;
-                    container.appendChild(p);
-
-                    i = j + 1;
-                    continue;
-                }
-
-                // ==========================================
-                // Variation open "("
-                // ==========================================
-                if (ch === "(") {
-                    const varBlock = document.createElement("div");
-                    varBlock.className = "pgn-variation";
-                    container.appendChild(varBlock);
-
-                    variationStack.push({ container, line });
-
-                    container = varBlock;
-                    line = newLine();
-
-                    i++;
-                    continue;
-                }
-
-                // Variation close ")"
-                if (ch === ")") {
-                    const st = variationStack.pop();
-                    if (st) {
-                        container = st.container;
-                        line = newLine();
-                    }
-                    i++;
-                    continue;
-                }
-
-                // ==========================================
-                // Ignore [D] diagrams completely
-                // ==========================================
-                if (text.substring(i, i + 3) === "[D]") {
-                    i += 3;
-                    continue;
-                }
-
-                // ==========================================
-                // Parse tokens (move, number, result)
-                // ==========================================
-                let s = i;
-                while (
-                    i < text.length &&
-                    !/\s/.test(text[i]) &&
-                    !"(){}".includes(text[i])
-                ) {
-                    i++;
-                }
-                const tok = text.substring(s, i);
-
-                if (!tok) continue;
-
-                // Skip move numbers: "1." or "1..." etc.
-                if (/^\d+\.{1,3}$/.test(tok)) continue;
-
-                // Game result
-                if (/^(1-0|0-1|1\/2-1\/2|\*)$/.test(tok)) {
-                    line.appendChild(document.createTextNode(" " + tok + " "));
-                    continue;
-                }
-
-                // Try SAN move
-                const mv = chess.move(tok, { sloppy: true });
-                if (!mv) {
-                    line.appendChild(document.createTextNode(tok + " "));
-                    continue;
-                }
-
-                // White move number
-                if (mv.color === "w") {
-                    line.appendChild(document.createTextNode(moveNumber + ". "));
-                }
-
-                // The clickable SAN move
-                const span = document.createElement("span");
-                span.className = "sticky-move";
-                span.dataset.fen = chess.fen();
-                span.textContent = mv.san + " ";
-                line.appendChild(span);
-
-                if (mv.color === "b") moveNumber++;
-            }
-        }
+    if(ctx.type==="main"){
+      let k=j;
+      while(k<text.length && /\s/.test(text[k])) k++;
+      let next="";
+      while(k<text.length && !/\s/.test(text[k]) && !"(){}".includes(text[k])) next+=text[k++];
+      if(RESULT_REGEX.test(next)){
+        raw=raw.replace(/(1-0|0-1|1\/2-1\/2|½-½|\*)$/,"").trim();
+      }
     }
 
-    // ========================================================================
-    //                           StickyBoard Engine
-    // ========================================================================
-    // NO floating board. NO board creation here.
-    // The board is created inside StickyPGNView.
-    // StickyBoard only controls navigation.
-    // ========================================================================
+    // keep same main/variation comment behavior
+    if(ctx.type==="variation"){
+      this.ensure(ctx,"pgn-variation");
+      if(raw) appendText(ctx.container," "+raw);
+    } else{
+      if(raw){
+        let p=document.createElement("p");
+        p.className="pgn-comment";
+        appendText(p,raw);
+        this.wrapper.appendChild(p);
+      }
+      ctx.container=null;
+    }
 
-    const StickyBoard = {
-        board: null,         // assigned by StickyPGNView
-        moveSpans: [],
-        currentIndex: -1,
+    ctx.lastWasInterrupt=true;
+    return j;
+  }
 
-        initBoard() {
-            // no-op (board is created by StickyPGNView)
-        },
+  parse(t){
+    let chess=new Chess(),
+        ctx={type:"main",chess,chess,container:null,parent:null,lastWasInterrupt:false,prevFen:chess.fen(),prevHistoryLen:0,baseHistoryLen:null},
+        i=0;
 
-        collectMoves(root) {
-            this.moveSpans = Array.from(
-                (root || document).querySelectorAll(".sticky-move")
-            );
-        },
+    for(;i<t.length;){
+      let ch=t[i];
 
-        goto(index) {
-            if (index < 0 || index >= this.moveSpans.length) return;
+      if(/\s/.test(ch)){
+        while(i<t.length && /\s/.test(t[i])) i++;
+        this.ensure(ctx,ctx.type==="main"?"pgn-mainline":"pgn-variation");
+        appendText(ctx.container," ");
+        continue;
+      }
 
-            this.currentIndex = index;
-            const span = this.moveSpans[index];
-            const fen = span.dataset.fen;
-            if (!fen) return;
+      if(ch==="("){
+        i++;
+        let fen=ctx.prevFen||ctx.chess.fen(),
+            len=(typeof ctx.prevHistoryLen==="number"?ctx.prevHistoryLen:ctx.chess.history().length);
+        ctx={type:"variation",chess:new Chess(fen),container:null,parent:ctx,lastWasInterrupt:true,prevFen:fen,prevHistoryLen:len,baseHistoryLen:len};
+        this.ensure(ctx,"pgn-variation");
+        continue;
+      }
 
-            this.board.position(fen, true);
-
-            this.moveSpans.forEach(s =>
-                s.classList.remove("sticky-move-active")
-            );
-            span.classList.add("sticky-move-active");
-
-            span.scrollIntoView({
-                behavior: "smooth",
-                block: "center",
-                inline: "nearest"
-            });
-        },
-
-        next() {
-            this.goto(this.currentIndex + 1);
-        },
-
-        prev() {
-            this.goto(this.currentIndex - 1);
-        },
-
-        activate(root) {
-            this.collectMoves(root);
-
-            this.moveSpans.forEach((span, idx) => {
-                span.style.cursor = "pointer";
-                span.addEventListener("click", () => this.goto(idx));
-            });
-
-            window.addEventListener("keydown", e => {
-                const tag = (e.target.tagName || "").toLowerCase();
-                if (tag === "input" || tag === "textarea") return;
-
-                if (e.key === "ArrowRight") {
-                    e.preventDefault();
-                    this.next();
-                }
-                if (e.key === "ArrowLeft") {
-                    e.preventDefault();
-                    this.prev();
-                }
-            });
+      if(ch===")"){
+        i++;
+        if(ctx.parent){
+          ctx=ctx.parent;
+          ctx.lastWasInterrupt=true;
+          ctx.container=null;
         }
-    };
+        continue;
+      }
 
-    // ========================================================================
-    // CSS
-    // ========================================================================
-    const style = document.createElement("style");
-    style.textContent = `
-.pgn-sticky-block {
-    position: relative;
-    margin-bottom: 2rem;
+      if(ch==="{"){
+        i=this.parseComment(t,i+1,ctx);
+        continue;
+      }
+
+      let s=i;
+      while(i<t.length && !/\s/.test(t[i]) && !"(){}".includes(t[i])) i++;
+      let tok=t.substring(s,i);
+      if(!tok) continue;
+
+      if(/^\[%.*]$/.test(tok)) continue;
+
+      // ⚠ DIFFERENCE FROM pgn.js:
+      // Do NOT create diagrams for [D], just treat it as a separator.
+      if(tok==="[D]"){
+        ctx.lastWasInterrupt=true;
+        ctx.container=null;
+        continue;
+      }
+
+      if(RESULT_REGEX.test(tok)){
+        if(this.finalResultPrinted) continue;
+        this.finalResultPrinted=true;
+        this.ensure(ctx,ctx.type==="main"?"pgn-mainline":"pgn-variation");
+        appendText(ctx.container,tok+" ");
+        continue;
+      }
+
+      if(MOVE_NUMBER_REGEX.test(tok)) continue;
+
+      let core=tok.replace(/[^a-hKQRBN0-9=O0-]+$/g,"").replace(/0/g,"O"),
+          isSAN=PGNStickyView.isSANCore(core);
+
+      if(!isSAN){
+
+        // ★★★★★ NEW EVAL TOKEN HANDLING ★★★★★
+        if (EVAL_MAP[tok]) {
+          this.ensure(ctx, ctx.type==="main" ? "pgn-mainline" : "pgn-variation");
+          appendText(ctx.container, EVAL_MAP[tok] + " ");
+          continue;
+        }
+        // ★★★★★ END EVAL TOKEN HANDLING ★★★★★
+
+        if(tok[0]==="$"){
+          let code=+tok.slice(1); if(NAG_MAP[code]){
+            this.ensure(ctx,ctx.type==="main"?"pgn-mainline":"pgn-variation");
+            appendText(ctx.container,NAG_MAP[code]+" ");
+          }
+          continue;
+        }
+
+        if(/[A-Za-zÇĞİÖŞÜçğıöşü]/.test(tok)){
+          if(ctx.type==="variation"){
+            this.ensure(ctx,"pgn-variation");
+            appendText(ctx.container," "+tok);
+          } else{
+            let p=document.createElement("p");
+            p.className="pgn-comment";
+            appendText(p,tok);
+            this.wrapper.appendChild(p);
+            ctx.container=null;
+            ctx.lastWasInterrupt=false;
+          }
+        } else{
+          this.ensure(ctx,ctx.type==="main"?"pgn-mainline":"pgn-variation");
+          appendText(ctx.container,tok+" ");
+        }
+        continue;
+      }
+
+      this.ensure(ctx,ctx.type==="main"?"pgn-mainline":"pgn-variation");
+      let m=this.handleSAN(tok,ctx);
+      if(!m) appendText(ctx.container,makeCastlingUnbreakable(tok)+" ");
+    }
+  }
+
+  applyFigurines(){
+    const map={K:"♔",Q:"♕",R:"♖",B:"♗",N:"♘"};
+    this.wrapper.querySelectorAll(".pgn-move").forEach(span=>{
+      let m=span.textContent.match(/^([KQRBN])(.+?)(\s*)$/);
+      if(m) span.textContent=map[m[1]]+m[2]+(m[3]||"");
+    });
+  }
 }
 
-.pgn-sticky-diagram {
-    position: sticky;
-    top: 1rem;
-    width: 320px;
-    max-width: 100%;
-    margin: 1rem 0;
-    z-index: 40;
+
+// ========================================================================
+//                          StickyBoard Engine
+//  (board created by PGNStickyView; this only drives it)
+// ========================================================================
+
+const StickyBoard={
+  board:null,
+  moveSpans:[],
+  currentIndex:-1,
+
+  initBoard(){ /* no-op, board created in PGNStickyView */ },
+
+  collectMoves(root){
+    this.moveSpans=Array.from(
+      (root||document).querySelectorAll(".sticky-move")
+    );
+  },
+
+  goto(index){
+    if(index<0 || index>=this.moveSpans.length) return;
+    this.currentIndex=index;
+    let span=this.moveSpans[index],
+        fen=span.dataset.fen;
+    if(!fen || !this.board) return;
+
+    this.board.position(fen,true);
+
+    this.moveSpans.forEach(s=>s.classList.remove("sticky-move-active"));
+    span.classList.add("sticky-move-active");
+    span.scrollIntoView({
+      behavior:"smooth",
+      block:"center",
+      inline:"nearest"
+    });
+  },
+
+  next(){ this.goto(this.currentIndex+1); },
+  prev(){ this.goto(this.currentIndex-1); },
+
+  activate(root){
+    this.collectMoves(root);
+    this.moveSpans.forEach((span,idx)=>{
+      span.style.cursor="pointer";
+      span.addEventListener("click",()=>this.goto(idx));
+    });
+
+    window.addEventListener("keydown",e=>{
+      let tag=(e.target.tagName||"").toLowerCase();
+      if(tag==="input"||tag==="textarea") return;
+      if(e.key==="ArrowRight"){ e.preventDefault(); this.next(); }
+      if(e.key==="ArrowLeft"){ e.preventDefault(); this.prev(); }
+    });
+  }
+};
+
+
+// ========================================================================
+// CSS for sticky blocks
+// ========================================================================
+
+const style=document.createElement("style");
+style.textContent=`
+.pgn-sticky-block{
+  position:relative;
+  margin-bottom:2rem;
 }
 
-.pgn-sticky-moves {
-    margin-top: 1rem;
-    line-height: 1.7;
-    font-size: 1rem;
+.pgn-sticky-diagram{
+  position:sticky;
+  top:1rem;
+  width:320px;
+  max-width:100%;
+  margin:1rem 0;
+  z-index:40;
 }
 
-.pgn-sticky-sub {
-    font-size: 0.9rem;
-    color: #666;
+.pgn-mainline,
+.pgn-variation{
+  line-height:1.7;
+  font-size:1rem;
 }
 
-.pgn-variation {
-    margin-left: 1.5rem;
-    padding-left: 0.5rem;
-    border-left: 2px solid #ddd;
-    margin-top: 0.5rem;
+.pgn-variation{
+  margin-left:1.5rem;
+  padding-left:0.5rem;
+  border-left:2px solid #ddd;
+  margin-top:0.5rem;
 }
 
-.pgn-comment {
-    font-style: italic;
-    margin: 0.3rem 0;
+.pgn-comment{
+  font-style:italic;
+  margin:0.3rem 0;
 }
 
-.sticky-move {
-    cursor: pointer;
+.sticky-move{
+  cursor:pointer;
 }
 
-.sticky-move-active {
-    background: #ffe38a;
-    border-radius: 4px;
-    padding: 2px 4px;
+.sticky-move-active{
+  background:#ffe38a;
+  border-radius:4px;
+  padding:2px 4px;
 }
 `;
-    document.head.appendChild(style);
+document.head.appendChild(style);
 
-    // ========================================================================
-    // DOMContentLoaded: render sticky PGN then activate board
-    // ========================================================================
-    document.addEventListener("DOMContentLoaded", () => {
-        const stickyEls = document.querySelectorAll("pgn-sticky");
-        if (!stickyEls.length) return;
 
-        stickyEls.forEach(el => new StickyPGNView(el));
+// ========================================================================
+// Init: only run on pages with <pgn-sticky>
+// ========================================================================
 
-        StickyBoard.activate(document);
-    });
+function initStickyPGN(){
+  if(!ensureDeps()) return;
+  let els=document.querySelectorAll("pgn-sticky");
+  if(!els.length) return;
+  els.forEach(el=>new PGNStickyView(el));
+  StickyBoard.activate(document);
+}
+
+document.readyState==="loading"
+ ?document.addEventListener("DOMContentLoaded",initStickyPGN)
+ :initStickyPGN();
 
 })();

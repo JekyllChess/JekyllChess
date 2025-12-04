@@ -1,10 +1,10 @@
 /* Required CSS fix for chessboard.js */
 
-.fen-board,.pgn-diagram{width:400px;max-width:100%;margin:2rem 0}#board,.pgn-diagram,.board{width:400px}.board-wrapper{max-width:400px!important}#board *,#board *::before,#board *::after,#sticky-chessboard *,#sticky-chessboard *::before,#sticky-chessboard *::after,.board *, .board *::before,.board *::after,.fen-board *,.fen-board *::before,.fen-board *::after,.pgn-diagram *,.pgn-diagram *::before,.pgn-diagram *::after,.board-wrapper{box-sizing:content-box!important}
+.fen-board,.pgn-diagram{width:400px;max-width:100%;margin:1rem 0}#board,.pgn-diagram,.board{width:400px}.board-wrapper{max-width:400px!important}#board *,#board *::before,#board *::after,#sticky-chessboard *,#sticky-chessboard *::before,#sticky-chessboard *::after,.board *, .board *::before,.board *::after,.fen-board *,.fen-board *::before,.fen-board *::after,.pgn-diagram *,.pgn-diagram *::before,.pgn-diagram *::after,.board-wrapper{box-sizing:content-box!important}
 
 /* Style for variations in games in posts */
 
-.pgn-variation,.pgn-comment{color:#666}.pgn-variation .pgn-move{color:#666!important}
+.pgn-variation,.pgn-comment,.pgn-variation .pgn-move{color:#666}
 
 /* Minimal style for the homepage */
 

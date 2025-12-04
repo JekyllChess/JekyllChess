@@ -1,13 +1,14 @@
 /* Required CSS fix for chessboard.js */
 
-.fen-board,.pgn-diagram{width:400px;max-width:100%;margin:1rem 0}#board,.pgn-diagram,.board{width:400px}.board-wrapper{max-width:400px!important}#board *,#board *::before,#board *::after,#sticky-chessboard *,#sticky-chessboard *::before,#sticky-chessboard *::after,.board *, .board *::before,.board *::after,.fen-board *,.fen-board *::before,.fen-board *::after,.pgn-diagram *,.pgn-diagram *::before,.pgn-diagram *::after,.board-wrapper{box-sizing:content-box!important}
+.fen-board,.pgn-diagram{width:400px;max-width:100%;margin:1rem 0}#board,.pgn-diagram,.board{width:400px}.board-wrapper{max-width:400px!important}
+#board *,#board *::before,#board *::after,#sticky-chessboard *,#sticky-chessboard *::before,#sticky-chessboard *::after,.board *,.board *::before,.board *::after,.fen-board *,.fen-board *::before,.fen-board *::after,.pgn-diagram *,.pgn-diagram *::before,.pgn-diagram *::after,.board-wrapper{box-sizing:content-box!important}
+
 
 /* Style for moves and variations in games in posts */
 
-.pgn-variation,.pgn-comment,.pgn-variation .pgn-move{color:#666} .pgn-blog-block,.pgn-blog-block p,.pgn-blog-block .pgn-mainline,.pgn-blog-block .pgn-variation,.pgn-blog-block .pgn-comment,.pgn-blog-block .pgn-move{font-size:inherit!important;line-height:inherit!important;}
+.pgn-variation,.pgn-comment,.pgn-variation .pgn-move{color:#666}.pgn-blog-block,.pgn-blog-block p,.pgn-blog-block .pgn-mainline,.pgn-blog-block .pgn-variation,.pgn-blog-block .pgn-comment,.pgn-blog-block .pgn-move{font-size:inherit!important;line-height:inherit!important}
 
-/* Optional minimal style */
 
-.content{margin-bottom:5rem}h1.header{margin:5rem 0}h1.header img{height:1em;margin-right:.5rem}h1.header a,h1.header a:visited,h1.header a:hover,h1.header a:active, .post-block h3 a,.post-block h3 a:visited,.post-block h3 a:hover,.post-block h3 a:active{color:#000}
+/* Optional minimal style for the demo page */
 
-.post-item {margin-bottom:2rem;}
+.content{margin-bottom:5rem}h1.header{margin:5rem 0}h1.header img{height:1em;margin-right:.5rem}a,a:visited,a:hover,a:active{color:#000}.post-item{margin-bottom:2rem}

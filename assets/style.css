@@ -12,12 +12,11 @@ h1, h2, h3, h4 {font-weight: 900;}
 h3.post-item {font-weight: 900;}
 h1.header {font-weight: 900;}
 
-/* Mainline moves should appear bold (weight 600) */
+/* Mainline vs variation visual weight */
 .sticky-move[data-mainline="1"] {
-  font-weight: 600;
+  font-weight: 600 !important;
 }
 
-/* Variation moves stay normal weight */
 .sticky-move[data-mainline="0"] {
-  font-weight: 400;
+  font-weight: 400 !important;
 }

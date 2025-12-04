@@ -1,11 +1,10 @@
 // ============================================================================
-// pgn-sticky.js
-// Two-column sticky PGN renderer, mirroring pgn.js parsing behavior
-// - Header + board + buttons in sticky left column
-// - Moves/comments/variations in scrollable right column
-// - Same SAN / comment / variation handling as pgn.js
-// - [D] diagrams are ignored (no extra boards)
-// - Figurine input (♕xd5, ♘f6, …) is normalized to SAN before parsing
+// pgn-sticky.js (FINAL)
+// Two-column sticky PGN renderer matching pgn.js rendering exactly.
+// Header is sticky ABOVE the columns. Left column (board+buttons) is sticky.
+// Right column (moves/comments/variations) scroll independently.
+// Figurines (♘, ♕, etc.) are converted to SAN before parsing.
+// No [D] diagrams created here.
 // ============================================================================
 
 (function () {
@@ -24,41 +23,25 @@
   }
 
   // --------------------------------------------------------------------------
-  // Constants / regex (copied from pgn.js)
+  // Constants copied from pgn.js
   // --------------------------------------------------------------------------
   const PIECE_THEME_URL =
     "https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png";
+
   const SAN_CORE_REGEX =
     /^([O0]-[O0](-[O0])?[+#]?|[KQRBN]?[a-h]?[1-8]?x?[a-h][1-8](=[QRBN])?[+#]?|[a-h][1-8](=[QRBN])?[+#]?)$/;
+
   const RESULT_REGEX = /^(1-0|0-1|1\/2-1\/2|½-½|\*)$/;
   const MOVE_NUMBER_REGEX = /^(\d+)(\.+)$/;
   const NBSP = "\u00A0";
 
   const NAG_MAP = {
-    1: "!",
-    2: "?",
-    3: "‼",
-    4: "⁇",
-    5: "⁉",
-    6: "⁈",
-    13: "→",
-    14: "↑",
-    15: "⇆",
-    16: "⇄",
-    17: "⟂",
-    18: "∞",
-    19: "⟳",
-    20: "⟲",
-    36: "⩲",
-    37: "⩱",
-    38: "±",
-    39: "∓",
-    40: "+=",
-    41: "=+",
-    42: "±",
-    43: "∓",
-    44: "⨀",
-    45: "⨁"
+    1: "!", 2: "?", 3: "‼", 4: "⁇", 5: "⁉", 6: "⁈",
+    13: "→", 14: "↑", 15: "⇆", 16: "⇄",
+    17: "⟂", 18: "∞", 19: "⟳", 20: "⟲",
+    36: "⩲", 37: "⩱", 38: "±", 39: "∓",
+    40: "+=", 41: "=+", 42: "±", 43: "∓",
+    44: "⨀", 45: "⨁"
   };
 
   const EVAL_MAP = {
@@ -95,6 +78,16 @@
       : n.slice(i + 1).trim() + " " + n.slice(0, i).trim();
   }
 
+  // Normalize figurines in the raw PGN input
+  function normalizeFigurines(text) {
+    return text
+      .replace(/♔/g, "K")
+      .replace(/♕/g, "Q")
+      .replace(/♖/g, "R")
+      .replace(/♗/g, "B")
+      .replace(/♘/g, "N");
+  }
+
   function appendText(el, txt) {
     if (txt) el.appendChild(document.createTextNode(txt));
   }
@@ -105,18 +98,8 @@
       .replace(/0-0|O-O/g, m => m[0] + "\u2011" + m[2]);
   }
 
-  // Normalize figurines in the *input PGN text* to SAN letters
-  function normalizeFigurinesInPGN(text) {
-    return text
-      .replace(/♔/g, "K")
-      .replace(/♕/g, "Q")
-      .replace(/♖/g, "R")
-      .replace(/♗/g, "B")
-      .replace(/♘/g, "N");
-  }
-
   // --------------------------------------------------------------------------
-  // StickyPGNView — same parsing as pgn.js, but laid out in 2 columns
+  // StickyPGNView
   // --------------------------------------------------------------------------
   class StickyPGNView {
     constructor(src) {
@@ -150,9 +133,8 @@
     }
 
     build() {
-      // 1) Read raw PGN, normalize figurines to SAN letters for parsing
       let raw = this.sourceEl.textContent.trim();
-      raw = normalizeFigurinesInPGN(raw);
+      raw = normalizeFigurines(raw);
 
       let { headers: H, moveText: M } = StickyPGNView.split(raw),
         pgn = (H.length ? H.join("\n") + "\n\n" : "") + M,
@@ -164,35 +146,39 @@
         needs = / (1-0|0-1|1\/2-1\/2|½-½|\*)$/.test(M),
         movetext = needs ? M : M + (res ? " " + res : "");
 
-      // 2) Two-column layout
+      // ===== Sticky header (OUTSIDE the 2 columns) =====
+      this.headerDiv = document.createElement("div");
+      this.headerDiv.className = "pgn-sticky-header";
+      this.wrapper.appendChild(this.headerDiv);
+
+      this.headerDiv.appendChild(this.buildHeaderContent(head));
+
+      // ===== Two-column layout =====
       const cols = document.createElement("div");
       cols.className = "pgn-sticky-cols";
       this.wrapper.appendChild(cols);
 
-      // Left sticky column (header + board + buttons)
+      // Left sticky column
       this.leftCol = document.createElement("div");
       this.leftCol.className = "pgn-sticky-left";
       cols.appendChild(this.leftCol);
 
-      // Right scrollable column (moves/comments/variations)
+      // Right scroll column
       this.movesCol = document.createElement("div");
       this.movesCol.className = "pgn-sticky-right";
       cols.appendChild(this.movesCol);
 
-      // Header in left column (same format as pgn.js header)
-      this.header(head);
-
-      // Sticky board + buttons in left column
+      // Board + buttons in left sticky column
       this.createStickyBoard();
       this.createStickyButtons();
 
-      // 3) Parse moves into right column using the same logic as pgn.js
+      // Parse moves/comments/variations into right column
       this.parse(movetext);
 
       this.sourceEl.replaceWith(this.wrapper);
     }
 
-    header(h) {
+    buildHeaderContent(h) {
       let W =
           (h.WhiteTitle ? h.WhiteTitle + " " : "") +
           flipName(h.White || "") +
@@ -209,11 +195,7 @@
       H.appendChild(document.createElement("br"));
       H.appendChild(document.createTextNode(line));
 
-      const wrap = document.createElement("div");
-      wrap.className = "pgn-sticky-header";
-      wrap.appendChild(H);
-
-      this.leftCol.appendChild(wrap);
+      return H;
     }
 
     createStickyBoard() {
@@ -246,6 +228,7 @@
 
       wrap.appendChild(prev);
       wrap.appendChild(next);
+
       this.leftCol.appendChild(wrap);
     }
 
@@ -253,7 +236,6 @@
       if (!ctx.container) {
         let p = document.createElement("p");
         p.className = cls;
-        // NOTE: everything textual (moves, comments, variations) goes to movesCol
         this.movesCol.appendChild(p);
         ctx.container = p;
       }
@@ -268,6 +250,7 @@
       raw = raw.replace(/\[%.*?]/g, "").trim();
       if (!raw.length) return j;
 
+      // Remove trailing results inside comments
       if (ctx.type === "main") {
         let k = j;
         while (k < text.length && /\s/.test(text[k])) k++;
@@ -300,9 +283,9 @@
           }
           ctx.container = null;
         }
-        // In pgn.js this is where [D] diagrams are created.
-        // For pgn-sticky we intentionally do *not* create diagrams.
+        // [D] diagrams intentionally NOT created here.
       }
+
       ctx.lastWasInterrupt = true;
       return j;
     }
@@ -313,11 +296,13 @@
         appendText(ctx.container, tok + " ");
         return null;
       }
+
       let base = ctx.baseHistoryLen || 0,
         count = ctx.chess.history().length,
         ply = base + count,
         white = ply % 2 === 0,
         num = Math.floor(ply / 2) + 1;
+
       if (ctx.type === "main") {
         if (white) appendText(ctx.container, num + "." + NBSP);
         else if (ctx.lastWasInterrupt)
@@ -327,19 +312,24 @@
         else if (ctx.lastWasInterrupt)
           appendText(ctx.container, num + "..." + NBSP);
       }
+
       ctx.prevFen = ctx.chess.fen();
       ctx.prevHistoryLen = ply;
+
       let mv = ctx.chess.move(core, { sloppy: true });
       if (!mv) {
         appendText(ctx.container, tok + " ");
         return null;
       }
+
       ctx.lastWasInterrupt = false;
+
       let span = document.createElement("span");
       span.className = "pgn-move sticky-move";
       span.dataset.fen = ctx.chess.fen();
       span.textContent = makeCastlingUnbreakable(tok) + " ";
       ctx.container.appendChild(span);
+
       return span;
     }
 
@@ -403,6 +393,7 @@
           continue;
         }
 
+        // Token
         let s = i;
         while (
           i < t.length &&
@@ -416,7 +407,7 @@
         if (/^\[%.*]$/.test(tok)) continue;
 
         if (tok === "[D]") {
-          // In pgn.js this would create a diagram; here we skip diagrams entirely.
+          // ignored
           ctx.lastWasInterrupt = true;
           ctx.container = null;
           continue;
@@ -438,14 +429,14 @@
           isSAN = StickyPGNView.isSANCore(core);
 
         if (!isSAN) {
-          // EVAL tokens
+          // EVAL
           if (EVAL_MAP[tok]) {
             this.ensure(ctx, ctx.type === "main" ? "pgn-mainline" : "pgn-variation");
             appendText(ctx.container, EVAL_MAP[tok] + " ");
             continue;
           }
 
-          // NAGs
+          // NAG
           if (tok[0] === "$") {
             let code = +tok.slice(1);
             if (NAG_MAP[code]) {
@@ -455,6 +446,7 @@
             continue;
           }
 
+          // Words
           if (/[A-Za-zÇĞİÖŞÜçğıöşü]/.test(tok)) {
             if (ctx.type === "variation") {
               this.ensure(ctx, "pgn-variation");
@@ -474,6 +466,7 @@
           continue;
         }
 
+        // SAN move
         this.ensure(ctx, ctx.type === "main" ? "pgn-mainline" : "pgn-variation");
         let m = this.handleSAN(tok, ctx);
         if (!m) appendText(ctx.container, makeCastlingUnbreakable(tok) + " ");
@@ -558,34 +551,37 @@
   };
 
   // --------------------------------------------------------------------------
-  // CSS — 2-column layout, left sticky
+  // CSS
   // --------------------------------------------------------------------------
   const style = document.createElement("style");
   style.textContent = `
 .pgn-sticky-block{
   background:#fff;
   margin-bottom:2rem;
-  padding-top:0.5rem;
 }
 
-/* Two columns: left sticky, right scroll */
+/* Sticky header ABOVE columns */
+.pgn-sticky-header{
+  position:sticky;
+  top:1rem;
+  background:#fff;
+  z-index:80;
+  padding-bottom:0.4rem;
+}
+
+/* Columns */
 .pgn-sticky-cols{
   display:grid;
   grid-template-columns:340px 1fr;
   gap:2rem;
 }
 
-/* Left column: header + board + buttons (sticky as a whole) */
+/* Left column sticky */
 .pgn-sticky-left{
   position:sticky;
-  top:1rem;
+  top:6rem;
   align-self:start;
   background:#fff;
-}
-
-/* Header inside left column */
-.pgn-sticky-header h4{
-  margin:0 0 0.25rem 0;
 }
 
 /* Board */
@@ -595,10 +591,9 @@
   margin-top:0.5rem;
 }
 
-/* Buttons centered relative to board width */
+/* Buttons, centered relative to board */
 .pgn-sticky-buttons{
   width:320px;
-  max-width:100%;
   display:flex;
   justify-content:center;
   gap:1rem;
@@ -613,14 +608,14 @@
   border-radius:4px;
 }
 
-/* Right column scrolls independently */
+/* Right column scroll */
 .pgn-sticky-right{
-  max-height:calc(100vh - 150px);
+  max-height:calc(100vh - 7rem);
   overflow-y:auto;
   padding-right:0.5rem;
 }
 
-/* Moves and variations */
+/* Moves */
 .pgn-mainline,
 .pgn-variation{
   line-height:1.7;
@@ -647,7 +642,7 @@
   document.head.appendChild(style);
 
   // --------------------------------------------------------------------------
-  // Init on DOMContentLoaded
+  // Init on load
   // --------------------------------------------------------------------------
   document.addEventListener("DOMContentLoaded", () => {
     const els = document.querySelectorAll("pgn-sticky");
@@ -656,4 +651,5 @@
     els.forEach(el => new StickyPGNView(el));
     StickyBoard.activate(document);
   });
+
 })();

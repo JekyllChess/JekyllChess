@@ -6,5 +6,6 @@ exclude:
 markdown: kramdown
 plugins:
   - jekyll-remote-theme
-remote_theme: https://github.com/henrythemes/jekyll-minimal-theme
+remote_theme: https://github.com/broccolini/athena
 # remote_theme: https://github.com/henrythemes/hello-jekyll-theme
+# remote_theme: https://github.com/henrythemes/jekyll-minimal-theme

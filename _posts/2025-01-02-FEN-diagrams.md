@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  "FEN diagrams"
+title:  FEN diagrams
 date:   2025-01-02
 FEN: r2qk2r/pb1p1pp1/2p4p/4p3/3bP3/2N5/PPP2PPP/R1BQR1K1 w kq - 0 14
 ---

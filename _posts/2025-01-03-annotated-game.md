@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  "Annotated game"
+title:  Annotated game
 date:   2025-01-03
 ---
 

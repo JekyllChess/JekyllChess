@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  "Figurine notation"
+title:  Figurine notation
 date:   2025-01-01
 ---
 

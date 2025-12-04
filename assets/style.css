@@ -1,10 +1,10 @@
-/* Style for moves and variations in games in posts */
+/* Style for moves and variations in games in posts 
 
 .pgn-variation,.pgn-comment,.pgn-variation .pgn-move{color:#666}.pgn-blog-block,.pgn-blog-block p,.pgn-blog-block .pgn-mainline,.pgn-blog-block .pgn-variation,.pgn-blog-block .pgn-comment,.pgn-blog-block .pgn-move{font-size:inherit!important;line-height:inherit!important}
 
-
-/* Optional minimal style for the demo page
+Optional minimal style for the demo page
 
 .content{margin-bottom:2rem}h1.header{margin:2rem 0} .post-item{margin-bottom:2rem} */
 
-h1.header img{height:1.5em;margin-right:.5rem}a,a:visited,a:hover,a:active{color:#000}
+h1.header img{height:1.5em;margin-right:.5rem}
+a,a:visited,a:hover,a:active{color:#000}

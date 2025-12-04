@@ -5,6 +5,8 @@ date:   2025-01-04
 FEN: r2qk2r/pb1p1pp1/2p4p/4p3/3bP3/2N5/PPP2PPP/R1BQR1K1 w kq - 0 14
 ---
 
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec enim mi, cursus aliquet pharetra sit amet, facilisis vel orci. Duis eget consectetur neque, et vestibulum tortor. Sed a lacus euismod, sagittis mi ut, bibendum turpis. Maecenas massa eros, sagittis ut imperdiet vestibulum, imperdiet vitae nisl. Aenean ac tellus facilisis, sagittis lacus sed, efficitur nisi. Cras et nunc ornare, sodales orci blandit, fringilla augue. Praesent eu elementum diam.
+
 <pgn>
 [Event "Reykjavik Open 2024"]
 [Site "Reykjavik"]

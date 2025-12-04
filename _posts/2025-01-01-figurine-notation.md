@@ -4,6 +4,8 @@ title:  "Figurine notation"
 date:   2025-01-01
 ---
 
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec enim mi, cursus aliquet pharetra sit amet, facilisis vel orci. Duis eget consectetur neque, et vestibulum tortor. Sed a lacus euismod, sagittis mi ut, bibendum turpis. Maecenas massa eros, sagittis ut imperdiet vestibulum, imperdiet vitae nisl. Aenean ac tellus facilisis, sagittis lacus sed, efficitur nisi. Cras et nunc ornare, sodales orci blandit, fringilla augue. Praesent eu elementum diam.
+
 A script crawls the page for chess notation and displays it in figurine.
 
 For example, Nbd2 will render as a chess move, but nbd2 will not.

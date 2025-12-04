@@ -442,26 +442,19 @@ style.textContent=`
 
 .pgn-sticky-block{
   position:relative;
-  padding-top:0.5rem;
-  margin-bottom:2rem;
-}
+  margin:2rem 0;
+  }
 
 .pgn-sticky-headerblock{
   position:sticky;
-  top:1rem;
+  top:0;
   z-index:100;
   background:#ffffff;
-  padding:0.5rem 0 1rem 0;
-}
-
-.pgn-sticky-headerblock h4{
-  margin:0 0 0.3rem 0;
 }
 
 .pgn-sticky-diagram{
-  width:320px;
+  width:350px;
   max-width:100%;
-  margin:0.5rem 0 0 0;
 }
 
 /* NEW Navigation buttons */
@@ -469,34 +462,19 @@ style.textContent=`
   display:flex;
   justify-content:center;
   gap:1rem;
-  margin-top:0.3rem;
 }
 
 .pgn-sticky-btn{
   font-size:1.2rem;
-  padding:0.2rem 0.6rem;
+  padding:.25rem;
   cursor:pointer;
   background:#ffffff;
   border:1px solid #ccc;
-  border-radius:4px;
 }
 
 .pgn-mainline,
 .pgn-variation{
-  line-height:1.7;
   font-size:1rem;
-}
-
-.pgn-variation{
-  margin-left:1.5rem;
-  padding-left:0.5rem;
-  border-left:2px solid transparent;
-  margin-top:0.5rem;
-}
-
-.pgn-comment{
-  font-style:italic;
-  margin:0.3rem 0;
 }
 
 .sticky-move{
@@ -505,8 +483,6 @@ style.textContent=`
 
 .sticky-move-active{
   background:#ffe38a;
-  border-radius:4px;
-  padding:2px 4px;
 }
 `;
 document.head.appendChild(style);

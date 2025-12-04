@@ -16,7 +16,7 @@ function appendText(el,txt){ if(txt) el.appendChild(document.createTextNode(txt)
 function createDiagram(w,fen){
  if(typeof Chessboard==="undefined"){ console.warn("pgn.js: chessboard.js missing"); return;}
  let id="pgn-diagram-"+(diagramCounter++),d=document.createElement("div");
- d.className="pgn-diagram"; d.id=id; d.style.width="340px"; d.style.maxWidth="100%";
+ d.className="pgn-diagram"; d.id=id; d.style.width="350px"; d.style.maxWidth="100%";
  w.appendChild(d);
  setTimeout(()=>{ let x=document.getElementById(id); if(x) Chessboard(x,{position:fen,draggable:false,pieceTheme:PIECE_THEME_URL});},0);
 }

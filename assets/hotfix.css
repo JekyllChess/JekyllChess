@@ -1,4 +1,4 @@
 /* Required CSS fix for chessboard.js */
 
-.fen-board,.pgn-diagram{width:400px;max-width:100%;margin:1rem 0}#board,.pgn-diagram,.board{width:400px}.board-wrapper{max-width:400px!important}
+.fen-board,.pgn-diagram{width:350px;max-width:100%;margin:1rem 0}#board,.pgn-diagram,.board{width:350px}.board-wrapper{max-width:350px!important}
 #board *,#board *::before,#board *::after,#sticky-chessboard *,#sticky-chessboard *::before,#sticky-chessboard *::after,.board *,.board *::before,.board *::after,.fen-board *,.fen-board *::before,.fen-board *::after,.pgn-diagram *,.pgn-diagram *::before,.pgn-diagram *::after,.board-wrapper{box-sizing:content-box!important}

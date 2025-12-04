@@ -6,9 +6,9 @@ Optional minimal style for the demo page
 
 .content{margin-bottom:2rem}h1.header{margin:2rem 0} .post-item{margin-bottom:2rem} */
 
-h1.header {margin-top: 2rem}
-h1.header img{height:1.5em;margin-right:.5rem}
+body {padding-top: 2rem}
 a,a:visited,a:hover,a:active{color:#000}
+h1.header img{height:1.5em;margin-right:.5rem}
 
 * {
       font-family: "Raleway", sans-serif;

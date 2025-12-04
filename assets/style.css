@@ -9,7 +9,7 @@
 /* Style for the homepage */
 
 h1 img{height:1em;}
-h1 a{text-decoration:none;}
-h1 a:visited{text-decoration:none;}
-h1 a:hover{text-decoration:none;}
-h1 a:active{text-decoration:none;}
+h1 a,
+h1 a:visited,
+h1 a:hover,
+h1 a:active{text-decoration:none;color:black;}

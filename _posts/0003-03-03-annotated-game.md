@@ -6,7 +6,7 @@ date:   0003-03-03
 
 Lorem ipsum dolor sit amet, 1. Nf3 e6 2. Na3 Qe7 3. Nc4 consectetur adipiscing elit. Donec enim mi, cursus aliquet pharetra sit amet, facilisis vel orci. Duis eget consectetur neque, et vestibulum tortor. Sed a lacus euismod, sagittis mi ut, bibendum turpis. Maecenas massa eros, sagittis ut imperdiet vestibulum, imperdiet vitae nisl. Aenean ac tellus facilisis, sagittis lacus sed, efficitur nisi. Cras et nunc ornare, sodales orci blandit, fringilla augue. Praesent eu elementum diam.
 
-### Marius Gramb (2142) - GM Bogdan-Daniel Deac (2690)<br>Reykjavik Open, 2024.03.15
+#### Marius Gramb (2142) - GM Bogdan-Daniel Deac (2690)<br>Reykjavik Open, 2024.03.15
 
 1\. e4 c5 2. c3 d5 3. exd5 Qxd5 4. d4 Nf6 5. Nf3 e6 6. Na3 Qd8
 

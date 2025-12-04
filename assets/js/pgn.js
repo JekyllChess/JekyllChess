@@ -64,7 +64,7 @@ class PGNGameView{
        B=(h.BlackTitle?h.BlackTitle+" ":"")+flipName(h.Black||"")+(h.BlackElo?" ("+h.BlackElo+")":""),
        Y=extractYear(h.Date),
        line=(h.Event||"")+(Y?", "+Y:""),
-       H=document.createElement("h3");
+       H=document.createElement("h4");
    H.appendChild(document.createTextNode(W+" – "+B));
    H.appendChild(document.createElement("br"));
    H.appendChild(document.createTextNode(line));

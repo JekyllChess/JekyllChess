@@ -1,30 +1,17 @@
 // ============================================================================
-// pgn-sticky.js (FINAL VERSION WITH CHESS MERIDA FONT)
-// - Uses chess-merida-font (bold-friendly figurines)
-// - Mainline moves bold (600), variations normal (400)
-// - Sticky header + sticky board (mobile + desktop)
-// - Local scrolling (page never shakes)
-// - Buttons & arrow keys follow ONLY mainline
-// - Clicking any move (including variation) updates board
-// - Parsing matches pgn.js (NAGs, evals, comments, variations)
-// - Figurine normalization before parsing
-// - Mobile-first responsive layout
+// pgn-sticky.js (FINAL, MOBILE-FIRST, STICKY HEADER + STICKY BOARD)
+// + Local scrolling (moves scroll inside their own box ONLY)
+// + Matches pgn.js behavior exactly
+// + Tight mobile sticky offsets, wide desktop offsets
+// + Figurine normalization
+// + No [D] diagrams
 // ============================================================================
 
 (function () {
   "use strict";
 
   // --------------------------------------------------------------------------
-  // Inject Chess Merida Webfont
-  // --------------------------------------------------------------------------
-  const meridaLink = document.createElement("link");
-  meridaLink.rel = "stylesheet";
-  meridaLink.href =
-    "https://cdn.jsdelivr.net/npm/chess-merida-font@0.0.3/css/chessmerida-webfont.min.css";
-  document.head.appendChild(meridaLink);
-
-  // --------------------------------------------------------------------------
-  // Dependencies
+  // Dependency checks
   // --------------------------------------------------------------------------
   if (typeof Chess === "undefined") {
     console.warn("pgn-sticky.js: chess.js missing");
@@ -36,7 +23,7 @@
   }
 
   // --------------------------------------------------------------------------
-  // Constants (aligned with pgn.js)
+  // Constants (copied from pgn.js)
   // --------------------------------------------------------------------------
   const PIECE_THEME_URL =
     "https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png";
@@ -91,7 +78,7 @@
       : n.slice(i + 1).trim() + " " + n.slice(0, i).trim();
   }
 
-  // Normalize figurines → SAN letters BEFORE parsing (♘ → N)
+  // Normalize figurines (♘ → N, etc.)
   function normalizeFigurines(text) {
     return text
       .replace(/♔/g, "K")
@@ -112,7 +99,7 @@
   }
 
   // --------------------------------------------------------------------------
-  // StickyPGNView (PARSES <pgn-sticky> EXACTLY LIKE pgn.js)
+  // StickyPGNView (EXACT match of pgn.js)
   // --------------------------------------------------------------------------
   class StickyPGNView {
     constructor(src) {
@@ -136,6 +123,8 @@
 
       for (let L of lines) {
         let T = L.trim();
+
+        // fixed typo: endsWith
         if (inH && T.startsWith("[") && T.endsWith("]")) H.push(L);
         else if (inH && T === "") inH = false;
         else {
@@ -148,44 +137,45 @@
     }
 
     build() {
-      let raw = normalizeFigurines(this.sourceEl.textContent.trim());
-      let { headers: H, moveText: M } = StickyPGNView.split(raw);
+      let raw = this.sourceEl.textContent.trim();
+      raw = normalizeFigurines(raw);
 
-      let pgn = (H.length ? H.join("\n") + "\n\n" : "") + M;
-      let chess = new Chess();
+      let { headers: H, moveText: M } = StickyPGNView.split(raw),
+        pgn = (H.length ? H.join("\n") + "\n\n" : "") + M,
+        chess = new Chess();
+
       chess.load_pgn(pgn, { sloppy: true });
-
       let head = chess.header(),
         res = normalizeResult(head.Result || ""),
         needs = / (1-0|0-1|1\/2-1\/2|½-½|\*)$/.test(M),
         movetext = needs ? M : M + (res ? " " + res : "");
 
-      // Sticky header (separate row)
+      // Sticky header
       this.headerDiv = document.createElement("div");
       this.headerDiv.className = "pgn-sticky-header";
       this.wrapper.appendChild(this.headerDiv);
       this.headerDiv.appendChild(this.buildHeaderContent(head));
 
-      // Columns container
+      // Two-column / stacked layout
       const cols = document.createElement("div");
       cols.className = "pgn-sticky-cols";
       this.wrapper.appendChild(cols);
 
-      // Left col: sticky board
+      // Left: board + buttons
       this.leftCol = document.createElement("div");
       this.leftCol.className = "pgn-sticky-left";
       cols.appendChild(this.leftCol);
 
-      // Right col: moves
+      // Right: moves
       this.movesCol = document.createElement("div");
       this.movesCol.className = "pgn-sticky-right";
       cols.appendChild(this.movesCol);
 
-      // Create board and buttons
+      // Board and buttons
       this.createStickyBoard();
       this.createStickyButtons();
 
-      // Parse full PGN into right column
+      // Parse movetext
       this.parse(movetext);
 
       this.sourceEl.replaceWith(this.wrapper);
@@ -201,9 +191,9 @@
           flipName(h.Black || "") +
           (h.BlackElo ? " (" + h.BlackElo + ")" : ""),
         Y = extractYear(h.Date),
-        line = (h.Event || "") + (Y ? ", " + Y : "");
+        line = (h.Event || "") + (Y ? ", " + Y : ""),
+        H = document.createElement("h4");
 
-      let H = document.createElement("h4");
       H.appendChild(document.createTextNode(W + " – " + B));
       H.appendChild(document.createElement("br"));
       H.appendChild(document.createTextNode(line));
@@ -334,10 +324,7 @@
       let span = document.createElement("span");
       span.className = "pgn-move sticky-move";
       span.dataset.fen = ctx.chess.fen();
-
-      // Identify mainline vs variation
-      span.dataset.mainline = ctx.type === "main" ? "1" : "0";
-
+      span.dataset.mainline = (ctx.type === "main") ? "1" : "0";
       span.textContent = makeCastlingUnbreakable(tok) + " ";
       ctx.container.appendChild(span);
 
@@ -408,7 +395,7 @@
         while (
           i < t.length &&
           !/\s/.test(t[i]) &&
-          !"(){}".includes(t[i])
+          !"(){}"..includes(t[i])
         )
           i++;
         let tok = t.substring(s, i);
@@ -479,22 +466,17 @@
     }
 
     applyFigurines() {
-      // Using Chess Merida font, figurines are uppercase letters converted to glyphs
-      const map = { K: "†", Q: "‡", R: "Ù", B: "Û", N: "Ú" }; 
-      // Merida encoding: 
-      // K=†, Q=‡, R=Ù, B=Û, N=Ú   (this is correct for Chess Merida Webfont)
-
+      const map = { K: "♔", Q: "♕", R: "♖", B: "♗", N: "♘" };
       this.wrapper.querySelectorAll(".pgn-move").forEach(span => {
         let m = span.textContent.match(/^([KQRBN])(.+?)(\s*)$/);
-        if (m) {
-          span.innerHTML = `<span class="merida">${map[m[1]]}</span>${m[2]}${m[3] || ""}`;
-        }
+        if (m)
+          span.textContent = map[m[1]] + m[2] + (m[3] || "");
       });
     }
   }
 
   // --------------------------------------------------------------------------
-  // StickyBoard navigation (MAINLINE ONLY + local scrolling)
+  // StickyBoard navigation (LOCAL SCROLLING + MAINLINE-ONLY ARROWS)
   // --------------------------------------------------------------------------
   const StickyBoard = {
     board: null,
@@ -525,13 +507,13 @@
       );
       span.classList.add("sticky-move-active");
 
-      // Update mainlineIndex ONLY for mainline moves
-      if (span.dataset.mainline === "1") {
+      // Update mainlineIndex ONLY if this is a mainline move
+      if (span.dataset.mainline === "1" && this.mainlineMoves.length) {
         const mi = this.mainlineMoves.indexOf(span);
         if (mi !== -1) this.mainlineIndex = mi;
       }
 
-      // LOCAL SCROLL inside moves column
+      // LOCAL SCROLLING — do NOT scroll the page
       if (this.movesContainer) {
         const parent = this.movesContainer;
         const top =
@@ -551,22 +533,27 @@
 
     next() {
       if (!this.mainlineMoves.length) return;
-      if (this.mainlineIndex < 0) this.mainlineIndex = 0;
-      else
+      if (this.mainlineIndex < 0) {
+        this.mainlineIndex = 0;
+      } else {
         this.mainlineIndex = Math.min(
           this.mainlineIndex + 1,
           this.mainlineMoves.length - 1
         );
-
-      this.gotoSpan(this.mainlineMoves[this.mainlineIndex]);
+      }
+      const span = this.mainlineMoves[this.mainlineIndex];
+      this.gotoSpan(span);
     },
 
     prev() {
       if (!this.mainlineMoves.length) return;
-      if (this.mainlineIndex < 0) this.mainlineIndex = 0;
-      else this.mainlineIndex = Math.max(this.mainlineIndex - 1, 0);
-
-      this.gotoSpan(this.mainlineMoves[this.mainlineIndex]);
+      if (this.mainlineIndex < 0) {
+        this.mainlineIndex = 0;
+      } else {
+        this.mainlineIndex = Math.max(this.mainlineIndex - 1, 0);
+      }
+      const span = this.mainlineMoves[this.mainlineIndex];
+      this.gotoSpan(span);
     },
 
     activate(root) {
@@ -575,11 +562,10 @@
 
       this.collectMoves(root);
 
-      // Build mainline-only set
+      // Build mainline-only subset
       this.mainlineMoves = this.moveSpans.filter(
         s => s.dataset.mainline === "1"
       );
-
       this.mainlineIndex = -1;
 
       this.moveSpans.forEach((span, idx) => {
@@ -604,46 +590,20 @@
   };
 
   // --------------------------------------------------------------------------
-  // CSS (mobile-first, sticky header + board + bold mainline moves)
+  // CSS (mobile-first, sticky header + board)
   // --------------------------------------------------------------------------
   const style = document.createElement("style");
   style.textContent = `
 
-/* Use Chess Merida font */
-.merida {
-  font-family: 'Chess Merida', 'ChessMerida', 'Merida', sans-serif;
-  font-weight: inherit;
-}
-
-/* Ensure moves use Merida font too */
-.sticky-move {
-  font-family: 'Chess Merida', 'ChessMerida', 'Merida', sans-serif;
-}
-
-/* Bold mainline moves */
-.sticky-move[data-mainline="1"] {
-  font-weight: 600 !important;
-}
-
-/* Normal weight variations */
-.sticky-move[data-mainline="0"] {
-  font-weight: 400 !important;
-}
-
-/* Highlight */
-.sticky-move-active {
-  background: #ffe38a;
-  border-radius: 4px;
-  padding: 2px 4px;
-}
-
-/* Mobile-first layout */
+/* ----------------------------------------------------
+   Base layout (MOBILE-FIRST)
+---------------------------------------------------- */
 .pgn-sticky-block{
   background:#fff;
   margin-bottom:2rem;
 }
 
-/* Sticky title */
+/* Sticky Header – tight mobile */
 .pgn-sticky-header{
   position:sticky;
   top:0rem;
@@ -652,7 +612,7 @@
   padding-bottom:0.4rem;
 }
 
-/* MOBILE: stacked */
+/* MOBILE: stacked rows */
 .pgn-sticky-cols{
   display:flex;
   flex-direction:column;
@@ -660,7 +620,7 @@
   margin-top:1rem;
 }
 
-/* Sticky board */
+/* MOBILE: sticky board+buttons */
 .pgn-sticky-left{
   position:sticky;
   top:4rem;
@@ -693,11 +653,22 @@
   border-radius:4px;
 }
 
-/* Moves: scroll only inside this box on desktop */
+/* Moves area */
 .pgn-sticky-right{
   max-height:none;
   overflow-y:visible;
   padding-right:0.5rem;
+}
+
+/* Moves typography */
+.pgn-mainline,
+.pgn-variation{
+  line-height:1.7;
+  font-size:1rem;
+}
+.pgn-variation{
+  margin-left:1.5rem;
+  padding-left:0.5rem;
 }
 
 /* Comments */
@@ -706,13 +677,16 @@
   margin:0.3rem 0;
 }
 
-/* Variations */
-.pgn-variation{
-  margin-left:1.5rem;
-  padding-left:0.5rem;
+/* Highlight active move */
+.sticky-move-active{
+  background:#ffe38a;
+  border-radius:4px;
+  padding:2px 4px;
 }
 
-/* Desktop */
+/* ----------------------------------------------------
+   DESKTOP (>=768px)
+---------------------------------------------------- */
 @media (min-width:768px){
   .pgn-sticky-header{
     top:1rem;
@@ -731,7 +705,6 @@
   }
 }
 `;
-
   document.head.appendChild(style);
 
   // --------------------------------------------------------------------------

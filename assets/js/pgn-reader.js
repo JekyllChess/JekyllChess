@@ -204,15 +204,18 @@
       this.leftCol.appendChild(this.boardDiv);
 
       // Explicit animation speeds for Chessboard.js
+      // NOTE: draggable: true + onDragStart: () => false
+      // helps ensure animation code paths are fully active
       setTimeout(() => {
         ReaderBoard.board = Chessboard(this.boardDiv, {
           position: "start",
-          draggable: false,
+          draggable: true,
           pieceTheme: PIECE_THEME_URL,
           moveSpeed: 200,
           snapSpeed: 25,
           snapbackSpeed: 50,
-          appearSpeed: 200
+          appearSpeed: 200,
+          onDragStart: () => false
         });
       }, 0);
     }

@@ -1,9 +1,9 @@
 // ============================================================================
-// pgn-sticky.js
+// pgn-reader.js
 // Full version with:
-// - NON-sticky header on Desktop
-// - Sticky board everywhere
-// - Mobile: centered board, white background block, no header sticky
+// - NON-reader header on Desktop
+// - Reader board everywhere
+// - Mobile: centered board, white background block, no header reader
 // - Variation support, bold mainline, figurines, local scrolling
 // ============================================================================
 
@@ -14,11 +14,11 @@
   // Dependency checks
   // --------------------------------------------------------------------------
   if (typeof Chess === "undefined") {
-    console.warn("pgn-sticky.js: chess.js missing");
+    console.warn("pgn-reader.js: chess.js missing");
     return;
   }
   if (typeof Chessboard === "undefined") {
-    console.warn("pgn-sticky.js: chessboard.js missing");
+    console.warn("pgn-reader.js: chessboard.js missing");
     return;
   }
 
@@ -98,14 +98,11 @@
       .replace(/0-0|O-O/g, m => m[0] + "\u2011" + m[2]);
   }
 
-  // --------------------------------------------------------------------------
-  // StickyPGNView (pgn.js–compatible parsing + sticky layout)
-  // --------------------------------------------------------------------------
-  class StickyPGNView {
+  class ReaderPGNView {
     constructor(src) {
       this.sourceEl = src;
       this.wrapper = document.createElement("div");
-      this.wrapper.className = "pgn-sticky-block";
+      this.wrapper.className = "pgn-reader-block";
       this.finalResultPrinted = false;
       this.build();
       this.applyFigurines();
@@ -138,7 +135,7 @@
       let raw = this.sourceEl.textContent.trim();
       raw = normalizeFigurines(raw);
 
-      let { headers: H, moveText: M } = StickyPGNView.split(raw),
+      let { headers: H, moveText: M } = ReaderPGNView.split(raw),
         pgn = (H.length ? H.join("\n") + "\n\n" : "") + M,
         chess = new Chess();
 
@@ -149,28 +146,28 @@
         needs = / (1-0|0-1|1\/2-1\/2|½-½|\*)$/.test(M),
         movetext = needs ? M : M + (res ? " " + res : "");
 
-      // Header (non-sticky on mobile & desktop)
+      // Header (non-reader on mobile & desktop)
       this.headerDiv = document.createElement("div");
-      this.headerDiv.className = "pgn-sticky-header";
+      this.headerDiv.className = "pgn-reader-header";
       this.wrapper.appendChild(this.headerDiv);
       this.headerDiv.appendChild(this.buildHeaderContent(head));
 
       // Two-column wrapper
       const cols = document.createElement("div");
-      cols.className = "pgn-sticky-cols";
+      cols.className = "pgn-reader-cols";
       this.wrapper.appendChild(cols);
 
       this.leftCol = document.createElement("div");
-      this.leftCol.className = "pgn-sticky-left";
+      this.leftCol.className = "pgn-reader-left";
       cols.appendChild(this.leftCol);
 
       this.movesCol = document.createElement("div");
-      this.movesCol.className = "pgn-sticky-right";
+      this.movesCol.className = "pgn-reader-right";
       cols.appendChild(this.movesCol);
 
       // Create board + navigation buttons
-      this.createStickyBoard();
-      this.createStickyButtons();
+      this.createReaderBoard();
+      this.createReaderButtons();
 
       // Parse moves
       this.parse(movetext);
@@ -197,13 +194,13 @@
       return H;
     }
 
-    createStickyBoard() {
+    createReaderBoard() {
       this.boardDiv = document.createElement("div");
-      this.boardDiv.className = "pgn-sticky-board";
+      this.boardDiv.className = "pgn-reader-board";
       this.leftCol.appendChild(this.boardDiv);
 
       setTimeout(() => {
-        StickyBoard.board = Chessboard(this.boardDiv, {
+        ReaderBoard.board = Chessboard(this.boardDiv, {
           position: "start",
           draggable: false,
           pieceTheme: PIECE_THEME_URL
@@ -211,19 +208,19 @@
       }, 0);
     }
 
-    createStickyButtons() {
+    createReaderButtons() {
       const wrap = document.createElement("div");
-      wrap.className = "pgn-sticky-buttons";
+      wrap.className = "pgn-reader-buttons";
 
       const prev = document.createElement("button");
-      prev.className = "pgn-sticky-btn";
+      prev.className = "pgn-reader-btn";
       prev.textContent = "◀";
-      prev.addEventListener("click", () => StickyBoard.prev());
+      prev.addEventListener("click", () => ReaderBoard.prev());
 
       const next = document.createElement("button");
-      next.className = "pgn-sticky-btn";
+      next.className = "pgn-reader-btn";
       next.textContent = "▶";
-      next.addEventListener("click", () => StickyBoard.next());
+      next.addEventListener("click", () => ReaderBoard.next());
 
       wrap.appendChild(prev);
       wrap.appendChild(next);
@@ -286,7 +283,7 @@
 
     handleSAN(tok, ctx) {
       let core = tok.replace(/[^a-hKQRBN0-9=O0-]+$/g, "").replace(/0/g, "O");
-      if (!StickyPGNView.isSANCore(core)) {
+      if (!ReaderPGNView.isSANCore(core)) {
         appendText(ctx.container, tok + " ");
         return null;
       }
@@ -319,7 +316,7 @@
       ctx.lastWasInterrupt = false;
 
       let span = document.createElement("span");
-      span.className = "pgn-move sticky-move";
+      span.className = "pgn-move reader-move";
       span.dataset.fen = ctx.chess.fen();
       span.dataset.mainline = ctx.type === "main" ? "1" : "0";
       span.textContent = makeCastlingUnbreakable(tok) + " ";
@@ -420,7 +417,7 @@
         let core = tok
             .replace(/[^a-hKQRBN0-9=O0-]+$/g, "")
             .replace(/0/g, "O"),
-          isSAN = StickyPGNView.isSANCore(core);
+          isSAN = ReaderPGNView.isSANCore(core);
 
         if (!isSAN) {
           if (EVAL_MAP[tok]) {
@@ -474,9 +471,9 @@
   }
 
   // --------------------------------------------------------------------------
-  // StickyBoard
+  // ReaderBoard
   // --------------------------------------------------------------------------
-  const StickyBoard = {
+  const ReaderBoard = {
     board: null,
     moveSpans: [],
     currentIndex: -1,
@@ -486,7 +483,7 @@
 
     collectMoves(root) {
       this.moveSpans = Array.from(
-        (root || document).querySelectorAll(".sticky-move")
+        (root || document).querySelectorAll(".reader-move")
       );
     },
 
@@ -501,9 +498,9 @@
       this.board.position(fen, true);
 
       this.moveSpans.forEach(s =>
-        s.classList.remove("sticky-move-active")
+        s.classList.remove("reader-move-active")
       );
-      span.classList.add("sticky-move-active");
+      span.classList.add("reader-move-active");
 
       if (span.dataset.mainline === "1" && this.mainlineMoves.length) {
         const mi = this.mainlineMoves.indexOf(span);
@@ -544,7 +541,7 @@
 
     activate(root) {
       this.movesContainer =
-        (root || document).querySelector(".pgn-sticky-right");
+        (root || document).querySelector(".pgn-reader-right");
 
       this.collectMoves(root);
 
@@ -575,7 +572,7 @@
   };
 
   // --------------------------------------------------------------------------
-  // CSS (mobile-first, desktop override WITHOUT sticky header)
+  // CSS (mobile-first, desktop override WITHOUT reader header)
   // --------------------------------------------------------------------------
   const style = document.createElement("style");
   style.textContent = `
@@ -584,28 +581,28 @@
    BASE (MOBILE-FIRST)
 ---------------------------------------------------- */
 
-.pgn-sticky-block {
+.pgn-reader-block {
   background: #fff;
   margin-bottom: 2rem;
 }
 
-.pgn-sticky-header {
+.pgn-reader-header {
   position: static;
   background: #fff;
   padding-bottom: 0.4rem;
 }
 
 /* MOBILE: stacked layout */
-.pgn-sticky-cols {
+.pgn-reader-cols {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
   margin-top: 1rem;
 }
 
-/* MOBILE: sticky board, centered */
-.pgn-sticky-left {
-  position: sticky;
+/* MOBILE: reader board, centered */
+.pgn-reader-left {
+  position: reader;
   top: 0rem;
   background: #fff;
   z-index: 70;
@@ -617,7 +614,7 @@
   padding: 0.3rem 0;
 }
 
-.pgn-sticky-board {
+.pgn-reader-board {
   width: 320px;
   max-width: 100%;
   margin: 0 auto;
@@ -625,7 +622,7 @@
   z-index: 72;
 }
 
-.pgn-sticky-buttons {
+.pgn-reader-buttons {
   width: 320px;
   display: flex;
   justify-content: center;
@@ -635,7 +632,7 @@
   z-index: 72;
 }
 
-.pgn-sticky-btn {
+.pgn-reader-btn {
   font-size: 1.2rem;
   padding: 0.2rem 0.6rem;
   cursor: pointer;
@@ -645,7 +642,7 @@
 }
 
 /* Moves area (mobile) */
-.pgn-sticky-right {
+.pgn-reader-right {
   max-height: none;
   overflow-y: visible;
   padding-right: 0.5rem;
@@ -674,7 +671,7 @@
   border: none;
 }
 
-.sticky-move-active {
+.reader-move-active {
   background: #ffe38a;
   border-radius: 4px;
   padding: 2px 4px;
@@ -685,38 +682,38 @@
 ---------------------------------------------------- */
 @media (min-width: 768px) {
 
-  /* DESKTOP: header NOT sticky anymore */
-  .pgn-sticky-header {
+  /* DESKTOP: header NOT reader anymore */
+  .pgn-reader-header {
     position: static;
     top: auto;
     z-index: auto;
   }
 
-  .pgn-sticky-cols {
+  .pgn-reader-cols {
     display: grid;
     grid-template-columns: 340px 1fr;
     gap: 2rem;
   }
 
-  .pgn-sticky-left {
+  .pgn-reader-left {
     top: 6rem;
     align-items: flex-start;
     padding: 0;
   }
 
-  .pgn-sticky-board,
-  .pgn-sticky-buttons {
+  .pgn-reader-board,
+  .pgn-reader-buttons {
     margin-left: 0;
     margin-right: 0;
   }
 
-  .pgn-sticky-right {
+  .pgn-reader-right {
     height: 350px;
     overflow-y: auto;
   }
 
   /* Standardize all text in the right column */
-.pgn-sticky-right * {
+.pgn-reader-right * {
     line-height: 1.55;    /* consistent row height */
     margin-top: 0;        /* remove weird spacing above */
     margin-bottom: 0.35rem; /* small rhythm */
@@ -724,18 +721,18 @@
 }
 
 /* Fine-tune comments */
-.pgn-sticky-right .pgn-comment {
+.pgn-reader-right .pgn-comment {
     margin: 0.35rem 0;
     line-height: 1.5;
 }
 
 /* Fine-tune main line moves (bold) */
-.pgn-sticky-right .pgn-mainline {
+.pgn-reader-right .pgn-mainline {
     font-weight: 600;
 }
 
 /* Variation moves (normal weight) */
-.pgn-sticky-right .pgn-variation {
+.pgn-reader-right .pgn-variation {
     font-weight: 400;
 }
 
@@ -748,11 +745,11 @@
   // DOM Ready
   // --------------------------------------------------------------------------
   document.addEventListener("DOMContentLoaded", () => {
-    const els = document.querySelectorAll("pgn-sticky");
+    const els = document.querySelectorAll("pgn-reader");
     if (!els.length) return;
 
-    els.forEach(el => new StickyPGNView(el));
-    StickyBoard.activate(document);
+    els.forEach(el => new ReaderPGNView(el));
+    ReaderBoard.activate(document);
   });
 
 })();

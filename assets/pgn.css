@@ -200,3 +200,18 @@
     font-weight: 400;
   }
 }
+
+/* 1. EVERYTHING inside mainline is bold (covers move numbers + SAN moves) */
+.pgn-mainline {
+  font-weight: 600;
+}
+
+/* 2. Strengthen SAN moves in <pgn> */
+.pgn-mainline .pgn-move {
+  font-weight: 600;
+}
+
+/* 3. Strengthen SAN moves in <pgn-reader> */
+.pgn-mainline .reader-move {
+  font-weight: 600;
+}

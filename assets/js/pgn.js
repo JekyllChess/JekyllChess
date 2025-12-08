@@ -109,7 +109,7 @@
   }
 
   // --------------------------------------------------------------------------
-  // PGNGameView (static <pgn>, no board, same parser as pgn-reader)
+  // PGNGameView
   // --------------------------------------------------------------------------
   class PGNGameView {
     constructor(src) {
@@ -476,6 +476,46 @@
     }
   }
 
+  // --------------------------------------------------------------------------
+  // TYPOGRAPHY: match pgn-reader-right, but ONLY for moves/comments
+  // --------------------------------------------------------------------------
+  const style = document.createElement("style");
+  style.textContent = `
+
+/* Mainline moves and variation moves in <pgn> blocks:
+   same rhythm as .pgn-reader-right */
+
+.pgn-blog-block .pgn-mainline,
+.pgn-blog-block .pgn-variation,
+.pgn-blog-block .pgn-comment {
+  line-height: 1.55;
+  margin-top: 0;
+  margin-bottom: 0.35rem;
+  padding: 0;
+}
+
+/* Comments: same tweak as in pgn-reader */
+.pgn-blog-block .pgn-comment {
+  font-style: italic;
+  margin: 0.35rem 0;
+  line-height: 1.5;
+}
+
+/* Bold mainline moves, normal variation moves */
+.pgn-blog-block .pgn-mainline .pgn-move {
+  font-weight: 600;
+}
+
+.pgn-blog-block .pgn-variation .pgn-move {
+  font-weight: 400;
+}
+
+`;
+  document.head.appendChild(style);
+
+  // --------------------------------------------------------------------------
+  // DOM Ready
+  // --------------------------------------------------------------------------
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", () => PGNRenderer.init());
   } else {

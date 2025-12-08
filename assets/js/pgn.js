@@ -1,5 +1,22 @@
+// ============================================================================
+// pgn.js  (blog-style PGN renderer with static diagrams)
+// Uses PGNCore utilities for parsing + figurines
+// Renders <pgn> elements with:
+// - Header
+// - Text moves (mainline + variations + comments)
+// - Static [D] diagrams using chessboard.js (no animation)
+// ============================================================================
+
 (function () {
   "use strict";
+
+  // --------------------------------------------------------------------------
+  // Require PGNCore
+  // --------------------------------------------------------------------------
+  if (!window.PGNCore) {
+    console.warn("pgn.js: window.PGNCore is missing");
+    return;
+  }
 
   const {
     PIECE_THEME_URL,
@@ -14,10 +31,41 @@
     flipName,
     normalizeFigurines,
     appendText,
-    makeCastlingUnbreakable,
-    createDiagram
+    makeCastlingUnbreakable
   } = window.PGNCore;
 
+  // --------------------------------------------------------------------------
+  // Local diagram helper for <pgn> (static, non-interactive)
+  // --------------------------------------------------------------------------
+  let diagramCounter = 0;
+
+  function createDiagram(wrapper, fen) {
+    if (typeof Chessboard === "undefined") {
+      console.warn("pgn.js: Chessboard.js missing, cannot create diagram");
+      return;
+    }
+
+    const id = "pgn-diagram-" + (diagramCounter++);
+    const d = document.createElement("div");
+    d.className = "pgn-diagram";
+    d.id = id;
+    wrapper.appendChild(d);
+
+    // Defer to ensure the element is in the DOM
+    setTimeout(() => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      Chessboard(el, {
+        position: fen,
+        draggable: false,
+        pieceTheme: PIECE_THEME_URL
+      });
+    }, 0);
+  }
+
+  // --------------------------------------------------------------------------
+  // PGNGameView  (<pgn>)
+  // --------------------------------------------------------------------------
   class PGNGameView {
     constructor(src) {
       this.sourceEl = src;
@@ -48,7 +96,10 @@
         }
       }
 
-      return { headers: H, moveText: M.join(" ").replace(/\s+/g, " ").trim() };
+      return {
+        headers: H,
+        moveText: M.join(" ").replace(/\s+/g, " ").trim()
+      };
     }
 
     build() {
@@ -113,9 +164,11 @@
         let k = j;
         while (k < text.length && /\s/.test(text[k])) k++;
         let next = "";
-        while (k < text.length &&
+        while (
+          k < text.length &&
           !/\s/.test(text[k]) &&
-          !"(){}".includes(text[k])) {
+          !"(){}".includes(text[k])
+        ) {
           next += text[k++];
         }
         if (RESULT_REGEX.test(next)) {
@@ -139,6 +192,7 @@
           ctx.container = null;
         }
 
+        // For each [D] in a comment, create a static diagram
         if (idx < parts.length - 1) {
           createDiagram(this.wrapper, ctx.chess.fen());
         }
@@ -207,19 +261,25 @@
       for (; i < t.length;) {
         let ch = t[i];
 
+        // whitespace
         if (/\s/.test(ch)) {
           while (i < t.length && /\s/.test(t[i])) i++;
-          this.ensure(ctx, ctx.type === "main" ? "pgn-mainline" : "pgn-variation");
+          this.ensure(
+            ctx,
+            ctx.type === "main" ? "pgn-mainline" : "pgn-variation"
+          );
           appendText(ctx.container, " ");
           continue;
         }
 
+        // variations
         if (ch === "(") {
           i++;
           let fen = ctx.prevFen || ctx.chess.fen(),
-            len = typeof ctx.prevHistoryLen === "number"
-              ? ctx.prevHistoryLen
-              : ctx.chess.history().length;
+            len =
+              typeof ctx.prevHistoryLen === "number"
+                ? ctx.prevHistoryLen
+                : ctx.chess.history().length;
           ctx = {
             type: "variation",
             chess: new Chess(fen),
@@ -244,24 +304,29 @@
           continue;
         }
 
+        // comments
         if (ch === "{") {
           i = this.parseComment(t, i + 1, ctx);
           continue;
         }
 
+        // token
         let s = i;
         while (
           i < t.length &&
           !/\s/.test(t[i]) &&
           !"(){}".includes(t[i])
-        )
+        ) {
           i++;
+        }
 
         let tok = t.substring(s, i);
         if (!tok) continue;
 
+        // ignore engine/meta tags
         if (/^\[%.*]$/.test(tok)) continue;
 
+        // bare [D] outside comments -> static diagram
         if (tok === "[D]") {
           createDiagram(this.wrapper, ctx.chess.fen());
           ctx.lastWasInterrupt = true;
@@ -269,35 +334,52 @@
           continue;
         }
 
+        // result
         if (RESULT_REGEX.test(tok)) {
           if (this.finalResultPrinted) continue;
           this.finalResultPrinted = true;
-          this.ensure(ctx, ctx.type === "main" ? "pgn-mainline" : "pgn-variation");
+          this.ensure(
+            ctx,
+            ctx.type === "main" ? "pgn-mainline" : "pgn-variation"
+          );
           appendText(ctx.container, tok + " ");
           continue;
         }
 
+        // move numbers
         if (MOVE_NUMBER_REGEX.test(tok)) continue;
 
-        let core = tok.replace(/[^a-hKQRBN0-9=O0-]+$/g, "").replace(/0/g, "O"),
+        // SAN or something else?
+        let core = tok
+            .replace(/[^a-hKQRBN0-9=O0-]+$/g, "")
+            .replace(/0/g, "O"),
           isSAN = PGNGameView.isSANCore(core);
 
         if (!isSAN) {
+          // evaluation tokens (=, +/=, etc.)
           if (EVAL_MAP[tok]) {
-            this.ensure(ctx, ctx.type === "main" ? "pgn-mainline" : "pgn-variation");
+            this.ensure(
+              ctx,
+              ctx.type === "main" ? "pgn-mainline" : "pgn-variation"
+            );
             appendText(ctx.container, EVAL_MAP[tok] + " ");
             continue;
           }
 
+          // NAGs $1, $2, ...
           if (tok[0] === "$") {
             let code = +tok.slice(1);
             if (NAG_MAP[code]) {
-              this.ensure(ctx, ctx.type === "main" ? "pgn-mainline" : "pgn-variation");
+              this.ensure(
+                ctx,
+                ctx.type === "main" ? "pgn-mainline" : "pgn-variation"
+              );
               appendText(ctx.container, NAG_MAP[code] + " ");
             }
             continue;
           }
 
+          // plain text (most likely a word / Turkish text etc.)
           if (/[A-Za-zÇĞİÖŞÜçğıöşü]/.test(tok)) {
             if (ctx.type === "variation") {
               this.ensure(ctx, "pgn-variation");
@@ -311,15 +393,28 @@
               ctx.lastWasInterrupt = false;
             }
           } else {
-            this.ensure(ctx, ctx.type === "main" ? "pgn-mainline" : "pgn-variation");
+            // numeric stuff etc.
+            this.ensure(
+              ctx,
+              ctx.type === "main" ? "pgn-mainline" : "pgn-variation"
+            );
             appendText(ctx.container, tok + " ");
           }
           continue;
         }
 
-        this.ensure(ctx, ctx.type === "main" ? "pgn-mainline" : "pgn-variation");
+        // true SAN move
+        this.ensure(
+          ctx,
+          ctx.type === "main" ? "pgn-mainline" : "pgn-variation"
+        );
         let m = this.handleSAN(tok, ctx);
-        if (!m) appendText(ctx.container, makeCastlingUnbreakable(tok) + " ");
+        if (!m) {
+          appendText(
+            ctx.container,
+            makeCastlingUnbreakable(tok) + " "
+          );
+        }
       }
     }
 
@@ -341,6 +436,9 @@
     }
   }
 
+  // --------------------------------------------------------------------------
+  // PGNRenderer
+  // --------------------------------------------------------------------------
   class PGNRenderer {
     static renderAll(root) {
       (root || document).querySelectorAll("pgn").forEach(el => {

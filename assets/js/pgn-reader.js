@@ -1,15 +1,11 @@
 // ============================================================================
 // pgn-reader.js
-// Uses pgn-core.js for PGN parsing constants + helpers.
-// Renders <pgn-reader> as:
-//   - Header
-//   - Left: sticky / animated board + prev/next buttons
-//   - Right: scrollable move list (mainline + variations + comments)
-// Features:
-//   - Smooth board animation (with chessboard.js)
-//   - Bold mainline moves + bold move numbers (via pgn.css)
-//   - Variations kept; keyboard + button navigation follows mainline only
-//   - Local scrolling inside the moves column
+// Full version with:
+// - Non-sticky header
+// - Sticky, animated board (Chessboard.js 1.0.0)
+// - Mobile: centered board, white background block (handled in pgn.css)
+// - Desktop: 2-column layout (board left, moves right — handled in pgn.css)
+// - Variation support, bold mainline, figurines, local scrolling
 // ============================================================================
 
 (function () {
@@ -26,29 +22,82 @@
     console.warn("pgn-reader.js: chessboard.js missing");
     return;
   }
-  if (typeof window.PGNCore === "undefined") {
-    console.warn("pgn-reader.js: PGNCore (pgn-core.js) missing");
-    return;
-  }
 
   // --------------------------------------------------------------------------
-  // Import from pgn-core.js
+  // Constants (mirrors pgn.js)
   // --------------------------------------------------------------------------
-  const {
-    PIECE_THEME_URL,
-    SAN_CORE_REGEX,
-    RESULT_REGEX,
-    MOVE_NUMBER_REGEX,
-    NBSP,
-    NAG_MAP,
-    EVAL_MAP,
-    normalizeResult,
-    extractYear,
-    flipName,
-    normalizeFigurines,
-    appendText,
-    makeCastlingUnbreakable
-  } = window.PGNCore;
+  const PIECE_THEME_URL =
+    "https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png";
+
+  const SAN_CORE_REGEX =
+    /^([O0]-[O0](-[O0])?[+#]?|[KQRBN]?[a-h]?[1-8]?x?[a-h][1-8](=[QRBN])?[+#]?|[a-h][1-8](=[QRBN])?[+#]?)$/;
+
+  const RESULT_REGEX = /^(1-0|0-1|1\/2-1\/2|½-½|\*)$/;
+  const MOVE_NUMBER_REGEX = /^(\d+)(\.+)$/;
+  const NBSP = "\u00A0";
+
+  const NAG_MAP = {
+    1: "!", 2: "?", 3: "‼", 4: "⁇", 5: "⁉", 6: "⁈",
+    13: "→", 14: "↑", 15: "⇆", 16: "⇄",
+    17: "⟂", 18: "∞", 19: "⟳", 20: "⟲",
+    36: "⩲", 37: "⩱", 38: "±", 39: "∓",
+    40: "+=", 41: "=+", 42: "±", 43: "∓",
+    44: "⨀", 45: "⨁"
+  };
+
+  const EVAL_MAP = {
+    "=": "=",
+    "+/=": "⩲",
+    "=/+": "⩱",
+    "+/-": "±",
+    "+/−": "±",
+    "-/+": "∓",
+    "−/+": "∓",
+    "+-": "+−",
+    "+−": "+−",
+    "-+": "−+",
+    "−+": "−+",
+    "∞": "∞",
+    "=/∞": "⯹"
+  };
+
+  function normalizeResult(r) {
+    return r ? r.replace(/1\/2-1\/2/g, "½-½") : "";
+  }
+
+  function extractYear(d) {
+    if (!d) return "";
+    let p = d.split(".");
+    return /^\d{4}$/.test(p[0]) ? p[0] : "";
+  }
+
+  function flipName(n) {
+    if (!n) return "";
+    let i = n.indexOf(",");
+    return i === -1
+      ? n.trim()
+      : n.slice(i + 1).trim() + " " + n.slice(0, i).trim();
+  }
+
+  // Normalize figurines (♘ → N etc.) before parsing
+  function normalizeFigurines(text) {
+    return text
+      .replace(/♔/g, "K")
+      .replace(/♕/g, "Q")
+      .replace(/♖/g, "R")
+      .replace(/♗/g, "B")
+      .replace(/♘/g, "N");
+  }
+
+  function appendText(el, txt) {
+    if (txt) el.appendChild(document.createTextNode(txt));
+  }
+
+  function makeCastlingUnbreakable(s) {
+    return s
+      .replace(/0-0-0|O-O-O/g, m => m[0] + "\u2011" + m[2] + "\u2011" + m[4])
+      .replace(/0-0|O-O/g, m => m[0] + "\u2011" + m[2]);
+  }
 
   // --------------------------------------------------------------------------
   // ReaderPGNView
@@ -75,11 +124,9 @@
 
       for (let L of lines) {
         let T = L.trim();
-        if (inH && T.startsWith("[") && T.endsWith("]")) {
-          H.push(L);
-        } else if (inH && T === "") {
-          inH = false;
-        } else {
+        if (inH && T.startsWith("[") && T.endsWith("]")) H.push(L);
+        else if (inH && T === "") inH = false;
+        else {
           inH = false;
           M.push(L);
         }
@@ -89,11 +136,9 @@
     }
 
     build() {
-      // 1. Raw PGN text, normalized figurines
       let raw = this.sourceEl.textContent.trim();
       raw = normalizeFigurines(raw);
 
-      // 2. Split into headers + movetext
       let { headers: H, moveText: M } = ReaderPGNView.split(raw),
         pgn = (H.length ? H.join("\n") + "\n\n" : "") + M,
         chess = new Chess();
@@ -105,13 +150,13 @@
         needs = / (1-0|0-1|1\/2-1\/2|½-½|\*)$/.test(M),
         movetext = needs ? M : M + (res ? " " + res : "");
 
-      // 3. Header container
+      // Header (non-sticky; layout is handled in CSS)
       this.headerDiv = document.createElement("div");
       this.headerDiv.className = "pgn-reader-header";
       this.wrapper.appendChild(this.headerDiv);
       this.headerDiv.appendChild(this.buildHeaderContent(head));
 
-      // 4. Columns: left (board+buttons), right (moves)
+      // Two-column wrapper (CSS turns this into rows on mobile)
       const cols = document.createElement("div");
       cols.className = "pgn-reader-cols";
       this.wrapper.appendChild(cols);
@@ -124,14 +169,13 @@
       this.movesCol.className = "pgn-reader-right";
       cols.appendChild(this.movesCol);
 
-      // 5. Board + buttons
+      // Board + nav buttons
       this.createReaderBoard();
       this.createReaderButtons();
 
-      // 6. Parse move text into DOM
+      // Parse moves & build clickable spans
       this.parse(movetext);
 
-      // 7. Replace <pgn-reader> with rendered block
       this.sourceEl.replaceWith(this.wrapper);
     }
 
@@ -159,16 +203,16 @@
       this.boardDiv.className = "pgn-reader-board";
       this.leftCol.appendChild(this.boardDiv);
 
-      // Use classic chessboard.js with animation options
+      // Explicit animation speeds for Chessboard.js
       setTimeout(() => {
         ReaderBoard.board = Chessboard(this.boardDiv, {
           position: "start",
           draggable: false,
           pieceTheme: PIECE_THEME_URL,
-          moveSpeed: 350,
-          snapSpeed: 30,
-          snapbackSpeed: 30,
-          appearSpeed: 180
+          moveSpeed: 200,
+          snapSpeed: 25,
+          snapbackSpeed: 50,
+          appearSpeed: 200
         });
       }, 0);
     }
@@ -218,9 +262,8 @@
           k < text.length &&
           !/\s/.test(text[k]) &&
           !"(){}".includes(text[k])
-        ) {
+        )
           next += text[k++];
-        }
         if (RESULT_REGEX.test(next)) {
           raw = raw.replace(/(1-0|0-1|1\/2-1\/2|½-½|\*)$/, "").trim();
         }
@@ -308,7 +351,6 @@
       for (; i < t.length; ) {
         let ch = t[i];
 
-        // Whitespace
         if (/\s/.test(ch)) {
           while (i < t.length && /\s/.test(t[i])) i++;
           this.ensure(
@@ -319,7 +361,6 @@
           continue;
         }
 
-        // Open variation
         if (ch === "(") {
           i++;
           let fen = ctx.prevFen || ctx.chess.fen(),
@@ -341,7 +382,6 @@
           continue;
         }
 
-        // Close variation
         if (ch === ")") {
           i++;
           if (ctx.parent) {
@@ -352,36 +392,27 @@
           continue;
         }
 
-        // Comment
         if (ch === "{") {
           i = this.parseComment(t, i + 1, ctx);
           continue;
         }
 
-        // Token
         let s = i;
-        while (
-          i < t.length &&
-          !/\s/.test(t[i]) &&
-          !"(){}".includes(t[i])
-        ) {
+        while (i < t.length && !/\s/.test(t[i]) && !"(){}".includes(t[i]))
           i++;
-        }
 
         let tok = t.substring(s, i);
         if (!tok) continue;
 
-        // Skip engine tags like [%eval ...]
         if (/^\[%.*]$/.test(tok)) continue;
 
-        // Ignore [D] (no diagrams here; reader has its own live board)
         if (tok === "[D]") {
+          // diagrams are only for <pgn>, not for reader
           ctx.lastWasInterrupt = true;
           ctx.container = null;
           continue;
         }
 
-        // Final result
         if (RESULT_REGEX.test(tok)) {
           if (this.finalResultPrinted) continue;
           this.finalResultPrinted = true;
@@ -393,17 +424,14 @@
           continue;
         }
 
-        // Move numbers like "1." or "1..." are already handled structurally
         if (MOVE_NUMBER_REGEX.test(tok)) continue;
 
-        // Evaluate whether this is SAN
         let core = tok
             .replace(/[^a-hKQRBN0-9=O0-]+$/g, "")
             .replace(/0/g, "O"),
           isSAN = ReaderPGNView.isSANCore(core);
 
         if (!isSAN) {
-          // Evaluation symbols =, +/=, etc.
           if (EVAL_MAP[tok]) {
             this.ensure(
               ctx,
@@ -413,7 +441,6 @@
             continue;
           }
 
-          // NAGs like $1, $3 etc.
           if (tok[0] === "$") {
             let code = +tok.slice(1);
             if (NAG_MAP[code]) {
@@ -426,7 +453,6 @@
             continue;
           }
 
-          // Plain text (words) → comments
           if (/[A-Za-zÇĞİÖŞÜçğıöşü]/.test(tok)) {
             if (ctx.type === "variation") {
               this.ensure(ctx, "pgn-variation");
@@ -440,7 +466,6 @@
               ctx.lastWasInterrupt = false;
             }
           } else {
-            // Other tokens (e.g. "1-0" already handled, so this is rare)
             this.ensure(
               ctx,
               ctx.type === "main" ? "pgn-mainline" : "pgn-variation"
@@ -450,18 +475,13 @@
           continue;
         }
 
-        // Genuine SAN → clickable move span
         this.ensure(
           ctx,
           ctx.type === "main" ? "pgn-mainline" : "pgn-variation"
         );
         let m = this.handleSAN(tok, ctx);
-        if (!m) {
-          appendText(
-            ctx.container,
-            makeCastlingUnbreakable(tok) + " "
-          );
-        }
+        if (!m)
+          appendText(ctx.container, makeCastlingUnbreakable(tok) + " ");
       }
     }
 
@@ -469,15 +489,13 @@
       const map = { K: "♔", Q: "♕", R: "♖", B: "♗", N: "♘" };
       this.wrapper.querySelectorAll(".pgn-move").forEach(span => {
         let m = span.textContent.match(/^([KQRBN])(.+?)(\s*)$/);
-        if (m) {
-          span.textContent = map[m[1]] + m[2] + (m[3] || "");
-        }
+        if (m) span.textContent = map[m[1]] + m[2] + (m[3] || "");
       });
     }
   }
 
   // --------------------------------------------------------------------------
-  // ReaderBoard — controls the live board + navigation
+  // ReaderBoard (navigation + animation)
   // --------------------------------------------------------------------------
   const ReaderBoard = {
     board: null,
@@ -501,22 +519,21 @@
       const fen = span.dataset.fen;
       if (!fen || !this.board) return;
 
-      // Smooth animation using chessboard.js
+      // Smooth animation: second argument = true
       this.board.position(fen, true);
 
-      // Highlight active move
       this.moveSpans.forEach(s =>
         s.classList.remove("reader-move-active")
       );
       span.classList.add("reader-move-active");
 
-      // Track mainline index for next/prev
+      // Track mainline index for button/keyboard navigation
       if (span.dataset.mainline === "1" && this.mainlineMoves.length) {
         const mi = this.mainlineMoves.indexOf(span);
         if (mi !== -1) this.mainlineIndex = mi;
       }
 
-      // Local scroll inside move list
+      // Local scrolling inside the moves column only
       if (this.movesContainer) {
         const parent = this.movesContainer;
         const top =
@@ -555,7 +572,6 @@
 
       this.collectMoves(root);
 
-      // Mainline only for arrow/page navigation
       this.mainlineMoves = this.moveSpans.filter(
         s => s.dataset.mainline === "1"
       );
@@ -566,7 +582,6 @@
         span.addEventListener("click", () => this.goto(idx));
       });
 
-      // Keyboard navigation: arrows follow ONLY the game (mainline)
       window.addEventListener("keydown", e => {
         const tag = (e.target.tagName || "").toLowerCase();
         if (tag === "input" || tag === "textarea") return;

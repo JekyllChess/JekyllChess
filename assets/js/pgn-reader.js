@@ -1,20 +1,15 @@
 // ============================================================================
-// pgn-reader.js
-// Interactive reader for <pgn-reader>:
-// - 2-column layout (header, left: sticky board + buttons, right: scrollable moves)
-// - Figurines in input, figurines in output
-// - Bold mainline (moves + numbers) vs normal-weight variations (via CSS)
-// - Local scrolling inside move list
-// - Animated board using Chessboard.js 1.0.0
+// pgn-reader.js  (Animated interactive PGN viewer)
+// - Smooth sliding piece animations (Chessboard.js 1.0.0 compatible)
+// - Reader board always present (sticky on mobile)
+// - 2-column layout on desktop
+// - Bold mainline and move numbers
+// - Variation support
 // ============================================================================
 
 (function () {
   "use strict";
 
-  if (!window.PGNCore) {
-    console.warn("pgn-reader.js: PGNCore missing");
-    return;
-  }
   if (typeof Chess === "undefined") {
     console.warn("pgn-reader.js: chess.js missing");
     return;
@@ -24,23 +19,83 @@
     return;
   }
 
-  const {
-    PIECE_THEME_URL,
-    SAN_CORE_REGEX,
-    RESULT_REGEX,
-    MOVE_NUMBER_REGEX,
-    NBSP,
-    NAG_MAP,
-    EVAL_MAP,
-    normalizeResult,
-    extractYear,
-    flipName,
-    normalizeFigurines,
-    appendText,
-    makeCastlingUnbreakable
-    // NOTE: we deliberately do NOT use createDiagram here
-    // <pgn-reader> has NO [D] diagrams
-  } = window.PGNCore;
+  // --------------------------------------------------------------------------
+  // CONSTANTS
+  // --------------------------------------------------------------------------
+  const PIECE_THEME_URL =
+    "https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png";
+
+  const SAN_CORE_REGEX =
+    /^([O0]-[O0](-[O0])?[+#]?|[KQRBN]?[a-h]?[1-8]?x?[a-h][1-8](=[QRBN])?[+#]?|[a-h][1-8](=[QRBN])?[+#]?)$/;
+
+  const RESULT_REGEX = /^(1-0|0-1|1\/2-1\/2|½-½|\*)$/;
+  const MOVE_NUMBER_REGEX = /^(\d+)(\.+)$/;
+  const NBSP = "\u00A0";
+
+  const NAG_MAP = {
+    1: "!", 2: "?", 3: "‼", 4: "⁇", 5: "⁉", 6: "⁈",
+    13: "→", 14: "↑", 15: "⇆", 16: "⇄",
+    17: "⟂", 18: "∞", 19: "⟳", 20: "⟲",
+    36: "⩲", 37: "⩱", 38: "±", 39: "∓",
+    40: "+=", 41: "=+", 42: "±", 43: "∓",
+    44: "⨀", 45: "⨁"
+  };
+
+  const EVAL_MAP = {
+    "=": "=",
+    "+/=": "⩲",
+    "=/+": "⩱",
+    "+/-": "±",
+    "+/−": "±",
+    "-/+": "∓",
+    "−/+": "∓",
+    "+-": "+−",
+    "+−": "+−",
+    "-+": "−+",
+    "−+": "−+",
+    "∞": "∞",
+    "=/∞": "⯹"
+  };
+
+  // --------------------------------------------------------------------------
+  // Helpers
+  // --------------------------------------------------------------------------
+  function normalizeResult(r) {
+    return r ? r.replace(/1\/2-1\/2/g, "½-½") : "";
+  }
+
+  function extractYear(d) {
+    if (!d) return "";
+    let p = d.split(".");
+    return /^\d{4}$/.test(p[0]) ? p[0] : "";
+  }
+
+  function flipName(n) {
+    if (!n) return "";
+    let i = n.indexOf(",");
+    return i === -1
+      ? n.trim()
+      : n.slice(i + 1).trim() + " " + n.slice(0, i).trim();
+  }
+
+  function normalizeFigurines(text) {
+    return text
+      .replace(/♔/g, "K")
+      .replace(/♕/g, "Q")
+      .replace(/♖/g, "R")
+      .replace(/♗/g, "B")
+      .replace(/♘/g, "N");
+  }
+
+  function appendText(el, txt) {
+    if (txt) el.appendChild(document.createTextNode(txt));
+  }
+
+  function makeCastlingUnbreakable(s) {
+    return s
+      .replace(/0-0-0|O-O-O/g, m => m[0] + "\u2011" + m[2] + "\u2011" + m[4])
+      .replace(/0-0|O-O/g, m => m[0] + "\u2011" + m[2]);
+  }
 
   // --------------------------------------------------------------------------
   // ReaderPGNView
@@ -99,7 +154,7 @@
       this.wrapper.appendChild(this.headerDiv);
       this.headerDiv.appendChild(this.buildHeaderContent(head));
 
-      // Two-column wrapper (layout is in pgn.css)
+      // Columns
       const cols = document.createElement("div");
       cols.className = "pgn-reader-cols";
       this.wrapper.appendChild(cols);
@@ -112,33 +167,33 @@
       this.movesCol.className = "pgn-reader-right";
       cols.appendChild(this.movesCol);
 
-      // Board + buttons
       this.createReaderBoard();
       this.createReaderButtons();
 
-      // Parse the moves
       this.parse(movetext);
 
       this.sourceEl.replaceWith(this.wrapper);
     }
 
     buildHeaderContent(h) {
-      let W =
-          (h.WhiteTitle ? h.WhiteTitle + " " : "") +
-          flipName(h.White || "") +
-          (h.WhiteElo ? " (" + h.WhiteElo + ")" : ""),
-        B =
-          (h.BlackTitle ? h.BlackTitle + " " : "") +
-          flipName(h.Black || "") +
-          (h.BlackElo ? " (" + h.BlackElo + ")" : ""),
-        Y = extractYear(h.Date),
-        line = (h.Event || "") + (Y ? ", " + Y : "");
+      return (() => {
+        let W =
+            (h.WhiteTitle ? h.WhiteTitle + " " : "") +
+            flipName(h.White || "") +
+            (h.WhiteElo ? " (" + h.WhiteElo + ")" : ""),
+          B =
+            (h.BlackTitle ? h.BlackTitle + " " : "") +
+            flipName(h.Black || "") +
+            (h.BlackElo ? " (" + h.BlackElo + ")" : ""),
+          Y = extractYear(h.Date),
+          line = (h.Event || "") + (Y ? ", " + Y : "");
 
-      let H = document.createElement("h4");
-      H.appendChild(document.createTextNode(W + " – " + B));
-      H.appendChild(document.createElement("br"));
-      H.appendChild(document.createTextNode(line));
-      return H;
+        let H = document.createElement("h4");
+        H.appendChild(document.createTextNode(W + " – " + B));
+        H.appendChild(document.createElement("br"));
+        H.appendChild(document.createTextNode(line));
+        return H;
+      })();
     }
 
     createReaderBoard() {
@@ -146,18 +201,15 @@
       this.boardDiv.className = "pgn-reader-board";
       this.leftCol.appendChild(this.boardDiv);
 
-      // Use Chessboard.js default animation settings, but ensure instance is ready
       setTimeout(() => {
         ReaderBoard.board = Chessboard(this.boardDiv, {
           position: "start",
           draggable: false,
-          pieceTheme: PIECE_THEME_URL
-          // animation speeds are supported by Chessboard 1.0.0;
-          // we can rely on its defaults or add them here if you like.
-          // moveSpeed: 200,
-          // snapSpeed: 25,
-          // snapbackSpeed: 50,
-          // appearSpeed: 200
+          pieceTheme: PIECE_THEME_URL,
+          moveSpeed: 200,
+          snapSpeed: 25,
+          snapbackSpeed: 50,
+          appearSpeed: 200
         });
       }, 0);
     }
@@ -190,6 +242,9 @@
       }
     }
 
+    // ----------------------------------------------------------------------
+    // COMMENTS
+    // ----------------------------------------------------------------------
     parseComment(text, i, ctx) {
       let j = i;
       while (j < text.length && text[j] !== "}") j++;
@@ -207,9 +262,8 @@
           k < text.length &&
           !/\s/.test(text[k]) &&
           !"(){}".includes(text[k])
-        ) {
+        )
           next += text[k++];
-        }
         if (RESULT_REGEX.test(next)) {
           raw = raw.replace(/(1-0|0-1|1\/2-1\/2|½-½|\*)$/, "").trim();
         }
@@ -230,13 +284,15 @@
           }
           ctx.container = null;
         }
-        // IMPORTANT: <pgn-reader> does NOT create diagrams on [D]
       }
 
       ctx.lastWasInterrupt = true;
       return j;
     }
 
+    // ----------------------------------------------------------------------
+    // SAN HANDLER
+    // ----------------------------------------------------------------------
     handleSAN(tok, ctx) {
       let core = tok.replace(/[^a-hKQRBN0-9=O0-]+$/g, "").replace(/0/g, "O");
       if (!ReaderPGNView.isSANCore(core)) {
@@ -281,6 +337,9 @@
       return span;
     }
 
+    // ----------------------------------------------------------------------
+    // PARSING
+    // ----------------------------------------------------------------------
     parse(t) {
       let chess = new Chess(),
         ctx = {
@@ -300,7 +359,10 @@
 
         if (/\s/.test(ch)) {
           while (i < t.length && /\s/.test(t[i])) i++;
-          this.ensure(ctx, ctx.type === "main" ? "pgn-mainline" : "pgn-variation");
+          this.ensure(
+            ctx,
+            ctx.type === "main" ? "pgn-mainline" : "pgn-variation"
+          );
           appendText(ctx.container, " ");
           continue;
         }
@@ -348,14 +410,12 @@
           !"(){}".includes(t[i])
         )
           i++;
-
         let tok = t.substring(s, i);
         if (!tok) continue;
 
         if (/^\[%.*]$/.test(tok)) continue;
 
         if (tok === "[D]") {
-          // For <pgn-reader>, [D] is just a separator, no diagrams
           ctx.lastWasInterrupt = true;
           ctx.container = null;
           continue;
@@ -364,7 +424,10 @@
         if (RESULT_REGEX.test(tok)) {
           if (this.finalResultPrinted) continue;
           this.finalResultPrinted = true;
-          this.ensure(ctx, ctx.type === "main" ? "pgn-mainline" : "pgn-variation");
+          this.ensure(
+            ctx,
+            ctx.type === "main" ? "pgn-mainline" : "pgn-variation"
+          );
           appendText(ctx.container, tok + " ");
           continue;
         }
@@ -420,25 +483,30 @@
           continue;
         }
 
-        this.ensure(ctx, ctx.type === "main" ? "pgn-mainline" : "pgn-variation");
+        this.ensure(
+          ctx,
+          ctx.type === "main" ? "pgn-mainline" : "pgn-variation"
+        );
         let m = this.handleSAN(tok, ctx);
         if (!m) appendText(ctx.container, makeCastlingUnbreakable(tok) + " ");
       }
     }
 
+    // ----------------------------------------------------------------------
+    // FIGURINES
+    // ----------------------------------------------------------------------
     applyFigurines() {
       const map = { K: "♔", Q: "♕", R: "♖", B: "♗", N: "♘" };
       this.wrapper.querySelectorAll(".pgn-move").forEach(span => {
         let m = span.textContent.match(/^([KQRBN])(.+?)(\s*)$/);
-        if (m) {
+        if (m)
           span.textContent = map[m[1]] + m[2] + (m[3] || "");
-        }
       });
     }
   }
 
   // --------------------------------------------------------------------------
-  // ReaderBoard controller
+  // ReaderBoard — Smooth Move Animation Logic
   // --------------------------------------------------------------------------
   const ReaderBoard = {
     board: null,
@@ -447,6 +515,49 @@
     movesContainer: null,
     mainlineMoves: [],
     mainlineIndex: -1,
+    _lastFen: null,
+
+    // Compare prev & next FEN → detect exactly ONE move (e2-e4)
+    findMove(prevFen, nextFen) {
+      const parse = f => {
+        const rows = f.split(" ")[0].split("/");
+        const map = {};
+        rows.forEach((row, r) => {
+          let file = 0;
+          row.split("").forEach(ch => {
+            if (/\d/.test(ch)) file += Number(ch);
+            else {
+              const rank = 8 - r;
+              const sq = "abcdefgh"[file] + rank;
+              map[sq] = ch;
+              file++;
+            }
+          });
+        });
+        return map;
+      };
+
+      const A = parse(prevFen);
+      const B = parse(nextFen);
+
+      let from = null, to = null;
+
+      for (let sq in A) {
+        if (!(sq in B)) {
+          from = sq;
+          break;
+        }
+      }
+      for (let sq in B) {
+        if (!(sq in A)) {
+          to = sq;
+          break;
+        }
+      }
+
+      if (!from || !to) return null;
+      return from + "-" + to;
+    },
 
     collectMoves(root) {
       this.moveSpans = Array.from(
@@ -459,24 +570,31 @@
       this.currentIndex = index;
 
       const span = this.moveSpans[index];
-      const fen = span.dataset.fen;
-      if (!fen || !this.board) return;
+      const nextFen = span.dataset.fen;
+      if (!nextFen || !this.board) return;
 
-      // IMPORTANT: enable animation (Chessboard 1.0.0)
-      this.board.position(fen, true);
+      const prevFen = this._lastFen || "start";
+      this._lastFen = nextFen;
+
+      // Try to animate e2-e4 instead of teleporting FEN
+      const move = this.findMove(prevFen, nextFen);
+
+      if (move) {
+        this.board.move(move); // ★ smooth slide animation
+      } else {
+        this.board.position(nextFen, false); // fallback
+      }
 
       this.moveSpans.forEach(s =>
         s.classList.remove("reader-move-active")
       );
       span.classList.add("reader-move-active");
 
-      // Keep mainline index in sync if this is a mainline move
       if (span.dataset.mainline === "1" && this.mainlineMoves.length) {
         const mi = this.mainlineMoves.indexOf(span);
         if (mi !== -1) this.mainlineIndex = mi;
       }
 
-      // Local scrolling of the moves column only
       if (this.movesContainer) {
         const parent = this.movesContainer;
         const top =
@@ -542,7 +660,7 @@
   };
 
   // --------------------------------------------------------------------------
-  // DOM Ready
+  // INIT
   // --------------------------------------------------------------------------
   document.addEventListener("DOMContentLoaded", () => {
     const els = document.querySelectorAll("pgn-reader");
@@ -551,4 +669,5 @@
     els.forEach(el => new ReaderPGNView(el));
     ReaderBoard.activate(document);
   });
+
 })();

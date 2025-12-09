@@ -20,3 +20,9 @@ h1.header {font-weight: 900;}
 .sticky-move[data-mainline="0"] {
   font-weight: 400 !important;
 }
+
+h3,
+    .post-item h3,
+    .post-item h3 a {
+    font-weight: 900;
+    }

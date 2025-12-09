@@ -4,17 +4,9 @@
   <div class="post-item">
     <h3><a href="{{ site.path }}{{ post.url }}">{{ post.title }}</a></h3>
     <fen>{{ post.FEN }}</fen>
-    {{ post.excerpt }}
-    <span><a href="{{ site.path }}{{ post.url }}">Read more...</a></span>
+    {{ post.excerpt | strip_html }} <span>a href="{{ site.path }}{{ post.url }}">Read more...</a></span>
   </div>
 </div>
 
 {% endfor %}
 
-<style>
-    h3,
-    .post-item h3,
-    .post-item h3 a {
-    font-weight: 900;
-    }
-</style>

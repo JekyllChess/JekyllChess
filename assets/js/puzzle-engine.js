@@ -1,177 +1,175 @@
 // ======================================================================
-//   JekyllChess Puzzle Engine (FULL FILE)
+//   JekyllChess Puzzle Engine (FULL FILE, LAZY REMOTE PARSING)
 //   - Multiple <puzzle> blocks → one board each
 //   - ONE remote PGN pack per page → single-board trainer
 //   - Supports:
-//       FEN + Moves (SAN list)
-//       FEN + PGN (inline PGN string)
-//       PGN: https://url.pgn  (remote pack, multi-game file)
-//   - Figurine-safe & Jekyll-safe
+//       FEN + Moves
+//       FEN + inline PGN
+//       Remote PGN (multi-game)
+//   - Lazy background parsing (20 puzzles per batch)
+//   - Lichess-style turn indicator ●
 // ======================================================================
 
 document.addEventListener("DOMContentLoaded", () => {
   console.log("Puzzle engine loaded.");
 
   const puzzleNodes = Array.from(document.querySelectorAll("puzzle"));
-  if (puzzleNodes.length === 0) {
-    console.log("No <puzzle> blocks found.");
-    return;
-  }
+  if (puzzleNodes.length === 0) return;
 
-  // ============================================================
-  // FIRST PRIORITY: REMOTE PGN PACK (ONLY THE FIRST ONE)
-  // ============================================================
   let remotePackInitialized = false;
 
+  // ============================================================
+  // PRIORITY 1: REMOTE PGN PACK
+  // ============================================================
   for (const node of puzzleNodes) {
     if (remotePackInitialized) break;
 
-    const htmlRaw = node.innerHTML || "";
-    const html = stripFigurines(htmlRaw);
+    const raw = stripFigurines(node.innerHTML || "");
+    const pgnUrlMatch = raw.match(/PGN:\s*(https?:\/\/[^\s<]+)/i);
+    const fenMatch = raw.match(/FEN:/i);
 
-    const pgnUrlMatch = html.match(/PGN:\s*(https?:\/\/[^\s<]+)/i);
-    const fenMatch = html.match(/FEN:\s*([^<\n\r]+)/i);
-
-    // Remote pack: PGN URL and NO FEN
     if (pgnUrlMatch && !fenMatch) {
       const url = pgnUrlMatch[1].trim();
-      console.log("Remote PGN pack detected:", url);
 
       const wrapper = document.createElement("div");
       wrapper.style.margin = "20px 0";
       node.replaceWith(wrapper);
 
-      initRemotePack(wrapper, url);
+      initRemotePackLazy(wrapper, url);
       remotePackInitialized = true;
     }
   }
 
   // ============================================================
-  // SECOND PRIORITY: LOCAL PUZZLES (ONE BOARD PER BLOCK)
+  // PRIORITY 2: LOCAL PUZZLES
   // ============================================================
   for (const node of puzzleNodes) {
-    // Skip nodes replaced by the remote pack handler
     if (!node.isConnected) continue;
 
-    const htmlRaw = node.innerHTML || "";
-    const html = stripFigurines(htmlRaw);
-
-    const fenMatch = html.match(/FEN:\s*([^<\n\r]+)/i);
-    if (!fenMatch) continue; // not a local FEN puzzle
+    const raw = stripFigurines(node.innerHTML || "");
+    const fenMatch = raw.match(/FEN:\s*([^<\n\r]+)/i);
+    if (!fenMatch) continue;
 
     const fen = fenMatch[1].trim();
-
-    const movesMatch = html.match(/Moves:\s*([^<\n\r]+)/i);
-    const pgnInlineMatch = html.match(/PGN:\s*([^<\n\r]+)/i);
-
     let sanMoves = null;
 
-    // Case 1: Moves: as SAN list
+    const movesMatch = raw.match(/Moves:\s*([^<\n\r]+)/i);
+    const pgnInlineMatch = raw.match(/PGN:\s*([^<\n\r]+)/i);
+
     if (movesMatch) {
-      const movesLine = movesMatch[1].trim().replace(/\s+/g, " ");
-      sanMoves = movesLine.split(" ");
-    }
-    // Case 2: PGN: inline (NOT URL) as full movetext
-    else if (pgnInlineMatch) {
-      const pgnValue = pgnInlineMatch[1].trim();
-      if (!/^https?:\/\//i.test(pgnValue)) {
-        sanMoves = pgnToSanArray(pgnValue);
-      }
+      sanMoves = movesMatch[1].trim().split(/\s+/g);
+    } else if (pgnInlineMatch) {
+      const txt = pgnInlineMatch[1].trim();
+      if (!/^https?:\/\//i.test(txt)) sanMoves = pgnToSanArray(txt);
     }
 
     if (!sanMoves || sanMoves.length === 0) {
-      const wrapper = document.createElement("div");
-      wrapper.style.margin = "20px 0";
-      wrapper.innerHTML = "<div style='color:red'>Invalid puzzle block.</div>";
-      node.replaceWith(wrapper);
+      const w = document.createElement("div");
+      w.style.margin = "20px 0";
+      w.innerHTML = "<div style='color:red'>Invalid puzzle block.</div>";
+      node.replaceWith(w);
       continue;
     }
-
-    console.log("Local puzzle:", { fen, sanMoves });
 
     const wrapper = document.createElement("div");
     wrapper.style.margin = "20px 0";
     node.replaceWith(wrapper);
 
-    renderSinglePuzzle(wrapper, fen, sanMoves);
+    renderLocalPuzzle(wrapper, fen, sanMoves);
   }
 });
 
 // ======================================================================
-// Helper: strip unicode figurines (in case figurine.js touched content)
+// Utility helpers
 // ======================================================================
+
 function stripFigurines(str) {
   return str.replace(/[♔♕♖♗♘♙]/g, "");
 }
 
-// ======================================================================
-// Convert inline PGN into SAN list
-//   e.g. "1. Nxe5 Nxe5 2. Bxf7+ Ke7" → ["Nxe5","Nxe5","Bxf7+","Ke7"]
-// ======================================================================
-function pgnToSanArray(pgnText) {
-  let s = pgnText;
-
-  // Remove comments and variations
-  s = s.replace(/\{[^}]*\}/g, " ");  // {...}
-  s = s.replace(/\([^)]*\)/g, " ");  // (...)
-
-  // Remove results
+function pgnToSanArray(pgn) {
+  let s = pgn;
+  s = s.replace(/\{[^}]*\}/g, " "); // comments
+  s = s.replace(/\([^)]*\)/g, " "); // variations
   s = s.replace(/\b(1-0|0-1|1\/2-1\/2|\*)\b/g, " ");
-
-  // Remove move numbers: "1.", "1...", "23..." etc.
   s = s.replace(/\d+\.(\.\.)?/g, " ");
-
   s = s.replace(/\s+/g, " ").trim();
-  if (!s) return [];
-
-  return s.split(" ");
+  return s ? s.split(" ") : [];
 }
 
-// ======================================================================
-// Convert SAN list → UCI list (forward progression, no undo)
-// ======================================================================
 function buildUCISolution(fen, sanMoves) {
   const game = new Chess(fen);
-  const solution = [];
+  const out = [];
 
   for (let san of sanMoves) {
-    const clean = san.replace(/[!?]/g, "").trim();
-    if (!clean) continue;
-
-    const moveObj = game.move(clean, { sloppy: true });
-    if (!moveObj) {
-      console.error("Cannot parse SAN move:", san);
-      break;
-    }
-
-    const uci = moveObj.from + moveObj.to + (moveObj.promotion || "");
-    solution.push(uci);
+    san = san.replace(/[!?]/g, "").trim();
+    const mv = game.move(san, { sloppy: true });
+    if (!mv) break;
+    out.push(mv.from + mv.to + (mv.promotion || ""));
   }
-
-  return solution;
+  return out;
 }
 
 // ======================================================================
-// LOCAL PUZZLE RENDERING: One board per <puzzle>
+// Lichess-style turn indicator
 // ======================================================================
-function renderSinglePuzzle(container, fen, sanMoves) {
-  console.log("Rendering local puzzle with FEN:", fen);
+function createTurnIndicator() {
+  const turnDiv = document.createElement("div");
+  turnDiv.style.display = "flex";
+  turnDiv.style.alignItems = "center";
+  turnDiv.style.gap = "6px";
+  turnDiv.style.marginBottom = "6px";
+  turnDiv.style.fontSize = "15px";
+  turnDiv.style.fontWeight = "500";
+  turnDiv.style.fontFamily = "sans-serif";
 
+  const dot = document.createElement("div");
+  dot.style.width = "12px";
+  dot.style.height = "12px";
+  dot.style.borderRadius = "50%";
+  dot.style.border = "1px solid #555";
+  dot.style.transition = "background 0.1s linear, border 0.1s linear";
+
+  const label = document.createElement("div");
+  label.textContent = "Loading…";
+
+  turnDiv.append(dot, label);
+
+  return { turnDiv, dot, label };
+}
+
+function updateTurnIndicator(game, dot, label) {
+  if (!game) return;
+
+  if (game.turn() === "w") {
+    dot.style.background = "#fff";
+    dot.style.border = "1px solid #aaa";
+    label.textContent = "White to move";
+  } else {
+    dot.style.background = "#000";
+    dot.style.border = "1px solid #444";
+    label.textContent = "Black to move";
+  }
+}
+
+// ======================================================================
+// LOCAL PUZZLES — one board per <puzzle>
+// ======================================================================
+function renderLocalPuzzle(container, fen, sanMoves) {
   const solutionUCI = buildUCISolution(fen, sanMoves);
-  console.log("Local puzzle UCI solution:", solutionUCI);
-
   const game = new Chess(fen);
+  let step = 0;
+
+  // Lichess-style indicator
+  const { turnDiv, dot, label } = createTurnIndicator();
 
   const boardDiv = document.createElement("div");
   boardDiv.style.width = "350px";
 
   const statusDiv = document.createElement("div");
   statusDiv.style.marginTop = "10px";
-  statusDiv.style.fontSize = "16px";
 
-  container.append(boardDiv, statusDiv);
-
-  let step = 0;
+  container.append(turnDiv, boardDiv, statusDiv);
 
   const board = Chessboard(boardDiv, {
     draggable: true,
@@ -183,11 +181,11 @@ function renderSinglePuzzle(container, fen, sanMoves) {
       if (game.turn() === "b" && piece.startsWith("w")) return false;
     },
 
-    onDrop: (source, target) => {
-      const move = game.move({ from: source, to: target, promotion: "q" });
-      if (!move) return "snapback";
+    onDrop: (src, dst) => {
+      const mv = game.move({ from: src, to: dst, promotion: "q" });
+      if (!mv) return "snapback";
 
-      const played = move.from + move.to + (move.promotion || "");
+      const played = mv.from + mv.to + (mv.promotion || "");
       const expected = solutionUCI[step];
 
       if (played !== expected) {
@@ -198,14 +196,17 @@ function renderSinglePuzzle(container, fen, sanMoves) {
 
       statusDiv.textContent = "✅ Correct";
       step++;
+      updateTurnIndicator(game, dot, label);
 
-      // Opponent's reply if present
       if (step < solutionUCI.length) {
         const replySAN = sanMoves[step];
         const reply = game.move(replySAN, { sloppy: true });
         if (reply) {
           step++;
-          setTimeout(() => board.position(game.fen()), 150);
+          setTimeout(() => {
+            board.position(game.fen());
+            updateTurnIndicator(game, dot, label);
+          }, 150);
         }
       }
 
@@ -220,24 +221,27 @@ function renderSinglePuzzle(container, fen, sanMoves) {
   });
 
   statusDiv.textContent = "Your move...";
+  updateTurnIndicator(game, dot, label);
 }
 
 // ======================================================================
-// REMOTE PGN PACK: Single-board trainer (Option R2)
+// REMOTE PGN PACK — Lazy loading (20 puzzles per batch)
 // ======================================================================
-function initRemotePack(container, url) {
-  console.log("Initializing remote PGN pack from:", url);
-
-  // Shared state for this trainer
+function initRemotePackLazy(container, url) {
   let puzzles = [];
+  let games = [];
   let currentIndex = 0;
+  let totalGames = 0;
   let game = null;
   let board = null;
   let sanMoves = [];
   let solutionUCI = [];
   let step = 0;
+  let allParsed = false;
 
-  // --- UI elements ---
+  const BATCH = 20;
+
+  // UI
   const title = document.createElement("div");
   title.textContent = "Puzzle Pack";
   title.style.fontWeight = "bold";
@@ -246,17 +250,18 @@ function initRemotePack(container, url) {
   const infoDiv = document.createElement("div");
   infoDiv.style.marginBottom = "5px";
 
+  const { turnDiv, dot, label } = createTurnIndicator();
+
   const boardDiv = document.createElement("div");
   boardDiv.style.width = "350px";
   boardDiv.style.marginBottom = "10px";
 
   const statusDiv = document.createElement("div");
-  statusDiv.style.marginBottom = "10px";
 
-  const controlsDiv = document.createElement("div");
-  controlsDiv.style.display = "flex";
-  controlsDiv.style.gap = "8px";
-  controlsDiv.style.marginBottom = "10px";
+  const controls = document.createElement("div");
+  controls.style.display = "flex";
+  controls.style.gap = "8px";
+  controls.style.marginTop = "10px";
 
   const prevBtn = document.createElement("button");
   prevBtn.className = "btn btn-sm btn-secondary";
@@ -266,35 +271,84 @@ function initRemotePack(container, url) {
   nextBtn.className = "btn btn-sm btn-secondary";
   nextBtn.textContent = "Next";
 
-  controlsDiv.append(prevBtn, nextBtn);
+  controls.append(prevBtn, nextBtn);
 
-  container.append(title, infoDiv, boardDiv, statusDiv, controlsDiv);
+  container.append(title, infoDiv, turnDiv, boardDiv, statusDiv, controls);
 
-  // --- Fetch PGN file ---
+  statusDiv.textContent = "[Loading puzzle pack…]";
+
+  // Fetch PGN
   fetch(url)
     .then(r => r.text())
     .then(text => {
-      puzzles = parsePGNPack(text);
-      if (!puzzles.length) {
-        statusDiv.textContent = "No puzzles found in PGN.";
+      games = splitPGNGames(text);
+      totalGames = games.length;
+
+      if (!totalGames) {
+        statusDiv.textContent = "No puzzles found.";
         return;
       }
 
-      console.log("Parsed remote PGN puzzles:", puzzles.length);
-
-      initBoard();
-      loadPuzzle(0);
+      parseBatch(0);
     })
     .catch(err => {
       console.error(err);
-      statusDiv.textContent = "Failed to load PGN file.";
+      statusDiv.textContent = "Failed to load PGN.";
     });
 
-  // --- Initialize board once ---
+  function splitPGNGames(text) {
+    const cleaned = text.replace(/\r/g, "");
+    return cleaned.split(/(?=\[Event\b)/g).map(g => g.trim()).filter(Boolean);
+  }
+
+  function parseOneGame(gameText) {
+    const fenMatch = gameText.match(/\[FEN\s+"([^"]+)"\]/i);
+    if (!fenMatch) return null;
+
+    const fen = fenMatch[1].trim();
+    let moves = [];
+
+    const tag = gameText.match(/\[(Moves|Solution)\s+"([^"]+)"\]/i);
+    if (tag) {
+      moves = pgnToSanArray(tag[2]);
+    } else {
+      const body = gameText.replace(/\[[^\]]+\]/g, " ");
+      moves = pgnToSanArray(body);
+    }
+
+    if (!moves.length) return null;
+    return { fen, moves };
+  }
+
+  function parseBatch(start) {
+    const end = Math.min(start + BATCH, totalGames);
+
+    for (let i = start; i < end; i++) {
+      const puzzle = parseOneGame(games[i]);
+      if (puzzle) puzzles.push(puzzle);
+    }
+
+    infoDiv.textContent =
+      `Loaded ${puzzles.length} puzzle(s)… (${end}/${totalGames})`;
+
+    // First ready puzzle initializes board
+    if (!board && puzzles.length) {
+      initBoard();
+      loadPuzzle(0);
+      statusDiv.textContent = "Your move...";
+    }
+
+    if (end < totalGames) {
+      setTimeout(() => parseBatch(end), 0);
+    } else {
+      allParsed = true;
+      infoDiv.textContent = `Puzzle 1 / ${puzzles.length}`;
+    }
+  }
+
   function initBoard() {
     board = Chessboard(boardDiv, {
       draggable: true,
-      position: "start",
       pieceTheme: "https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png",
 
       onDragStart: (_, piece) => {
@@ -303,13 +357,11 @@ function initRemotePack(container, url) {
         if (game.turn() === "b" && piece.startsWith("w")) return false;
       },
 
-      onDrop: (source, target) => {
-        if (!game) return "snapback";
+      onDrop: (src, dst) => {
+        const mv = game.move({ from: src, to: dst, promotion: "q" });
+        if (!mv) return "snapback";
 
-        const move = game.move({ from: source, to: target, promotion: "q" });
-        if (!move) return "snapback";
-
-        const played = move.from + move.to + (move.promotion || "");
+        const played = mv.from + mv.to + (mv.promotion || "");
         const expected = solutionUCI[step];
 
         if (played !== expected) {
@@ -320,15 +372,16 @@ function initRemotePack(container, url) {
 
         statusDiv.textContent = "✅ Correct";
         step++;
+        updateTurnIndicator(game, dot, label);
 
-        // Opponent reply if exists
         if (step < solutionUCI.length) {
           const replySAN = sanMoves[step];
           const reply = game.move(replySAN, { sloppy: true });
-          if (reply) {
-            step++;
-            setTimeout(() => board.position(game.fen()), 150);
-          }
+          if (reply) step++;
+          setTimeout(() => {
+            board.position(game.fen());
+            updateTurnIndicator(game, dot, label);
+          }, 150);
         }
 
         if (step >= solutionUCI.length) {
@@ -343,27 +396,38 @@ function initRemotePack(container, url) {
       }
     });
 
-    // Navigation
     prevBtn.onclick = () => {
       if (!puzzles.length) return;
-      currentIndex = (currentIndex - 1 + puzzles.length) % puzzles.length;
+
+      if (currentIndex > 0) {
+        currentIndex--;
+      } else if (allParsed && puzzles.length > 1) {
+        currentIndex = puzzles.length - 1;
+      }
+
       loadPuzzle(currentIndex);
     };
 
     nextBtn.onclick = () => {
       if (!puzzles.length) return;
-      currentIndex = (currentIndex + 1) % puzzles.length;
-      loadPuzzle(currentIndex);
+
+      if (currentIndex + 1 < puzzles.length) {
+        currentIndex++;
+        loadPuzzle(currentIndex);
+      } else if (!allParsed) {
+        statusDiv.textContent = "Loading more puzzles…";
+      } else {
+        currentIndex = 0;
+        loadPuzzle(currentIndex);
+      }
     };
   }
 
-  // --- Load puzzle by index ---
   function loadPuzzle(index) {
     const p = puzzles[index];
     if (!p) return;
 
     infoDiv.textContent = `Puzzle ${index + 1} / ${puzzles.length}`;
-    statusDiv.textContent = "Your move...";
 
     game = new Chess(p.fen);
     sanMoves = p.moves.slice();
@@ -371,59 +435,7 @@ function initRemotePack(container, url) {
     step = 0;
 
     board.position(p.fen);
+    updateTurnIndicator(game, dot, label);
+    statusDiv.textContent = "Your move...";
   }
-}
-
-// ======================================================================
-// PGN PACK PARSER (Option A: each puzzle is a separate PGN game)
-// - We support multi-game PGN files like:
-//   [Event "Puzzle 1"]
-//   [FEN "...."]
-//   ...
-//   1. Qh4 ...
-//
-//   [Event "Puzzle 2"]
-//   [FEN "...."]
-//   ...
-//   1. Qg7+ ...
-// ======================================================================
-function parsePGNPack(text) {
-  const puzzles = [];
-  const cleaned = text.replace(/\r/g, "");
-
-  let games;
-
-  // Prefer splitting by [Event] (standard multi-game PGN)
-  if (/\[Event\b/i.test(cleaned)) {
-    games = cleaned.split(/\n\n(?=\[Event\b)/g);
-  } else {
-    // Fallback: split by FEN if no [Event] tags
-    games = cleaned.split(/\n\n(?=\[FEN\b)/g);
-  }
-
-  for (const rawGame of games) {
-    const gameText = rawGame.trim();
-    if (!gameText) continue;
-
-    const fenMatch = gameText.match(/\[FEN\s+"([^"]+)"\]/i);
-    if (!fenMatch) continue;
-
-    const fen = fenMatch[1].trim();
-    let moves = [];
-
-    const tagMatch = gameText.match(/\[(Moves|Solution)\s+"([^"]+)"\]/i);
-    if (tagMatch) {
-      moves = pgnToSanArray(tagMatch[2]);
-    } else {
-      // Extract movetext body (remove all [Tags])
-      const body = gameText.replace(/\[[^\]]+\]/g, " ");
-      moves = pgnToSanArray(body);
-    }
-
-    if (!moves.length) continue;
-
-    puzzles.push({ fen, moves });
-  }
-
-  return puzzles;
 }

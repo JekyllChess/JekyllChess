@@ -1,12 +1,6 @@
 <!DOCTYPE html>
 <html>
-<head>
-<meta charset="utf-8">
-<title>Chess Puzzle Loader – PGN + Markdown</title>
-
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/chessboard.js/1.0.0/chessboard.min.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/1.0.0/chess.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard.js/1.0.0/chessboard.min.js"></script>
+{% include head.html %}
 
 <style>
   body { font-family: Arial; padding: 20px; }
@@ -14,7 +8,6 @@
   #puzzleNum { margin-top: 10px; }
   textarea { width: 400px; height: 150px; }
 </style>
-</head>
 <body>
 
 <h2>Chess Puzzle Loader</h2>
@@ -36,6 +29,10 @@
 <div id="board" style="width: 400px;"></div>
 <div id="status"></div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.12.0/chess.min.js"></script>
+    <script src="{{ "/assets/js/figurine.js" | prepend: full_base_url }}"></script>
+    <script src="{{ "/assets/js/fen.js" | prepend: full_base_url }}"></script>
 <script>
 // ---------------------------------------------------
 // PARSE PGN PUZZLE PACK
@@ -215,5 +212,6 @@ document.getElementById("nextBtn").addEventListener("click", () => {
 });
 </script>
 
-</body>
+
+  </body>
 </html>

@@ -2,60 +2,64 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>JekyllChess – Puzzle Loader (Safe Version)</title>
+
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>JekyllChess</title>
 
-  <meta name="description" content="JekyllChess is a minimal-CSS Jekyll starter theme for chess blogging. Features figurine notation, FEN (Forsyth–Edwards Notation) diagrams, and a simple PGN viewer. Built on chess.js and chessboard.js libraries.">
-  <link rel="canonical" href="https://jekyllchess.github.io/">
-
-  <!-- Bootstrap for minimal css code -->
+  <!-- Bootstrap -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
 
-  <!-- Google font for demo -->
+  <!-- Google Font -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;700&display=swap" rel="stylesheet">
 
-  <!-- ✅ Correct chessboard-js CSS from cdnjs -->
+  <!-- Chessboard.js (CORRECT library) -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.css">
-
-  <!-- Your JekyllChess styles -->
-  <link rel="stylesheet" href="https://jekyllchess.github.io/assets/hotfix.css">
-  <link rel="stylesheet" href="https://jekyllchess.github.io/assets/pgn.css">
-  <link rel="stylesheet" href="https://jekyllchess.github.io/assets/style.css">
-
-  <!-- jQuery (required by chessboard-js) -->
-  <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
 
   <style>
     body {
-      font-family: "Raleway", Arial, sans-serif;
+      font-family: Raleway, Arial, sans-serif;
       padding: 20px;
+    }
+    #errorPanel {
+      margin-top: 20px;
+      padding: 10px;
+      background: #ffecec;
+      border: 1px solid #ff8c8c;
+      border-radius: 6px;
+      display: none;
+      white-space: pre-wrap;
+    }
+    textarea {
+      width: 450px;
+      height: 150px;
     }
     #status {
       margin-top: 20px;
-      font-size: 20px;
+      font-size: 18px;
     }
     #puzzleNum {
       margin-top: 10px;
-    }
-    textarea {
-      width: 400px;
-      height: 150px;
     }
   </style>
 </head>
 
 <body>
 
-<h2>Chess Puzzle Loader</h2>
+<h2>Chess Puzzle Loader (PGN + Markdown)</h2>
 
-<h3>Load from remote PGN</h3>
-<input type="text" id="pgnUrl" placeholder="https://url.com/puzzles.pgn" style="width: 400px;">
+<!-- ============================== -->
+<!-- INPUT: REMOTE PGN -->
+<!-- ============================== -->
+<h4>Load PGN from URL</h4>
+<input id="pgnUrl" type="text" placeholder="https://example.com/puzzles.pgn" style="width: 450px;">
 <button id="loadPgnBtn" class="btn btn-primary btn-sm">Load PGN</button>
 
-<h3 class="mt-4">Load from Markdown</h3>
+<!-- ============================== -->
+<!-- INPUT: MARKDOWN PUZZLES -->
+<!-- ============================== -->
+<h4 class="mt-4">Load Markdown Puzzle Blocks</h4>
 <textarea id="mdInput" placeholder="<puzzle>FEN: ... Solution: ...</puzzle>"></textarea>
 <br>
 <button id="loadMdBtn" class="btn btn-secondary btn-sm mt-2">Load Markdown</button>
@@ -63,228 +67,314 @@
 <hr>
 
 <button id="nextBtn" class="btn btn-success btn-sm" disabled>Next Puzzle</button>
-<div id="puzzleNum"></div>
 
+<div id="puzzleNum"></div>
 <div id="board" style="width: 400px;"></div>
 <div id="status"></div>
 
-<!-- ============================= -->
-<!-- JS LIBRARIES -->
-<!-- ============================= -->
+<!-- Validation + debug errors -->
+<div id="errorPanel"></div>
 
-<!-- chess.js (classic non-module version) -->
+<!-- ============================== -->
+<!-- SCRIPTS -->
+<!-- ============================== -->
+
+<script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.12.0/chess.min.js"></script>
-
-<!-- ✅ chessboard-js JS from cdnjs -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.js"></script>
 
-<!-- Your extra helpers (optional) -->
-<script src="https://jekyllchess.github.io/assets/js/figurine.js"></script>
-<script src="https://jekyllchess.github.io/assets/js/fen.js"></script>
-
 <script>
-// ---------------------------------------------------
-// PARSE PGN PUZZLE PACK
-// ---------------------------------------------------
-function parsePGNPuzzles(pgnText) {
-    const puzzleTexts = pgnText.split(/\n\n(?=\[FEN)/g);
+/* ============================================================
+   1. SAN CLEANING AND VALIDATION UTILITIES
+   ============================================================ */
 
-    return puzzleTexts.map((p) => {
-        const fenMatch = p.match(/\[FEN\s+"([^"]+)"\]/i);
-        const movesTag = p.match(/\[(Moves|Solution)\s+"([^"]+)"\]/i);
-        let fen = fenMatch ? fenMatch[1] : null;
-
-        let moves = [];
-        if (movesTag) {
-            moves = movesTag[2].trim().split(/\s+/);
-        } else {
-            const body = p.replace(/\[[^\]]+\]/g, "").trim();
-            moves = body
-                .replace(/\d+\./g, "")        // remove move numbers
-                .replace(/\{[^}]+\}/g, "")    // remove comments
-                .trim()
-                .split(/\s+/);
-        }
-
-        return { fen, moves };
-    });
+function cleanSAN(san) {
+  return san
+    .replace(/^\d+\.+/, "")   // 1. or 1... or 23.
+    .replace(/[!?]+/g, "")    // strip annotations ! ? !! !?
+    .trim();
 }
 
-// ---------------------------------------------------
-// PARSE MARKDOWN PUZZLES
-// ---------------------------------------------------
-function parseMarkdownPuzzles(md) {
-    const regex = /<puzzle>([\s\S]*?)<\/puzzle>/g;
-    let match;
-    let puzzles = [];
+function isValidFEN(fen) {
+  try {
+    const g = new Chess(fen);
+    return g.fen() === fen;
+  } catch {
+    return false;
+  }
+}
 
-    while ((match = regex.exec(md)) !== null) {
-        const block = match[1];
+/* ============================================================
+   2. SAFE PGN PARSER WITH VALIDATION
+   ============================================================ */
 
-        const fenMatch = block.match(/FEN:\s*(.+)/i);
-        const solMatch = block.match(/Solution:\s*(.+)/i);
+function parsePGNPuzzles(pgnText) {
+  const puzzles = [];
+  const errors = [];
 
-        if (!fenMatch || !solMatch) continue;
+  // Split on blank line before [FEN]
+  const blocks = pgnText.split(/\n\n(?=\[FEN)/g);
 
-        puzzles.push({
-            fen: fenMatch[1].trim(),
-            moves: solMatch[1].trim().split(/\s+/)
-        });
+  for (let i = 0; i < blocks.length; i++) {
+    const block = blocks[i].trim();
+    if (!block) continue;
+
+    const fenMatch = block.match(/\[FEN\s+"([^"]+)"\]/i);
+    if (!fenMatch) {
+      errors.push(`Puzzle ${i+1}: Missing FEN tag.`);
+      continue;
     }
 
-    return puzzles;
+    const fen = fenMatch[1].trim();
+    if (!isValidFEN(fen)) {
+      errors.push(`Puzzle ${i+1}: Invalid FEN:\n${fen}`);
+      continue;
+    }
+
+    let moves = [];
+
+    const movesTag = block.match(/\[(Moves|Solution)\s+"([^"]+)"\]/i);
+    if (movesTag) {
+      moves = movesTag[2].trim().split(/\s+/);
+    } else {
+      // Extract from body
+      const body = block.replace(/\[[^\]]+\]/g, "");
+      moves = body
+        .replace(/\d+\.+/g, " ")
+        .replace(/[\?!]+/g, " ")
+        .replace(/\{[^}]+\}/g, " ")
+        .replace(/\s+/g, " ")
+        .trim()
+        .split(" ");
+    }
+
+    if (!moves.length) {
+      errors.push(`Puzzle ${i+1}: No moves found.`);
+      continue;
+    }
+
+    puzzles.push({ fen, moves });
+  }
+
+  return { puzzles, errors };
 }
 
-// ---------------------------------------------------
-// GLOBALS
-// ---------------------------------------------------
+/* ============================================================
+   3. MARKDOWN PARSER
+   ============================================================ */
+
+function parseMarkdownPuzzles(md) {
+  const puzzles = [];
+  const errors = [];
+
+  const regex = /<puzzle>([\s\S]*?)<\/puzzle>/gi;
+  let match;
+  let counter = 0;
+
+  while ((match = regex.exec(md)) !== null) {
+    counter++;
+
+    const block = match[1];
+    const fenMatch = block.match(/FEN:\s*(.+)/i);
+    const solMatch = block.match(/Solution:\s*(.+)/i);
+
+    if (!fenMatch || !solMatch) {
+      errors.push(`Puzzle ${counter}: Missing FEN or Solution.`);
+      continue;
+    }
+
+    const fen = fenMatch[1].trim();
+    if (!isValidFEN(fen)) {
+      errors.push(`Puzzle ${counter}: Invalid FEN:\n${fen}`);
+      continue;
+    }
+
+    const moves = solMatch[1].trim().split(/\s+/);
+    if (!moves.length) {
+      errors.push(`Puzzle ${counter}: No moves in Solution line.`);
+      continue;
+    }
+
+    puzzles.push({ fen, moves });
+  }
+
+  if (!counter) {
+    errors.push("No <puzzle> ... </puzzle> blocks found.");
+  }
+
+  return { puzzles, errors };
+}
+
+/* ============================================================
+   4. DISPLAY ERRORS
+   ============================================================ */
+
+function showErrors(errors) {
+  const panel = document.getElementById("errorPanel");
+  if (!errors.length) {
+    panel.style.display = "none";
+    return;
+  }
+  panel.style.display = "block";
+  panel.textContent = errors.join("\n\n");
+}
+
+/* ============================================================
+   5. PUZZLE ENGINE
+   ============================================================ */
+
 let puzzles = [];
+let puzzleUCI = [];
 let currentPuzzleIndex = 0;
+let step = 0;
 let game = null;
 let board = null;
-let puzzleUCI = [];
-let step = 0;
 
-// ---------------------------------------------------
-// LOAD PUZZLE
-// ---------------------------------------------------
-function loadPuzzle(index) {
-    const puzzle = puzzles[index];
-    document.getElementById("puzzleNum").innerHTML =
-        "Puzzle " + (index + 1) + " / " + puzzles.length;
+function loadPuzzle(i) {
+  const puzzle = puzzles[i];
 
-    game = new Chess(puzzle.fen);
+  document.getElementById("puzzleNum").textContent =
+    `Puzzle ${i+1} / ${puzzles.length}`;
 
-    // Convert SAN moves to UCI for strict comparison
-    puzzleUCI = puzzle.moves.map((san) => {
-        const move = game.move(san, { sloppy: true });
-        const uci = move.from + move.to + (move.promotion ? move.promotion : "");
-        game.undo();
-        return uci;
-    });
+  game = new Chess(puzzle.fen);
 
-    step = 0;
-    board.position(puzzle.fen);
-    document.getElementById("status").innerHTML = "Your move...";
+  puzzleUCI = [];
+
+  let error = false;
+
+  for (let san of puzzle.moves) {
+    const cleaned = cleanSAN(san);
+    if (!cleaned) continue;
+
+    const moveObj = game.move(cleaned, { sloppy: true });
+    if (!moveObj) {
+      showErrors([`Invalid SAN in puzzle ${i+1}: ${san}`]);
+      error = true;
+      break;
+    }
+
+    puzzleUCI.push(moveObj.from + moveObj.to + (moveObj.promotion || ""));
+    game.undo();
+  }
+
+  if (error) return;
+
+  step = 0;
+  board.position(puzzle.fen);
+  document.getElementById("status").textContent = "Your move...";
+  showErrors([]); // clear error panel
 }
 
-// ---------------------------------------------------
-// BOARD HANDLERS
-// ---------------------------------------------------
-function onDragStart(source, piece) {
-    if (!game) return false;
-    if (game.game_over()) return false;
+/* ============================================================
+   6. CHESSBOARD EVENT HANDLERS
+   ============================================================ */
 
-    // Only allow moving the side to move
-    if (game.turn() === "w" && piece.startsWith("b")) return false;
-    if (game.turn() === "b" && piece.startsWith("w")) return false;
+function onDragStart(source, piece) {
+  if (!game || game.game_over()) return false;
+  if (game.turn() === "w" && piece.startsWith("b")) return false;
+  if (game.turn() === "b" && piece.startsWith("w")) return false;
 }
 
 function onDrop(source, target) {
-    const move = game.move({ from: source, to: target, promotion: "q" });
-    if (!move) return "snapback";
+  const move = game.move({ from: source, to: target, promotion: "q" });
 
-    const userUCI = move.from + move.to + (move.promotion || "");
-    const expectedUCI = puzzleUCI[step];
+  if (!move) return "snapback";
 
-    if (userUCI !== expectedUCI) {
-        document.getElementById("status").innerHTML = "❌ Wrong move";
-        game.undo();
-        return "snapback";
-    }
+  const userUCI = move.from + move.to + (move.promotion || "");
+  const expectedUCI = puzzleUCI[step];
 
-    document.getElementById("status").innerHTML = "✅ Correct!";
+  if (userUCI !== expectedUCI) {
+    document.getElementById("status").textContent = "❌ Wrong move";
+    game.undo();
+    return "snapback";
+  }
+
+  document.getElementById("status").textContent = "✅ Correct!";
+  step++;
+
+  if (step < puzzleUCI.length) {
+    const replySAN = puzzles[currentPuzzleIndex].moves[step];
+    game.move(replySAN, { sloppy: true });
     step++;
+    setTimeout(() => board.position(game.fen()), 250);
+  }
 
-    // Opponent reply (odd index in moves array)
-    if (step < puzzleUCI.length) {
-        const replySAN = puzzles[currentPuzzleIndex].moves[step];
-        game.move(replySAN, { sloppy: true });
-        step++;
-        setTimeout(() => board.position(game.fen()), 250);
-    }
+  if (step >= puzzleUCI.length) {
+    document.getElementById("status").textContent = "🎉 Puzzle solved!";
+  }
 
-    // Puzzle finished?
-    if (step >= puzzleUCI.length) {
-        document.getElementById("status").innerHTML = "🎉 Puzzle solved!";
-    }
-
-    return true;
+  return true;
 }
 
 function onSnapEnd() {
-    board.position(game.fen());
+  board.position(game.fen());
 }
 
-// ---------------------------------------------------
-// INIT BOARD
-// ---------------------------------------------------
-console.log("Chessboard global is:", typeof Chessboard); // should print "function"
+/* ============================================================
+   7. INIT BOARD
+   ============================================================ */
 
 board = Chessboard("board", {
-    draggable: true,
-    position: "start",
-
-    // ✅ Use Wikipedia piece images
-    pieceTheme: "https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png",
-
-    onDragStart: onDragStart,
-    onDrop: onDrop,
-    onSnapEnd: onSnapEnd
+  draggable: true,
+  position: "start",
+  pieceTheme: "https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png",
+  onDragStart,
+  onDrop,
+  onSnapEnd
 });
 
-// ---------------------------------------------------
-// LOAD REMOTE PGN
-// ---------------------------------------------------
-document.getElementById("loadPgnBtn").addEventListener("click", async () => {
-    const url = document.getElementById("pgnUrl").value.trim();
-    if (!url) {
-        alert("Enter a URL");
-        return;
-    }
+/* ============================================================
+   8. LOAD PGN FROM URL
+   ============================================================ */
 
-    try {
-        const text = await fetch(url).then(r => r.text());
-        puzzles = parsePGNPuzzles(text);
-        if (puzzles.length === 0) {
-            alert("No puzzles found in PGN!");
-            return;
-        }
+document.getElementById("loadPgnBtn").onclick = async () => {
+  const url = document.getElementById("pgnUrl").value.trim();
+  if (!url) return alert("Enter a PGN URL.");
 
-        currentPuzzleIndex = 0;
-        loadPuzzle(0);
-        document.getElementById("nextBtn").disabled = false;
-    } catch (e) {
-        console.error(e);
-        alert("Failed to load PGN from URL.");
-    }
-});
+  try {
+    const text = await fetch(url).then(r => r.text());
+    const { puzzles: P, errors } = parsePGNPuzzles(text);
 
-// ---------------------------------------------------
-// LOAD FROM MARKDOWN
-// ---------------------------------------------------
-document.getElementById("loadMdBtn").addEventListener("click", () => {
-    const text = document.getElementById("mdInput").value;
-    puzzles = parseMarkdownPuzzles(text);
-    if (puzzles.length === 0) {
-        alert("No <puzzle> blocks found in Markdown!");
-        return;
-    }
+    showErrors(errors);
 
+    if (!P.length) return;
+
+    puzzles = P;
     currentPuzzleIndex = 0;
-    loadPuzzle(0);
     document.getElementById("nextBtn").disabled = false;
-});
+    loadPuzzle(0);
+  } catch (err) {
+    showErrors(["Failed to load PGN: " + err.message]);
+  }
+};
 
-// ---------------------------------------------------
-// NEXT PUZZLE
-// ---------------------------------------------------
-document.getElementById("nextBtn").addEventListener("click", () => {
-    currentPuzzleIndex++;
-    if (currentPuzzleIndex >= puzzles.length) currentPuzzleIndex = 0;
-    loadPuzzle(currentPuzzleIndex);
-});
+/* ============================================================
+   9. LOAD MARKDOWN
+   ============================================================ */
+
+document.getElementById("loadMdBtn").onclick = () => {
+  const md = document.getElementById("mdInput").value;
+  const { puzzles: P, errors } = parseMarkdownPuzzles(md);
+
+  showErrors(errors);
+  if (!P.length) return;
+
+  puzzles = P;
+  currentPuzzleIndex = 0;
+  document.getElementById("nextBtn").disabled = false;
+  loadPuzzle(0);
+};
+
+/* ============================================================
+   10. NEXT PUZZLE
+   ============================================================ */
+
+document.getElementById("nextBtn").onclick = () => {
+  currentPuzzleIndex++;
+  if (currentPuzzleIndex >= puzzles.length) currentPuzzleIndex = 0;
+  loadPuzzle(currentPuzzleIndex);
+};
+
 </script>
-
 </body>
 </html>

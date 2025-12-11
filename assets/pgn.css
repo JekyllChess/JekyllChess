@@ -160,3 +160,12 @@
     padding: 0;
   }
 }
+
+/* Mainline vs variation visual weight */
+.sticky-move[data-mainline="1"] {
+  font-weight: 600 !important;
+}
+
+.sticky-move[data-mainline="0"] {
+  font-weight: 400 !important;
+}

@@ -4,24 +4,19 @@
   <meta charset="utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% if page.title %}{{ page.title | escape }}{% else %}{{ site.title | escape }}{% endif %}</title>
-  <meta name="description" content="{% if page.excerpt %}{{ page.excerpt | strip_html | strip_newlines | truncate: 160 }}{% else %}{{ site.description }}{% endif %}">
-  <link rel="canonical" href="{{ page.url | replace:'index.html','' | prepend: site.baseurl | prepend: site.url }}">
-  
-  {% assign user_url = site.url | append: site.baseurl %}
-  {% assign full_base_url = user_url | default: site.github.url %}
-
+  <title>JekyllChess</title>
+  <meta name="description" content="JekyllChess is a minimal-CSS Jekyll starter theme for chess blogging. Features figurine notation, FEN (Forsyth–Edwards Notation) diagrams, and a simple PGN viewer. Built on chess.js and chessboard.js libraries.">
+  <link rel="canonical" href="https://jekyllchess.github.io/">
   <!-- Bootstrap for minimal css code -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous"> 
-  
   <!-- Google font for demo -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Raleway:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.css">
-  <link rel="stylesheet" href="{{ "/assets/hotfix.css" | prepend: full_base_url }}">
-  <link rel="stylesheet" href="{{ "/assets/pgn.css" | prepend: full_base_url }}">
-  <link rel="stylesheet" href="{{ "/assets/style.css" | prepend: full_base_url }}">
+  <link rel="stylesheet" href="https://jekyllchess.github.io/assets/hotfix.css">
+  <link rel="stylesheet" href="https://jekyllchess.github.io/assets/pgn.css">
+  <link rel="stylesheet" href="https://jekyllchess.github.io/assets/style.css">
   <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
 </head>
 
@@ -53,9 +48,10 @@
 <div id="status"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.12.0/chess.min.js"></script>
-    <script src="{{ "/assets/js/figurine.js" | prepend: full_base_url }}"></script>
-    <script src="{{ "/assets/js/fen.js" | prepend: full_base_url }}"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.12.0/chess.min.js"></script>
+<script src="https://jekyllchess.github.io/assets/js/figurine.js"></script>
+<script src="https://jekyllchess.github.io/assets/js/fen.js"></script>
+
 <script>
 // ---------------------------------------------------
 // PARSE PGN PUZZLE PACK

@@ -1,13 +1,12 @@
 // ======================================================================
-// JekyllChess Puzzle Engine
-// - Multiple <puzzle> blocks per page
-// - Local puzzles → one board per <puzzle>
-// - Remote PGN pack → single-board trainer (first PGN URL only)
-// - Supports:
-//      FEN: ... + Moves: SAN1 SAN2 ...
-//      FEN: ... + PGN: 1. SAN1 SAN1... 2. ...
-//      PGN: https://... (remote pack)
-// - Figurine-safe & Jekyll-safe
+//   JekyllChess Puzzle Engine (FULL FILE)
+//   - Multiple <puzzle> blocks → one board each
+//   - ONE remote PGN pack per page → single-board trainer
+//   - Supports:
+//       FEN + Moves (SAN list)
+//       FEN + PGN (inline PGN string)
+//       PGN: https://url.pgn  (remote pack)
+//   - Figurine-safe & Jekyll-safe
 // ======================================================================
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -19,9 +18,9 @@ document.addEventListener("DOMContentLoaded", () => {
     return;
   }
 
-  // ------------------------------------------------------------
-  // First: handle ONE remote PGN pack (Option R2)
-  // ------------------------------------------------------------
+  // ============================================================
+  // FIRST PRIORITY: REMOTE PGN PACK (ONLY THE FIRST ONE)
+  // ============================================================
   let remotePackInitialized = false;
 
   for (const node of puzzleNodes) {
@@ -31,9 +30,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const html = stripFigurines(htmlRaw);
 
     const pgnUrlMatch = html.match(/PGN:\s*(https?:\/\/[^\s<]+)/i);
-    const fenMatch    = html.match(/FEN:\s*([^<\n\r]+)/i);
+    const fenMatch = html.match(/FEN:\s*([^<\n\r]+)/i);
 
-    // Remote pack: PGN URL and NO FEN in this block
     if (pgnUrlMatch && !fenMatch) {
       const url = pgnUrlMatch[1].trim();
       console.log("Remote PGN pack detected:", url);
@@ -47,35 +45,36 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // ------------------------------------------------------------
-  // Then: handle local puzzles (one board per <puzzle>)
-  // ------------------------------------------------------------
+  // ============================================================
+  // SECOND PRIORITY: LOCAL PUZZLES (ONE BOARD PER BLOCK)
+  // ============================================================
   for (const node of puzzleNodes) {
-    // Node may have been removed if it was the remote pack block
     if (!node.isConnected) continue;
 
     const htmlRaw = node.innerHTML || "";
     const html = stripFigurines(htmlRaw);
 
     const fenMatch = html.match(/FEN:\s*([^<\n\r]+)/i);
-    if (!fenMatch) continue; // not a local FEN puzzle
+    if (!fenMatch) continue;
 
     const fen = fenMatch[1].trim();
 
-    // Prefer Moves: first
     const movesMatch = html.match(/Moves:\s*([^<\n\r]+)/i);
     const pgnInlineMatch = html.match(/PGN:\s*([^<\n\r]+)/i);
 
     let sanMoves = null;
 
+    // Moves: list
     if (movesMatch) {
       const movesLine = movesMatch[1].trim().replace(/\s+/g, " ");
       sanMoves = movesLine.split(" ");
-    } else if (pgnInlineMatch) {
-      const pgnLine = pgnInlineMatch[1].trim();
-      // If it looks like a URL, we already used it above (or skipped if second URL)
-      if (!/^https?:\/\//i.test(pgnLine)) {
-        sanMoves = pgnToSanArray(pgnLine);
+    }
+
+    // PGN: inline (NOT a URL)
+    else if (pgnInlineMatch) {
+      const pgnValue = pgnInlineMatch[1].trim();
+      if (!/^https?:\/\//i.test(pgnValue)) {
+        sanMoves = pgnToSanArray(pgnValue);
       }
     }
 
@@ -98,44 +97,60 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 // ======================================================================
-// Helper: strip figurine characters (for safety)
+// Helper: strip unicode figurines (in case figurine.js touched content)
 // ======================================================================
 function stripFigurines(str) {
   return str.replace(/[♔♕♖♗♘♙]/g, "");
 }
 
 // ======================================================================
-// Helper: convert an inline PGN string to SAN array
-//  e.g. "1. Nxe5 Nxe5 2. Bxf7+ Ke7" → ["Nxe5","Nxe5","Bxf7+","Ke7"]
+// Convert inline PGN into SAN list
 // ======================================================================
 function pgnToSanArray(pgnText) {
   let s = pgnText;
 
-  // Remove comments {...} and variations (...)
-  s = s.replace(/\{[^}]*\}/g, " ");
-  s = s.replace(/\([^)]*\)/g, " ");
-
-  // Remove game result markers
+  s = s.replace(/\{[^}]*\}/g, " ");   // remove comments
+  s = s.replace(/\([^)]*\)/g, " ");   // remove variations
   s = s.replace(/\b(1-0|0-1|1\/2-1\/2|\*)\b/g, " ");
+  s = s.replace(/\d+\.(\.\.)?/g, " "); // remove move numbers
 
-  // Remove move numbers like "1.", "1..." etc.
-  s = s.replace(/\d+\.(\.\.)?/g, " ");
-
-  // Collapse whitespace and split
   s = s.replace(/\s+/g, " ").trim();
   if (!s) return [];
+
   return s.split(" ");
 }
 
 // ======================================================================
-// LOCAL PUZZLE: One board per <puzzle>, given FEN + SAN move list
+// Convert SAN list → UCI list (forward progression)
+// ======================================================================
+function buildUCISolution(fen, sanMoves) {
+  const game = new Chess(fen);
+  const solution = [];
+
+  for (let san of sanMoves) {
+    const clean = san.replace(/[!?]/g, "").trim();
+    if (!clean) continue;
+
+    const moveObj = game.move(clean, { sloppy: true });
+    if (!moveObj) {
+      console.error("Cannot parse SAN move:", san);
+      break;
+    }
+
+    const uci = moveObj.from + moveObj.to + (moveObj.promotion || "");
+    solution.push(uci);
+  }
+
+  return solution;
+}
+
+// ======================================================================
+// LOCAL PUZZLE: one board per puzzle block
 // ======================================================================
 function renderSinglePuzzle(container, fen, sanMoves) {
   console.log("Rendering local puzzle with FEN:", fen);
 
   const solutionUCI = buildUCISolution(fen, sanMoves);
-  console.log("Local puzzle UCI solution:", solutionUCI);
-
   const game = new Chess(fen);
 
   const boardDiv = document.createElement("div");
@@ -163,10 +178,10 @@ function renderSinglePuzzle(container, fen, sanMoves) {
       const move = game.move({ from: source, to: target, promotion: "q" });
       if (!move) return "snapback";
 
-      const playedUCI = move.from + move.to + (move.promotion || "");
-      const expectedUCI = solutionUCI[step];
+      const played = move.from + move.to + (move.promotion || "");
+      const expected = solutionUCI[step];
 
-      if (playedUCI !== expectedUCI) {
+      if (played !== expected) {
         statusDiv.textContent = "❌ Wrong move";
         game.undo();
         return "snapback";
@@ -175,14 +190,11 @@ function renderSinglePuzzle(container, fen, sanMoves) {
       statusDiv.textContent = "✅ Correct";
       step++;
 
-      // Opponent reply if exists
       if (step < solutionUCI.length) {
         const replySAN = sanMoves[step];
         const reply = game.move(replySAN, { sloppy: true });
-        if (reply) {
-          step++;
-          setTimeout(() => board.position(game.fen()), 150);
-        }
+        if (reply) step++;
+        setTimeout(() => board.position(game.fen()), 150);
       }
 
       if (step >= solutionUCI.length) {
@@ -199,35 +211,21 @@ function renderSinglePuzzle(container, fen, sanMoves) {
 }
 
 // ======================================================================
-// Build UCI solution from FEN + SAN array, progressing forward (no undo)
-// ======================================================================
-function buildUCISolution(fen, sanMoves) {
-  const game = new Chess(fen);
-  const solution = [];
-
-  for (let san of sanMoves) {
-    const cleaned = san.replace(/[!?]/g, "").trim();
-    if (!cleaned) continue;
-
-    const moveObj = game.move(cleaned, { sloppy: true });
-    if (!moveObj) {
-      console.error("Cannot parse SAN move in solution:", san);
-      break;
-    }
-
-    const uci = moveObj.from + moveObj.to + (moveObj.promotion || "");
-    solution.push(uci);
-  }
-
-  return solution;
-}
-
-// ======================================================================
-// REMOTE PACK: Single-board trainer for first PGN URL on page
+// REMOTE PGN PACK: One trainer board per page
 // ======================================================================
 function initRemotePack(container, url) {
   console.log("Initializing remote PGN pack from:", url);
 
+  // Shared state (IMPORTANT)
+  let puzzles = [];
+  let currentIndex = 0;
+  let game = null;
+  let board = null;
+  let sanMoves = [];
+  let solutionUCI = [];
+  let step = 0;
+
+  // UI
   const title = document.createElement("div");
   title.textContent = "Puzzle Pack";
   title.style.fontWeight = "bold";
@@ -249,29 +247,16 @@ function initRemotePack(container, url) {
   controlsDiv.style.marginBottom = "10px";
 
   const prevBtn = document.createElement("button");
-  prevBtn.textContent = "Previous";
   prevBtn.className = "btn btn-sm btn-secondary";
+  prevBtn.textContent = "Previous";
 
   const nextBtn = document.createElement("button");
-  nextBtn.textContent = "Next";
   nextBtn.className = "btn btn-sm btn-secondary";
+  nextBtn.textContent = "Next";
 
-  const restartBtn = document.createElement("button");
-  restartBtn.textContent = "Restart Puzzle";
-  restartBtn.className = "btn btn-sm btn-outline-secondary";
-
-  controlsDiv.append(prevBtn, nextBtn, restartBtn);
+  controlsDiv.append(prevBtn, nextBtn);
 
   container.append(title, infoDiv, boardDiv, statusDiv, controlsDiv);
-
-  // State
-  let puzzles = [];
-  let currentIndex = 0;
-  let game = null;
-  let board = null;
-  let sanMoves = [];
-  let solutionUCI = [];
-  let step = 0;
 
   // Fetch PGN
   fetch(url)
@@ -283,15 +268,17 @@ function initRemotePack(container, url) {
         return;
       }
 
-      console.log("Remote PGN puzzles parsed:", puzzles.length);
+      console.log("Parsed remote PGN puzzles:", puzzles.length);
+
       initBoard();
       loadPuzzle(0);
     })
     .catch(err => {
       console.error(err);
-      statusDiv.textContent = "Failed to load PGN.";
+      statusDiv.textContent = "Failed to load PGN file.";
     });
 
+  // Create board once
   function initBoard() {
     board = Chessboard(boardDiv, {
       draggable: true,
@@ -310,10 +297,10 @@ function initRemotePack(container, url) {
         const move = game.move({ from: source, to: target, promotion: "q" });
         if (!move) return "snapback";
 
-        const playedUCI = move.from + move.to + (move.promotion || "");
-        const expectedUCI = solutionUCI[step];
+        const played = move.from + move.to + (move.promotion || "");
+        const expected = solutionUCI[step];
 
-        if (playedUCI !== expectedUCI) {
+        if (played !== expected) {
           statusDiv.textContent = "❌ Wrong move";
           game.undo();
           return "snapback";
@@ -322,14 +309,11 @@ function initRemotePack(container, url) {
         statusDiv.textContent = "✅ Correct";
         step++;
 
-        // Opponent reply
         if (step < solutionUCI.length) {
           const replySAN = sanMoves[step];
           const reply = game.move(replySAN, { sloppy: true });
-          if (reply) {
-            step++;
-            setTimeout(() => board.position(game.fen()), 150);
-          }
+          if (reply) step++;
+          setTimeout(() => board.position(game.fen()), 150);
         }
 
         if (step >= solutionUCI.length) {
@@ -355,11 +339,6 @@ function initRemotePack(container, url) {
       currentIndex = (currentIndex + 1) % puzzles.length;
       loadPuzzle(currentIndex);
     };
-
-    restartBtn.onclick = () => {
-      if (!puzzles.length) return;
-      loadPuzzle(currentIndex);
-    };
   }
 
   function loadPuzzle(index) {
@@ -379,14 +358,12 @@ function initRemotePack(container, url) {
 }
 
 // ======================================================================
-// Parse PGN text into array of puzzles: [{ fen, moves: [SAN...] }, ...]
-// Expected format: multiple games with [FEN "..."] tags, moves in body
-// or in [Moves "..."]/ [Solution "..."] tags
+// Parse PGN text into puzzle objects from remote files
 // ======================================================================
 function parsePGNPack(text) {
   const puzzles = [];
-  const cleanedText = text.replace(/\r/g, "");
-  const blocks = cleanedText.split(/\n\n(?=\[FEN)/g);
+  const cleaned = text.replace(/\r/g, "");
+  const blocks = cleaned.split(/\n\n(?=\[FEN)/g);
 
   for (const blockRaw of blocks) {
     const block = blockRaw.trim();
@@ -396,14 +373,12 @@ function parsePGNPack(text) {
     if (!fenMatch) continue;
 
     const fen = fenMatch[1].trim();
-
     let moves = [];
 
     const tagMatch = block.match(/\[(Moves|Solution)\s+"([^"]+)"\]/i);
     if (tagMatch) {
       moves = pgnToSanArray(tagMatch[2]);
     } else {
-      // Extract from body
       const body = block.replace(/\[[^\]]+\]/g, " ");
       moves = pgnToSanArray(body);
     }

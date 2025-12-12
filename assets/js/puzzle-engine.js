@@ -1,5 +1,5 @@
 // ======================================================================
-// JekyllChess Puzzle Engine — ICON-ONLY ANIMATED FEEDBACK
+// JekyllChess Puzzle Engine — ICON AFTER TEXT, GREEN CHECKMARK
 // ======================================================================
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -54,8 +54,8 @@ function injectPuzzleStyles() {
       animation: jc-icon-pulse 1s ease-in-out infinite;
     }
 
-    .jc-correct-icon { color: #2e8b57; }
-    .jc-wrong-icon   { color: #b22222; }
+    .jc-correct-icon { color: #b2ee66; } /* green */
+    .jc-wrong-icon   { color: #b22222; } /* red */
 
     @keyframes jc-icon-pulse {
       0%   { transform: scale(1);   filter: drop-shadow(0 0 0px currentColor); }
@@ -108,11 +108,11 @@ function buildUCISolution(fen, san) {
 }
 
 function setCorrectFeedback(el) {
-  el.innerHTML = `<span class="jc-icon jc-correct-icon">✔️</span> Correct move`;
+  el.innerHTML = `Correct move <span class="jc-icon jc-correct-icon">✔️</span>`;
 }
 
 function setWrongFeedback(el) {
-  el.innerHTML = `<span class="jc-icon jc-wrong-icon">✖️</span> Wrong move`;
+  el.innerHTML = `Wrong move <span class="jc-icon jc-wrong-icon">✖️</span>`;
 }
 
 function setSolvedFeedback(el) {
@@ -141,13 +141,13 @@ function updateTurn(game, dot, label) {
     dot.style.background = "#fff";
     label.textContent = "White to move";
   } else {
-    dot.style.background = "#000";
+    dot.style.background = "#333";
     label.textContent = "Black to move";
   }
 }
 
 // ======================================================================
-// TAP-TO-MOVE
+// TAP-TO-MOVE (MINIMAL)
 // ======================================================================
 
 function attachTap(boardEl, game, tryMove, solved) {

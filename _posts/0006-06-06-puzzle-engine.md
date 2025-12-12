@@ -19,7 +19,7 @@ FEN: r7/4b1kp/q2p1ppN/1pnP2n1/2p1PQ2/2P3Nb/1PB3P1/2B2RK1 w - - 0 1
 PGN: 1. Qh4 Bd7 2. e5 dxe5 3. Nh5+ gxh5 4. Qxg5+ fxg5 5. Rf7+ Kxh6 6. Rxh7#
 </puzzle>
 
-Multi-puzzle pack from remote PGN file:
+Multi-puzzle pack from remote PGN file:↶↷
 
 <puzzle>
 PGN: https://raw.githubusercontent.com/xinyangz/chess-tactics-pgn/refs/heads/master/tactics.pgn

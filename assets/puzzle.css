@@ -57,14 +57,6 @@
   }
 }
 
-/* --- Controls (Next / Previous for remote PGN) --- */
-
-.jc-controls {
-  margin-top: 10px;
-  display: flex;
-  gap: 8px;
-}
-
 /* --- Mobile UX fixes --- */
 
 @media (max-width: 768px) {
@@ -73,15 +65,16 @@
   }
 }
 
-/* Board + navigation wrapper */
+/* Board + controls wrapper */
 .jc-board-wrap {
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
+  align-items: flex-start; /* board stays normal / left-aligned */
 }
 
-/* Navigation buttons under board, right-aligned */
+/* Navigation buttons under board, aligned to bottom-right */
 .jc-controls {
+  align-self: flex-end;     /* push ONLY buttons to the right */
   margin-top: 6px;
   display: flex;
   gap: 6px;
@@ -92,3 +85,4 @@
   padding: 4px 8px;
   cursor: pointer;
 }
+

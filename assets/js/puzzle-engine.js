@@ -117,8 +117,8 @@
       return;
     }
     el.textContent = game.turn() === "w"
-      ? "White to move"
-      : "Black to move";
+      ? "⚐ White to move"
+      : "⚑ Black to move";
   }
 
   // --------------------------------------------------------------------
@@ -218,10 +218,10 @@
     controls.className = "jc-controls";
 
     const prev = document.createElement("button");
-    prev.textContent = "←";
+    prev.textContent = "↶";
 
     const next = document.createElement("button");
-    next.textContent = "→";
+    next.textContent = "↷";
 
     controls.append(prev, next);
     boardWrap.append(boardDiv, controls);

@@ -1,5 +1,7 @@
 // ======================================================================
-// JekyllChess Puzzle Engine — FIXED PARSER (FEN / Moves / PGN / Remote PGN)
+// JekyllChess Puzzle Engine — FIXED PIECE ANIMATION
+// User moves: no re-animation
+// Auto moves: animated
 // ======================================================================
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -14,48 +16,32 @@ document.addEventListener("DOMContentLoaded", () => {
   for (const node of puzzleNodes) {
     const raw = stripFigurines(node.innerHTML || "").trim();
 
-    // --- Extract fields safely ---
-    const fenMatch   = raw.match(/FEN:\s*([^\n<]+)/i);
-    const movesMatch = raw.match(/Moves:\s*([^\n<]+)/i);
+    const fenMatch    = raw.match(/FEN:\s*([^\n<]+)/i);
+    const movesMatch  = raw.match(/Moves:\s*([^\n<]+)/i);
     const pgnUrlMatch = raw.match(/PGN:\s*(https?:\/\/[^\s<]+)/i);
-    const pgnInlineMatch =
-      !pgnUrlMatch && raw.match(/PGN:\s*(1\.[\s\S]+)/i);
+    const pgnInline   = !pgnUrlMatch && raw.match(/PGN:\s*(1\.[\s\S]+)/i);
 
-    // --- Create wrapper ---
     const wrap = document.createElement("div");
     wrap.className = "jc-puzzle-wrapper";
     node.replaceWith(wrap);
 
-    // ============================================================
-    // CASE 1 — REMOTE PGN PACK
-    // ============================================================
     if (pgnUrlMatch && !fenMatch) {
       if (remotePGNUsed) {
         wrap.textContent = "⚠️ Only one remote PGN pack allowed per page.";
         continue;
       }
       remotePGNUsed = true;
-      initRemotePackLazy(wrap, pgnUrlMatch[1].trim());
+      initRemotePackLazy(wrap, pgnUrlMatch[1]);
       continue;
     }
 
-    // ============================================================
-    // CASE 2 — INLINE PGN (single puzzle)
-    // ============================================================
-    if (fenMatch && pgnInlineMatch) {
+    if (fenMatch && pgnInline) {
       const fen = fenMatch[1].trim();
-      const sanMoves = parsePGNMoves(pgnInlineMatch[1]);
-      if (!sanMoves.length) {
-        wrap.textContent = "❌ Invalid inline PGN.";
-        continue;
-      }
+      const sanMoves = parsePGNMoves(pgnInline[1]);
       renderLocalPuzzle(wrap, fen, sanMoves);
       continue;
     }
 
-    // ============================================================
-    // CASE 3 — FEN + Moves
-    // ============================================================
     if (fenMatch && movesMatch) {
       const fen = fenMatch[1].trim();
       const sanMoves = movesMatch[1].trim().split(/\s+/);
@@ -63,9 +49,6 @@ document.addEventListener("DOMContentLoaded", () => {
       continue;
     }
 
-    // ============================================================
-    // INVALID
-    // ============================================================
     wrap.textContent = "❌ Invalid <puzzle> block.";
   }
 });
@@ -81,9 +64,7 @@ function injectPuzzleStyles() {
   style.id = "jc-puzzle-styles";
   style.textContent = `
     .jc-puzzle-wrapper { margin: 20px 0; }
-
     .jc-board { width: 350px; }
-
     .jc-feedback {
       margin-top: 8px;
       font-size: 16px;
@@ -92,18 +73,16 @@ function injectPuzzleStyles() {
       align-items: center;
       gap: 6px;
     }
-
     .jc-icon {
       display: inline-block;
       animation: jc-icon-pulse 1s ease-in-out infinite;
     }
-
     .jc-correct-icon { color: #2e8b57; }
-    .jc-wrong-icon   { color: #b22222; }
+    .jc-wrong-icon { color: #b22222; }
 
     @keyframes jc-icon-pulse {
-      0%   { transform: scale(1); }
-      50%  { transform: scale(1.15); }
+      0% { transform: scale(1); }
+      50% { transform: scale(1.15); }
       100% { transform: scale(1); }
     }
 
@@ -211,12 +190,14 @@ function updateTurn(game, dot, label) {
 
 function attachTap(boardEl, game, tryMove, solved) {
   let from = null;
+
   boardEl.addEventListener("click", e => {
     if (solved()) return;
+
     const sqEl = e.target.closest("[data-square]");
     if (!sqEl) return;
-    const sq = sqEl.dataset.square;
 
+    const sq = sqEl.dataset.square;
     if (!from) {
       const p = game.get(sq);
       if (!p || p.color !== game.turn()) return;
@@ -232,7 +213,7 @@ function attachTap(boardEl, game, tryMove, solved) {
 }
 
 // ======================================================================
-// LOCAL PUZZLE RENDER
+// LOCAL PUZZLE RENDER (FIXED ANIMATION)
 // ======================================================================
 
 function renderLocalPuzzle(container, fen, sanMoves) {
@@ -255,12 +236,13 @@ function renderLocalPuzzle(container, fen, sanMoves) {
     draggable: true,
     position: fen,
     pieceTheme: "https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png",
-    onDrop: (s, t) => tryMove(s, t) ? true : "snapback",
-    onSnapEnd: () => board.position(game.fen())
+
+    onDrop: (src, dst) => tryMove(src, dst) ? true : "snapback"
   });
 
   function tryMove(src, dst) {
     if (solved) return false;
+
     const mv = game.move({ from: src, to: dst, promotion: "q" });
     if (!mv) return false;
 
@@ -271,16 +253,19 @@ function renderLocalPuzzle(container, fen, sanMoves) {
       return false;
     }
 
+    // ✅ Correct user move — DO NOT call board.position()
     step++;
     setCorrectFeedback(feedback);
     updateTurn(game, dot, label);
-    board.position(game.fen());
 
+    // ▶️ Animate automatic reply move
     if (step < solution.length) {
-      game.move(sanMoves[step], { sloppy: true });
+      const reply = game.move(sanMoves[step], { sloppy: true });
       step++;
-      board.position(game.fen());
-      updateTurn(game, dot, label);
+      setTimeout(() => {
+        board.position(game.fen(), true); // animated
+        updateTurn(game, dot, label);
+      }, 200);
     }
 
     if (step >= solution.length) {
@@ -288,6 +273,7 @@ function renderLocalPuzzle(container, fen, sanMoves) {
       setSolvedFeedback(feedback);
       turnRow.style.display = "none";
     }
+
     return true;
   }
 
@@ -296,10 +282,9 @@ function renderLocalPuzzle(container, fen, sanMoves) {
 }
 
 // ======================================================================
-// REMOTE PGN — LAZY LOADING (unchanged logic)
+// REMOTE PGN PLACEHOLDER
 // ======================================================================
 
 function initRemotePackLazy(container, url) {
   container.textContent = "Remote PGN puzzle pack loading…";
-  // (your existing lazy PGN logic plugs in here unchanged)
 }

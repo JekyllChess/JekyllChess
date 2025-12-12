@@ -113,8 +113,8 @@ function updateTurnIndicator(el, game, solved) {
     return;
   }
   el.textContent = game.turn() === "w"
-    ? "&#9872; White to move"
-    : "&#9873; Black to move";
+    ? "⚐ White to move"
+    : "⚑ Black to move";
 }
 
 // ======================================================================

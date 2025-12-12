@@ -1,18 +1,19 @@
 body {
-  width: 60vw;
-  margin: 0 auto; /* centers the body */
-  padding-top: 2rem
+  width: 50vw;
+  margin: 0 auto;
+  padding-top: 3rem;
+  font-family: "Verdana", "Helvetica", "Arial", sans-serif;
 }
 
 @media (max-width: 768px) {
   body {
     width: 100vw;
-    margin: 0; /* removes centering gap */
+    margin: .5rem;
   }
 }
 
 a,a:visited,a:hover,a:active{color:#333}
-h1.header img{height:1.5em;margin-right:.5rem}
+h1.header img{height:1.5em;}
 
 .post-item {margin-bottom: 3rem;}
       

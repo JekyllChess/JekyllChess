@@ -3,6 +3,7 @@ body {
   margin: 0 auto;
   padding-top: 3rem;
   font-family: "Georgia", "Times New Roman", "Garamond", serif;
+  font-size: 16px;
 }
 
 @media (max-width: 768px) {

@@ -1,78 +1,49 @@
-/* ============================================================
+/* =========================================================
    JekyllChess Puzzle Styles
-   Unified status lines (feedback + turn indicator)
-   ============================================================ */
-
-/* --- Puzzle wrapper --- */
+   ========================================================= */
 
 .jc-puzzle-wrapper {
   margin: 20px 0;
 }
 
-/* --- Chessboard --- */
-
 .jc-board {
   width: 350px;
 }
 
-/* --- Status lines (feedback + turn indicator) --- */
+/* Board wrapper */
+.jc-board-wrap {
+  display: block;
+}
 
-.jc-feedback,
-.jc-turn {
-  margin-top: 6px;
+/* Unified status row (desktop) */
+.jc-status-row {
   display: flex;
   align-items: center;
-  gap: 6px;
+  width: 100%;
+  gap: 12px;
+  margin-top: 6px;
 }
 
-/* Feedback text (Correct / Wrong / Solved) */
+.jc-turn,
 .jc-feedback {
-  color: #333;
+  font-size: 15px;
+  font-weight: 500;
+  white-space: nowrap;
 }
-
-/* Turn indicator text (White/Black to move) */
-.jc-turn {
-  color: #333;
-}
-
-/* --- Icons & animation (checkmark, cross, trophy) --- */
 
 .jc-icon {
-  display: inline-flex;
   animation: jc-pulse 1s ease-in-out infinite;
 }
 
 @keyframes jc-pulse {
-  0% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.15);
-  }
-  100% {
-    transform: scale(1);
-  }
+  0% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+  100% { transform: scale(1); }
 }
 
-/* --- Mobile UX fixes --- */
-
-@media (max-width: 768px) {
-  .jc-board {
-    touch-action: none; /* prevent page scroll while moving pieces */
-  }
-}
-
-/* Board + controls wrapper */
-.jc-board-wrap {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start; /* board stays normal / left-aligned */
-}
-
-/* Navigation buttons under board, aligned to bottom-right */
+/* Navigation buttons */
 .jc-controls {
-  align-self: flex-end;     /* push ONLY buttons to the right */
-  margin-top: 6px;
+  margin-left: auto;
   display: flex;
   gap: 6px;
 }
@@ -82,3 +53,28 @@
   cursor: pointer;
 }
 
+.jc-controls button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* =========================================================
+   Mobile-only stacked status row
+   ========================================================= */
+
+@media (max-width: 768px) {
+  .jc-status-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .jc-controls {
+    align-self: flex-end;
+    margin-left: 0;
+  }
+
+  .jc-board {
+    touch-action: none;
+  }
+}

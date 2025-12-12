@@ -1,9 +1,8 @@
 // ======================================================================
-// JekyllChess Puzzle Engine — WITH TURN INDICATOR RESTORED (FINAL)
+// JekyllChess Puzzle Engine — STYLE-FREE VERSION
 // ======================================================================
 
 document.addEventListener("DOMContentLoaded", () => {
-  injectPuzzleStyles();
 
   const puzzleNodes = Array.from(document.querySelectorAll("puzzle"));
   let remoteUsed = false;
@@ -19,6 +18,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const pgnUrlMatch = raw.match(/PGN:\s*(https?:\/\/[^\s<]+)/i);
     const pgnInline   = !pgnUrlMatch && raw.match(/PGN:\s*(1\.[\s\S]+)/i);
 
+    // ------------------------------------------------------------
+    // REMOTE PGN PACK
+    // ------------------------------------------------------------
     if (pgnUrlMatch && !fenMatch) {
       if (remoteUsed) {
         wrap.textContent = "⚠️ Only one remote PGN pack allowed per page.";
@@ -29,66 +31,33 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
+    // ------------------------------------------------------------
+    // INLINE PGN (single puzzle)
+    // ------------------------------------------------------------
     if (fenMatch && pgnInline) {
-      renderLocalPuzzle(wrap, fenMatch[1].trim(), parsePGNMoves(pgnInline[1]));
+      renderLocalPuzzle(
+        wrap,
+        fenMatch[1].trim(),
+        parsePGNMoves(pgnInline[1])
+      );
       return;
     }
 
+    // ------------------------------------------------------------
+    // FEN + Moves
+    // ------------------------------------------------------------
     if (fenMatch && movesMatch) {
-      renderLocalPuzzle(wrap, fenMatch[1].trim(), movesMatch[1].trim().split(/\s+/));
+      renderLocalPuzzle(
+        wrap,
+        fenMatch[1].trim(),
+        movesMatch[1].trim().split(/\s+/)
+      );
       return;
     }
 
     wrap.textContent = "❌ Invalid <puzzle> block.";
   });
 });
-
-// ======================================================================
-// STYLES
-// ======================================================================
-
-function injectPuzzleStyles() {
-  if (document.getElementById("jc-puzzle-styles")) return;
-
-  const s = document.createElement("style");
-  s.id = "jc-puzzle-styles";
-  s.textContent = `
-    .jc-puzzle-wrapper { margin: 20px 0; }
-    .jc-board { width: 350px; }
-
-    .jc-feedback {
-      margin-top: 8px;
-      font-weight: 600;
-      display: flex;
-      gap: 6px;
-    }
-
-    .jc-icon { animation: jc-pulse 1s ease-in-out infinite; }
-
-    @keyframes jc-pulse {
-      0% { transform: scale(1); }
-      50% { transform: scale(1.15); }
-      100% { transform: scale(1); }
-    }
-
-    .jc-turn {
-      margin-top: 4px;
-      font-size: 15px;
-      font-weight: 500;
-    }
-
-    .jc-controls {
-      margin-top: 10px;
-      display: flex;
-      gap: 8px;
-    }
-
-    @media (max-width: 768px) {
-      .jc-board { touch-action: none; }
-    }
-  `;
-  document.head.appendChild(s);
-}
 
 // ======================================================================
 // HELPERS
@@ -98,6 +67,9 @@ function stripFigurines(s) {
   return s.replace(/[♔♕♖♗♘♙]/g, "");
 }
 
+/**
+ * Robust PGN movetext parser
+ */
 function parsePGNMoves(pgn) {
   return pgn
     .replace(/\[[^\]]*\]/g, " ")
@@ -116,7 +88,7 @@ function normalizeSAN(san) {
 }
 
 // ======================================================================
-// FEEDBACK
+// FEEDBACK HELPERS
 // ======================================================================
 
 function showCorrect(el) {
@@ -146,7 +118,7 @@ function updateTurnIndicator(el, game, solved) {
 }
 
 // ======================================================================
-// LOCAL PUZZLE (UNCHANGED)
+// LOCAL PUZZLES (FEN + Moves / Inline PGN)
 // ======================================================================
 
 function buildUCISolution(fen, san) {
@@ -163,12 +135,15 @@ function buildUCISolution(fen, san) {
 function renderLocalPuzzle(container, fen, sanMoves) {
   const game = new Chess(fen);
   const solution = buildUCISolution(fen, sanMoves);
-  let step = 0, solved = false;
+  let step = 0;
+  let solved = false;
 
   const boardDiv = document.createElement("div");
   boardDiv.className = "jc-board";
+
   const feedback = document.createElement("div");
   feedback.className = "jc-feedback";
+
   const turnDiv = document.createElement("div");
   turnDiv.className = "jc-turn";
 
@@ -183,6 +158,7 @@ function renderLocalPuzzle(container, fen, sanMoves) {
 
   function playMove(src, dst) {
     if (solved) return false;
+
     const mv = game.move({ from: src, to: dst, promotion: "q" });
     if (!mv) return false;
 
@@ -219,7 +195,7 @@ function renderLocalPuzzle(container, fen, sanMoves) {
 }
 
 // ======================================================================
-// REMOTE PGN — FINAL FIX (SOLVE AFTER AUTO-MOVE)
+// REMOTE PGN — BATCH / LAZY LOADER (FINAL, FIXED)
 // ======================================================================
 
 function initRemotePGNPackLazy(container, url) {
@@ -227,15 +203,19 @@ function initRemotePGNPackLazy(container, url) {
 
   const boardDiv = document.createElement("div");
   boardDiv.className = "jc-board";
+
   const feedback = document.createElement("div");
   feedback.className = "jc-feedback";
+
   const turnDiv = document.createElement("div");
   turnDiv.className = "jc-turn";
+
   const controls = document.createElement("div");
   controls.className = "jc-controls";
 
   const prev = document.createElement("button");
   prev.textContent = "Previous";
+
   const next = document.createElement("button");
   next.textContent = "Next";
 
@@ -308,7 +288,6 @@ function initRemotePGNPackLazy(container, url) {
         showCorrect(feedback);
         updateTurnIndicator(turnDiv, game, solved);
 
-        // automatic reply
         if (step < moves.length) {
           game.move(moves[step], { sloppy: true });
           step++;
@@ -316,7 +295,6 @@ function initRemotePGNPackLazy(container, url) {
             board.position(game.fen(), true);
             updateTurnIndicator(turnDiv, game, solved);
 
-            // ✅ FIX: puzzle can finish on auto-move
             if (step >= moves.length || game.game_over()) {
               solved = true;
               showSolved(feedback);

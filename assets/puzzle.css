@@ -1,0 +1,74 @@
+/* ============================================================
+   JekyllChess Puzzle Styles
+   Unified status lines (feedback + turn indicator)
+   ============================================================ */
+
+/* --- Puzzle wrapper --- */
+
+.jc-puzzle-wrapper {
+  margin: 20px 0;
+}
+
+/* --- Chessboard --- */
+
+.jc-board {
+  width: 350px;
+}
+
+/* --- Status lines (feedback + turn indicator) --- */
+
+.jc-feedback,
+.jc-turn {
+  margin-top: 6px;
+  font-size: 15px;
+  line-height: 1.4;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Feedback text (Correct / Wrong / Solved) */
+.jc-feedback {
+  color: #333;
+}
+
+/* Turn indicator text (White/Black to move) */
+.jc-turn {
+  color: #555;
+}
+
+/* --- Icons & animation (checkmark, cross, trophy) --- */
+
+.jc-icon {
+  display: inline-flex;
+  animation: jc-pulse 1s ease-in-out infinite;
+}
+
+@keyframes jc-pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.15);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* --- Controls (Next / Previous for remote PGN) --- */
+
+.jc-controls {
+  margin-top: 10px;
+  display: flex;
+  gap: 8px;
+}
+
+/* --- Mobile UX fixes --- */
+
+@media (max-width: 768px) {
+  .jc-board {
+    touch-action: none; /* prevent page scroll while moving pieces */
+  }
+}

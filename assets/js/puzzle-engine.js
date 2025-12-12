@@ -168,12 +168,12 @@ function updateTurnIndicator(el, game, solved) {
     return;
   }
   el.textContent = game.turn() === "w"
-    ? "White to move"
-    : "Black to move";
+    ? "◎ White to move"
+    : "◉ Black to move";
 }
 
 // ======================================================================
-// LOCAL PUZZLE
+// LOCAL PUZZLE (UNCHANGED — UCI BASED)
 // ======================================================================
 
 function renderLocalPuzzle(container, fen, sanMoves) {
@@ -184,10 +184,8 @@ function renderLocalPuzzle(container, fen, sanMoves) {
 
   const boardDiv = document.createElement("div");
   boardDiv.className = "jc-board";
-
   const feedback = document.createElement("div");
   feedback.className = "jc-feedback";
-
   const turnDiv = document.createElement("div");
   turnDiv.className = "jc-turn";
 
@@ -202,7 +200,6 @@ function renderLocalPuzzle(container, fen, sanMoves) {
 
   function playMove(src, dst) {
     if (solved) return false;
-
     const mv = game.move({ from: src, to: dst, promotion: "q" });
     if (!mv) return false;
 
@@ -217,7 +214,6 @@ function renderLocalPuzzle(container, fen, sanMoves) {
     showCorrect(feedback);
     updateTurnIndicator(turnDiv, game, solved);
 
-    // Automatic reply (animated)
     if (step < solution.length) {
       game.move(sanMoves[step], { sloppy: true });
       step++;
@@ -240,7 +236,7 @@ function renderLocalPuzzle(container, fen, sanMoves) {
 }
 
 // ======================================================================
-// REMOTE PGN — BATCH / LAZY LOADER WITH TURN INDICATOR
+// REMOTE PGN — FIXED (SAN-BASED VALIDATION)
 // ======================================================================
 
 function initRemotePGNPackLazy(container, url) {
@@ -248,13 +244,10 @@ function initRemotePGNPackLazy(container, url) {
 
   const boardDiv = document.createElement("div");
   boardDiv.className = "jc-board";
-
   const feedback = document.createElement("div");
   feedback.className = "jc-feedback";
-
   const turnDiv = document.createElement("div");
   turnDiv.className = "jc-turn";
-
   const controls = document.createElement("div");
   controls.className = "jc-controls";
 
@@ -276,7 +269,7 @@ function initRemotePGNPackLazy(container, url) {
       let parsedUntil = 0;
 
       let index = 0;
-      let game, solution, step = 0, solved = false;
+      let game, moves, step = 0, solved = false;
 
       const board = Chessboard(boardDiv, {
         draggable: true,
@@ -290,8 +283,8 @@ function initRemotePGNPackLazy(container, url) {
           const g = games[i];
           const fen = g.match(/\[FEN\s+"([^"]+)"/)?.[1];
           if (!fen) continue;
-          const moves = parsePGNMoves(g);
-          if (moves.length) puzzles.push({ fen, moves });
+          const sanMoves = parsePGNMoves(g);
+          if (sanMoves.length) puzzles.push({ fen, sanMoves });
         }
         parsedUntil = end;
       }
@@ -304,7 +297,7 @@ function initRemotePGNPackLazy(container, url) {
 
         index = i;
         game = new Chess(puzzles[i].fen);
-        solution = buildUCISolution(puzzles[i].fen, puzzles[i].moves);
+        moves = puzzles[i].sanMoves;
         step = 0;
         solved = false;
 
@@ -316,10 +309,11 @@ function initRemotePGNPackLazy(container, url) {
       function playMove(src, dst) {
         if (solved) return false;
 
+        const expectedSAN = moves[step];
         const mv = game.move({ from: src, to: dst, promotion: "q" });
         if (!mv) return false;
 
-        if (mv.from + mv.to !== solution[step]) {
+        if (mv.san !== expectedSAN) {
           game.undo();
           showWrong(feedback);
           updateTurnIndicator(turnDiv, game, solved);
@@ -330,8 +324,8 @@ function initRemotePGNPackLazy(container, url) {
         showCorrect(feedback);
         updateTurnIndicator(turnDiv, game, solved);
 
-        if (step < solution.length) {
-          game.move(puzzles[index].moves[step], { sloppy: true });
+        if (step < moves.length) {
+          game.move(moves[step], { sloppy: true });
           step++;
           setTimeout(() => {
             board.position(game.fen(), true);
@@ -339,7 +333,7 @@ function initRemotePGNPackLazy(container, url) {
           }, 200);
         }
 
-        if (step >= solution.length) {
+        if (step >= moves.length) {
           solved = true;
           showSolved(feedback);
           updateTurnIndicator(turnDiv, game, solved);

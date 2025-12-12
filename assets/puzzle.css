@@ -72,3 +72,23 @@
     touch-action: none; /* prevent page scroll while moving pieces */
   }
 }
+
+/* Board + navigation wrapper */
+.jc-board-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+/* Navigation buttons under board, right-aligned */
+.jc-controls {
+  margin-top: 6px;
+  display: flex;
+  gap: 6px;
+}
+
+.jc-controls button {
+  font-size: 16px;
+  padding: 4px 8px;
+  cursor: pointer;
+}

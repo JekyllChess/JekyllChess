@@ -1,5 +1,5 @@
 // ======================================================================
-// JekyllChess Puzzle Engine — STYLE-FREE VERSION
+// JekyllChess Puzzle Engine — STYLE-FREE (BUTTON LAYOUT FIXED)
 // ======================================================================
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -18,9 +18,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const pgnUrlMatch = raw.match(/PGN:\s*(https?:\/\/[^\s<]+)/i);
     const pgnInline   = !pgnUrlMatch && raw.match(/PGN:\s*(1\.[\s\S]+)/i);
 
-    // ------------------------------------------------------------
-    // REMOTE PGN PACK
-    // ------------------------------------------------------------
     if (pgnUrlMatch && !fenMatch) {
       if (remoteUsed) {
         wrap.textContent = "⚠️ Only one remote PGN pack allowed per page.";
@@ -31,27 +28,13 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    // ------------------------------------------------------------
-    // INLINE PGN (single puzzle)
-    // ------------------------------------------------------------
     if (fenMatch && pgnInline) {
-      renderLocalPuzzle(
-        wrap,
-        fenMatch[1].trim(),
-        parsePGNMoves(pgnInline[1])
-      );
+      renderLocalPuzzle(wrap, fenMatch[1].trim(), parsePGNMoves(pgnInline[1]));
       return;
     }
 
-    // ------------------------------------------------------------
-    // FEN + Moves
-    // ------------------------------------------------------------
     if (fenMatch && movesMatch) {
-      renderLocalPuzzle(
-        wrap,
-        fenMatch[1].trim(),
-        movesMatch[1].trim().split(/\s+/)
-      );
+      renderLocalPuzzle(wrap, fenMatch[1].trim(), movesMatch[1].trim().split(/\s+/));
       return;
     }
 
@@ -67,9 +50,6 @@ function stripFigurines(s) {
   return s.replace(/[♔♕♖♗♘♙]/g, "");
 }
 
-/**
- * Robust PGN movetext parser
- */
 function parsePGNMoves(pgn) {
   return pgn
     .replace(/\[[^\]]*\]/g, " ")
@@ -88,7 +68,7 @@ function normalizeSAN(san) {
 }
 
 // ======================================================================
-// FEEDBACK HELPERS
+// FEEDBACK
 // ======================================================================
 
 function showCorrect(el) {
@@ -113,114 +93,44 @@ function updateTurnIndicator(el, game, solved) {
     return;
   }
   el.textContent = game.turn() === "w"
-    ? "⚐ White to move"
-    : "⚑ Black to move";
+    ? "White to move"
+    : "Black to move";
 }
 
 // ======================================================================
-// LOCAL PUZZLES (FEN + Moves / Inline PGN)
-// ======================================================================
-
-function buildUCISolution(fen, san) {
-  const g = new Chess(fen);
-  const out = [];
-  for (const m of san) {
-    const mv = g.move(m, { sloppy: true });
-    if (!mv) break;
-    out.push(mv.from + mv.to + (mv.promotion || ""));
-  }
-  return out;
-}
-
-function renderLocalPuzzle(container, fen, sanMoves) {
-  const game = new Chess(fen);
-  const solution = buildUCISolution(fen, sanMoves);
-  let step = 0;
-  let solved = false;
-
-  const boardDiv = document.createElement("div");
-  boardDiv.className = "jc-board";
-
-  const feedback = document.createElement("div");
-  feedback.className = "jc-feedback";
-
-  const turnDiv = document.createElement("div");
-  turnDiv.className = "jc-turn";
-
-  container.append(boardDiv, feedback, turnDiv);
-
-  const board = Chessboard(boardDiv, {
-    draggable: true,
-    position: fen,
-    pieceTheme: "https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png",
-    onDrop: (s, t) => playMove(s, t) ? true : "snapback"
-  });
-
-  function playMove(src, dst) {
-    if (solved) return false;
-
-    const mv = game.move({ from: src, to: dst, promotion: "q" });
-    if (!mv) return false;
-
-    if (mv.from + mv.to !== solution[step]) {
-      game.undo();
-      showWrong(feedback);
-      updateTurnIndicator(turnDiv, game, solved);
-      return false;
-    }
-
-    step++;
-    showCorrect(feedback);
-    updateTurnIndicator(turnDiv, game, solved);
-
-    if (step < solution.length) {
-      game.move(sanMoves[step], { sloppy: true });
-      step++;
-      setTimeout(() => {
-        board.position(game.fen(), true);
-        updateTurnIndicator(turnDiv, game, solved);
-      }, 200);
-    }
-
-    if (step >= solution.length) {
-      solved = true;
-      showSolved(feedback);
-      updateTurnIndicator(turnDiv, game, solved);
-    }
-
-    return true;
-  }
-
-  updateTurnIndicator(turnDiv, game, solved);
-}
-
-// ======================================================================
-// REMOTE PGN — BATCH / LAZY LOADER (FINAL, FIXED)
+// REMOTE PGN — BUTTONS FIXED
 // ======================================================================
 
 function initRemotePGNPackLazy(container, url) {
   const BATCH_SIZE = 20;
 
+  // --- board + controls wrapper ---
+  const boardWrap = document.createElement("div");
+  boardWrap.className = "jc-board-wrap";
+
   const boardDiv = document.createElement("div");
   boardDiv.className = "jc-board";
 
+  const controls = document.createElement("div");
+  controls.className = "jc-controls";
+
+  const prev = document.createElement("button");
+  prev.textContent = "←";
+
+  const next = document.createElement("button");
+  next.textContent = "→";
+
+  controls.append(prev, next);
+  boardWrap.append(boardDiv, controls);
+
+  // --- status lines ---
   const feedback = document.createElement("div");
   feedback.className = "jc-feedback";
 
   const turnDiv = document.createElement("div");
   turnDiv.className = "jc-turn";
 
-  const controls = document.createElement("div");
-  controls.className = "jc-controls";
-
-  const prev = document.createElement("button");
-  prev.textContent = "⤺";
-
-  const next = document.createElement("button");
-  next.textContent = "⤻";
-
-  controls.append(prev, next);
-  container.append(boardDiv, feedback, turnDiv, controls);
+  container.append(boardWrap, feedback, turnDiv);
 
   feedback.textContent = "Loading puzzle pack…";
 

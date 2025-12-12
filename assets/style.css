@@ -2,7 +2,7 @@ body {
   width: 50vw;
   margin: 0 auto;
   padding-top: 3rem;
-  font-family: "Verdana", "Helvetica", "Arial", sans-serif;
+  font-family: "Georgia", "Times New Roman", "Garamond", serif;
 }
 
 @media (max-width: 768px) {
@@ -16,8 +16,8 @@ a,a:visited,a:hover,a:active{color:#333}
 h1.header img{height:1.5em;}
 
 .post-item {margin-bottom: 3rem;}
-      
-h1, h2, h3, h4 {font-weight: 900;}
+
+h1, h2, h3, h4 {font-weight: 900;font-family: "Verdana", "Helvetica", "Arial", sans-serif;}
 h3.post-item {font-weight: 900;}
 h1.header {font-weight: 900;}
 

@@ -1,5 +1,5 @@
 // ============================================================================
-// pgn-guess.js — Guess-the-move PGN trainer (status + correctness indicator)
+// pgn-guess.js — Guess-the-move PGN trainer (FINAL bugfixes)
 // ============================================================================
 
 (function () {
@@ -11,6 +11,7 @@
 
   const C = window.PGNCore;
   const AUTOPLAY_DELAY = 700;
+  const FEEDBACK_DELAY = 600;
 
   // --------------------------------------------------------------------------
   // Styles
@@ -82,15 +83,6 @@
     }
   }
 
-  function extractVariationDisplay(text) {
-    return text
-      .replace(/\[%.*?]/g, "")
-      .replace(/\[D\]/g, "")
-      .replace(/\{\s*\}/g, "")
-      .replace(/\s+/g, " ")
-      .trim();
-  }
-
   function normalizeSAN(tok) {
     return tok
       .replace(/\[%.*?]/g, "")
@@ -119,15 +111,12 @@
       this.currentRow = null;
       this.game = new Chess();
       this.currentFen = "start";
-
-      this.resultMessage = ""; // Correct / Wrong / Solved
+      this.resultMessage = "";
 
       this.build(src);
       this.parsePGN();
       this.initBoard();
     }
-
-    // ------------------------------------------------------------------------
 
     build(src) {
       const wrapper = document.createElement("div");
@@ -148,49 +137,16 @@
       this.rightPane = wrapper.querySelector(".pgn-guess-right");
     }
 
-    // ------------------------------------------------------------------------
-
     parsePGN() {
-      let raw = C.normalizeFigurines(this.rawText);
       const chess = new Chess();
-
-      let ply = 0, i = 0, pending = [];
-
-      const attach = (t) => {
-        const c = t.replace(/\[%.*?]/g, "").trim();
-        if (!c) return;
-        if (this.moves.length) this.moves[this.moves.length - 1].comments.push(c);
-        else pending.push(c);
-      };
+      const raw = C.normalizeFigurines(this.rawText);
+      let ply = 0, i = 0;
 
       while (i < raw.length) {
-        const ch = raw[i];
-
-        if (ch === "(") {
-          let depth = 1, j = i + 1;
-          while (j < raw.length && depth > 0) {
-            if (raw[j] === "(") depth++;
-            else if (raw[j] === ")") depth--;
-            j++;
-          }
-          const v = extractVariationDisplay(raw.slice(i + 1, j - 1));
-          if (v) attach(v);
-          i = j;
-          continue;
-        }
-
-        if (ch === "{") {
-          let j = i + 1;
-          while (raw[j] !== "}") j++;
-          attach(raw.slice(i + 1, j));
-          i = j + 1;
-          continue;
-        }
-
-        if (/\s/.test(ch)) { i++; continue; }
+        if (/\s/.test(raw[i])) { i++; continue; }
 
         const s = i;
-        while (i < raw.length && !/\s/.test(raw[i]) && !"(){}".includes(raw[i])) i++;
+        while (i < raw.length && !/\s/.test(raw[i])) i++;
         const tok = raw.slice(s, i);
 
         if (/^\d+\.{1,3}$/.test(tok)) continue;
@@ -200,17 +156,13 @@
 
         this.moves.push({
           isWhite: ply % 2 === 0,
-          moveNo: Math.floor(ply / 2) + 1,
           san: tok,
-          fen: chess.fen(),
-          comments: pending.splice(0)
+          fen: chess.fen()
         });
 
         ply++;
       }
     }
-
-    // ------------------------------------------------------------------------
 
     initBoard() {
       safeChessboard(
@@ -221,20 +173,14 @@
           draggable: true,
           pieceTheme: C.PIECE_THEME_URL,
           moveSpeed: 200,
-
           onDragStart: () => this.isGuessTurn(),
           onDrop: (s, t) => this.onUserDrop(s, t),
-
-          onSnapEnd: () => {
-            this.board.position(this.currentFen, false);
-          }
+          onSnapEnd: () => this.board.position(this.currentFen, false)
         },
         30,
         (b) => {
           this.board = b;
-          this.setBoard("start", false);
           this.updateStatus();
-
           setTimeout(() => {
             this.autoplayUntilUserTurn();
             this.updateStatus();
@@ -243,36 +189,29 @@
       );
     }
 
-    // ------------------------------------------------------------------------
-
-    setBoard(fen, animate) {
-      this.currentFen = fen;
-      this.board.position(fen, !!animate);
-    }
-
     autoplayUntilUserTurn() {
       while (this.index + 1 < this.moves.length) {
         const next = this.moves[this.index + 1];
-        if ((this.game.turn() === "w") === next.isWhite) break;
+        if (next.isWhite === (this.game.turn() === "w")) break;
 
         this.index++;
         this.game.move(normalizeSAN(next.san), { sloppy: true });
-        this.setBoard(next.fen, true);
-        this.appendMove();
+        this.currentFen = next.fen;
+        this.board.position(next.fen, true);
       }
       this.resultMessage = "";
     }
 
     isGuessTurn() {
       const next = this.moves[this.index + 1];
-      return next && (this.game.turn() === "w") === next.isWhite;
+      return next && next.isWhite === (this.game.turn() === "w");
     }
 
     updateStatus() {
       const turn = this.game.turn() === "w" ? "White" : "Black";
       const flag = this.game.turn() === "w" ? "⚐" : "⚑";
-      const result = this.resultMessage ? ` · ${this.resultMessage}` : "";
-      this.statusEl.textContent = `${flag} ${turn} to move${result}`;
+      const suffix = this.resultMessage ? ` · ${this.resultMessage}` : "";
+      this.statusEl.textContent = `${flag} ${turn} to move${suffix}`;
     }
 
     onUserDrop(source, target) {
@@ -294,11 +233,10 @@
         return "snapback";
       }
 
-      // correct move
       this.index++;
       this.game.load(expected.fen);
-      this.setBoard(expected.fen, false);
-      this.appendMove();
+      this.currentFen = expected.fen;
+      this.board.position(expected.fen, false);
 
       if (this.index === this.moves.length - 1) {
         this.resultMessage = "Training solved! 🏆";
@@ -309,49 +247,12 @@
       this.resultMessage = "Correct! ✅";
       this.updateStatus();
 
-      this.autoplayUntilUserTurn();
-      this.updateStatus();
-    }
-
-    appendMove() {
-      const m = this.moves[this.index];
-      if (!m) return;
-
-      if (m.isWhite) {
-        const row = document.createElement("div");
-        row.className = "pgn-move-row";
-
-        const no = document.createElement("span");
-        no.className = "pgn-move-no";
-        no.textContent = `${m.moveNo}.`;
-
-        const w = document.createElement("span");
-        w.className = "pgn-move-white";
-        w.textContent = m.san;
-
-        row.appendChild(no);
-        row.appendChild(w);
-        this.rightPane.appendChild(row);
-        this.currentRow = row;
-      } else if (this.currentRow) {
-        const b = document.createElement("span");
-        b.className = "pgn-move-black";
-        b.textContent = m.san;
-        this.currentRow.appendChild(b);
-      }
-
-      m.comments.forEach((c) => {
-        const p = document.createElement("p");
-        p.className = "pgn-comment";
-        p.textContent = c;
-        this.rightPane.appendChild(p);
-      });
-
-      this.rightPane.scrollTop = this.rightPane.scrollHeight;
+      setTimeout(() => {
+        this.autoplayUntilUserTurn();
+        this.updateStatus();
+      }, FEEDBACK_DELAY);
     }
   }
-
-  // --------------------------------------------------------------------------
 
   function init() {
     document.querySelectorAll("pgn-guess, pgn-guess-black")

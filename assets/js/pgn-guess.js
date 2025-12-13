@@ -1,6 +1,8 @@
 // ============================================================================
 // pgn-guess.js — Guess-the-move PGN viewer
-// FIX: autoplayed moves now update the right pane
+// UPDATE:
+//   - Variations are now displayed like comments
+//   - Variations do NOT affect board state
 // ============================================================================
 
 (function () {
@@ -25,6 +27,15 @@
       .pgn-guess-right .pgn-comment { font-weight: 400 !important; }
     `;
     document.head.appendChild(style);
+  }
+
+  function cleanVariationText(text) {
+    return text
+      .replace(/\[%.*?]/g, "")
+      .replace(/\d+\.(\.\.)?/g, "")
+      .replace(/[a-hKQRBN0-9=+#-]+/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
   }
 
   function safeChessboard(targetEl, options, tries = 30, onReady) {
@@ -123,7 +134,7 @@
       let raw = C.normalizeFigurines(this.rawText);
       const chess = new Chess();
 
-      let ply = 0, i = 0, inVar = 0, pending = [];
+      let ply = 0, i = 0, pending = [];
 
       const attach = (t) => {
         const c = t.replace(/\[%.*?]/g, "").trim();
@@ -135,10 +146,22 @@
       while (i < raw.length) {
         const ch = raw[i];
 
-        if (ch === "(") { inVar++; i++; continue; }
-        if (ch === ")" && inVar) { inVar--; i++; continue; }
-        if (inVar) { i++; continue; }
+        // --- VARIATIONS -----------------------------------------------------
+        if (ch === "(") {
+          let depth = 1;
+          let j = i + 1;
+          while (j < raw.length && depth > 0) {
+            if (raw[j] === "(") depth++;
+            else if (raw[j] === ")") depth--;
+            j++;
+          }
+          const text = cleanVariationText(raw.slice(i + 1, j - 1));
+          if (text) attach(text);
+          i = j;
+          continue;
+        }
 
+        // --- COMMENTS -------------------------------------------------------
         if (ch === "{") {
           let j = i + 1;
           while (j < raw.length && raw[j] !== "}") j++;
@@ -187,11 +210,10 @@
         30,
         (b) => {
           this.board = b;
-
           if (this.flipBoard && this.moves[0]?.isWhite) {
             this.index = 0;
             this.board.position(this.moves[0].fen, true);
-            this.renderRightPane(); // render autoplayed first move
+            this.renderRightPane();
           }
         }
       );
@@ -220,19 +242,19 @@
     nextUserMove() {
       if (this.index + 1 >= this.moves.length) return;
 
-      // User move
+      // user move
       this.index++;
       this.board.position(this.moves[this.index].fen, true);
       this.renderRightPane();
 
-      // Autoplay opponent replies
+      // autoplay opponent replies
       while (this.index + 1 < this.moves.length) {
         const next = this.moves[this.index + 1];
         if (next.isWhite === this.userIsWhite) break;
 
         this.index++;
         this.board.position(next.fen, true);
-        this.renderRightPane(); // ⭐ render autoplayed move
+        this.renderRightPane();
       }
     }
   }

@@ -9,7 +9,7 @@
   const PIECE_THEME =
     "https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png";
 
-  const ANIM_MS = 250; // opponent animation duration
+  const ANIM_MS = 250;
 
   /* -------------------------------------------------- */
   /* Utilities                                          */
@@ -81,7 +81,7 @@
   /* Local puzzle renderer                              */
   /* -------------------------------------------------- */
 
-  function renderLocalPuzzle(container, fen, moves, counterText) {
+  function renderLocalPuzzle(container, fen, moves, counterText, done) {
     container.innerHTML = "";
 
     const game = new Chess(fen);
@@ -124,10 +124,6 @@
       updateTurn();
     }
 
-    /* ------------------ */
-    /* Opponent reply     */
-    /* ------------------ */
-
     function autoReply() {
       if (index >= moves.length) {
         finishSolved();
@@ -141,8 +137,6 @@
       }
 
       index++;
-
-      // ✅ animate opponent move ONLY
       board.move(mv.from + "-" + mv.to);
 
       setTimeout(() => {
@@ -151,10 +145,6 @@
         updateTurn();
       }, ANIM_MS);
     }
-
-    /* ------------------ */
-    /* Player move        */
-    /* ------------------ */
 
     function onDrop(from, to) {
       if (locked || solved || game.turn() !== solverSide) return "snapback";
@@ -172,8 +162,6 @@
 
       index++;
       feedback.textContent = "Correct! ✅";
-
-      // ❌ DO NOT animate player move
       hardSync(board, game);
 
       if (index >= moves.length) {
@@ -198,10 +186,9 @@
       (b) => {
         board = b;
         updateTurn();
+        done && done(status);
       }
     );
-
-    return status;
   }
 
   /* -------------------------------------------------- */
@@ -231,18 +218,20 @@
   }
 
   async function renderRemotePGN(container, url) {
-    container.textContent = "Loading…";
+    const loading = document.createElement("div");
+    loading.textContent = "Loading...";
+    container.append(loading);
 
     let res;
     try {
       res = await fetch(url, { cache: "no-store" });
     } catch {
-      container.textContent = "❌ Failed to load PGN";
+      loading.textContent = "❌ Failed to load PGN";
       return;
     }
 
     if (!res.ok) {
-      container.textContent = "❌ Failed to load PGN";
+      loading.textContent = "❌ Failed to load PGN";
       return;
     }
 
@@ -251,43 +240,36 @@
       .map(parseGame)
       .filter((p) => p.moves.length);
 
-    if (!puzzles.length) {
-      container.textContent = "❌ No puzzles found in PGN";
-      return;
-    }
-
     let index = 0;
 
     function renderCurrent() {
-      const wrap = document.createElement("div");
+      container.innerHTML = "";
 
-      const statusRow = renderLocalPuzzle(
-        wrap,
+      renderLocalPuzzle(
+        container,
         puzzles[index].fen,
         puzzles[index].moves,
-        `${index + 1} / ${puzzles.length}`
+        `${index + 1} / ${puzzles.length}`,
+        (statusRow) => {
+          const prev = document.createElement("button");
+          prev.textContent = "↶";
+          prev.disabled = index === 0;
+          prev.onclick = () => {
+            index--;
+            renderCurrent();
+          };
+
+          const next = document.createElement("button");
+          next.textContent = "↷";
+          next.disabled = index === puzzles.length - 1;
+          next.onclick = () => {
+            index++;
+            renderCurrent();
+          };
+
+          statusRow.append(prev, next);
+        }
       );
-
-      const prev = document.createElement("button");
-      prev.textContent = "↶";
-      prev.disabled = index === 0;
-      prev.onclick = () => {
-        index--;
-        renderCurrent();
-      };
-
-      const next = document.createElement("button");
-      next.textContent = "↷";
-      next.disabled = index === puzzles.length - 1;
-      next.onclick = () => {
-        index++;
-        renderCurrent();
-      };
-
-      statusRow.append(prev, next);
-
-      container.innerHTML = "";
-      container.append(wrap);
     }
 
     renderCurrent();
@@ -303,6 +285,7 @@
 
       const wrap = document.createElement("div");
       wrap.className = "jc-puzzle-wrapper";
+      wrap.textContent = "Loading...";
       node.replaceWith(wrap);
 
       const pgnMatch = raw.match(/PGN:\s*([^\s]+)/i);
@@ -320,7 +303,8 @@
           wrap,
           fenMatch[1].trim(),
           tokenizeMoves(movesMatch[1]),
-          ""
+          "",
+          () => {}
         );
       } else {
         wrap.textContent = "❌ Invalid puzzle block! ❌";

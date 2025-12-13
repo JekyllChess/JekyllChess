@@ -20,9 +20,6 @@
       const pgnUrlMatch = raw.match(/PGN:\s*(https?:\/\/[^\s<]+)/i);
       const pgnInline   = !pgnUrlMatch && raw.match(/PGN:\s*(1\.[\s\S]+)/i);
 
-      // --------------------------------------------------
-      // Remote PGN pack (only once per page)
-      // --------------------------------------------------
       if (pgnUrlMatch && !fenMatch) {
         if (remoteUsed) {
           wrap.textContent = "⚠️ Only one remote PGN pack allowed per page.";
@@ -33,9 +30,6 @@
         return;
       }
 
-      // --------------------------------------------------
-      // Inline PGN (single puzzle)
-      // --------------------------------------------------
       if (fenMatch && pgnInline) {
         renderLocalPuzzle(
           wrap,
@@ -45,9 +39,6 @@
         return;
       }
 
-      // --------------------------------------------------
-      // FEN + Moves
-      // --------------------------------------------------
       if (fenMatch && movesMatch) {
         renderLocalPuzzle(
           wrap,
@@ -110,7 +101,7 @@
   }
 
   // =====================================================================
-  // Local puzzle
+  // Local puzzle (unchanged)
   // =====================================================================
 
   function buildUCISolution(fen, sanMoves) {
@@ -170,26 +161,20 @@
       showCorrect(feedback);
       updateTurn(turnDiv, game, solved);
 
-      // auto reply
-      if (step < solution.length) {
-        game.move(sanMoves[step], { sloppy: true });
-        step++;
-        setTimeout(() => {
-          board.position(game.fen(), true);
-          // ✅ FIX: update turn after auto-move
-          updateTurn(turnDiv, game, solved);
-
-          if (step >= solution.length) {
-            solved = true;
-            showSolved(feedback);
-            updateTurn(turnDiv, game, solved);
-          }
-        }, 200);
-      } else {
+      if (step >= solution.length) {
         solved = true;
         showSolved(feedback);
         updateTurn(turnDiv, game, solved);
+        return true;
       }
+
+      game.move(sanMoves[step], { sloppy: true });
+      step++;
+
+      setTimeout(() => {
+        board.position(game.fen(), true);
+        updateTurn(turnDiv, game, solved);
+      }, 200);
 
       return true;
     }
@@ -198,7 +183,7 @@
   }
 
   // =====================================================================
-  // Remote PGN — lazy batch loader
+  // Remote PGN — FIXED end-of-puzzle detection
   // =====================================================================
 
   function initRemotePGNPackLazy(container, url) {
@@ -297,29 +282,29 @@
 
           step++;
           showCorrect(feedback);
-          updateTurn(turnDiv, game, solved);
 
-          // auto reply
-          if (step < sanMoves.length) {
-            game.move(sanMoves[step], { sloppy: true });
-            step++;
-            setTimeout(() => {
-              board.position(game.fen(), true);
-
-              // ✅ FIX: update turn after auto-move
-              updateTurn(turnDiv, game, solved);
-
-              if (step >= sanMoves.length || game.game_over()) {
-                solved = true;
-                showSolved(feedback);
-                updateTurn(turnDiv, game, solved);
-              }
-            }, 200);
-          } else {
+          // ✅ FIX: if user's move ends solution → solved immediately
+          if (step >= sanMoves.length) {
             solved = true;
             showSolved(feedback);
             updateTurn(turnDiv, game, solved);
+            return true;
           }
+
+          // auto reply
+          game.move(sanMoves[step], { sloppy: true });
+          step++;
+
+          setTimeout(() => {
+            board.position(game.fen(), true);
+
+            if (step >= sanMoves.length || game.game_over()) {
+              solved = true;
+              showSolved(feedback);
+            }
+
+            updateTurn(turnDiv, game, solved);
+          }, 200);
 
           return true;
         }
@@ -336,7 +321,7 @@
   }
 
   // --------------------------------------------------------------------
-  // Global safety (Jekyll / cache-safe)
+  // Global safety
   // --------------------------------------------------------------------
   window.renderLocalPuzzle = renderLocalPuzzle;
   window.initRemotePGNPackLazy = initRemotePGNPackLazy;

@@ -1,8 +1,5 @@
 // ============================================================================
-// pgn-guess.js — Guess-the-move PGN viewer
-// UPDATE:
-//   - Variations are now displayed like comments
-//   - Variations do NOT affect board state
+// pgn-guess.js — Guess-the-move PGN viewer (FINAL)
 // ============================================================================
 
 (function () {
@@ -29,15 +26,6 @@
     document.head.appendChild(style);
   }
 
-  function cleanVariationText(text) {
-    return text
-      .replace(/\[%.*?]/g, "")
-      .replace(/\d+\.(\.\.)?/g, "")
-      .replace(/[a-hKQRBN0-9=+#-]+/g, "")
-      .replace(/\s+/g, " ")
-      .trim();
-  }
-
   function safeChessboard(targetEl, options, tries = 30, onReady) {
     if (!targetEl) return null;
     const r = targetEl.getBoundingClientRect();
@@ -61,6 +49,24 @@
     }
   }
 
+  // ---- VARIATION EXTRACTION (correct, human-readable) ----------------------
+  function extractVariationDisplay(text) {
+    // remove engine tags
+    text = text.replace(/\[%.*?]/g, "");
+
+    // first move (with move number)
+    const moveMatch = text.match(/(\d+\.\s*\S+)/);
+    const move = moveMatch ? moveMatch[1] : "";
+
+    // first human comment
+    const commentMatch = text.match(/\{([^}]*)\}/);
+    const comment = commentMatch ? commentMatch[1].trim() : "";
+
+    if (!move && !comment) return "";
+    return [move, comment].filter(Boolean).join(" ");
+  }
+
+  // -------------------------------------------------------------------------
   class ReaderPGNView {
     constructor(src) {
       if (src.__pgnReaderRendered) return;
@@ -80,6 +86,7 @@
       this.initBoard();
     }
 
+    // ---------- HEADER ------------------------------------------------------
     buildHeaderContent(h) {
       const H = document.createElement("h3");
       const W =
@@ -98,6 +105,7 @@
       return H;
     }
 
+    // ---------- LAYOUT ------------------------------------------------------
     build(src) {
       const chess = new Chess();
       try { chess.load_pgn(this.rawText, { sloppy: true }); } catch {}
@@ -130,6 +138,7 @@
       this.nextBtn = wrapper.querySelector(".pgn-guess-next");
     }
 
+    // ---------- PGN PARSER --------------------------------------------------
     parsePGN() {
       let raw = C.normalizeFigurines(this.rawText);
       const chess = new Chess();
@@ -146,7 +155,7 @@
       while (i < raw.length) {
         const ch = raw[i];
 
-        // --- VARIATIONS -----------------------------------------------------
+        // ---- VARIATIONS ----------------------------------------------------
         if (ch === "(") {
           let depth = 1;
           let j = i + 1;
@@ -155,13 +164,13 @@
             else if (raw[j] === ")") depth--;
             j++;
           }
-          const text = cleanVariationText(raw.slice(i + 1, j - 1));
-          if (text) attach(text);
+          const display = extractVariationDisplay(raw.slice(i + 1, j - 1));
+          if (display) attach(display);
           i = j;
           continue;
         }
 
-        // --- COMMENTS -------------------------------------------------------
+        // ---- COMMENTS ------------------------------------------------------
         if (ch === "{") {
           let j = i + 1;
           while (j < raw.length && raw[j] !== "}") j++;
@@ -197,6 +206,7 @@
       }
     }
 
+    // ---------- BOARD INIT -------------------------------------------------
     initBoard() {
       safeChessboard(
         this.boardDiv,
@@ -210,6 +220,8 @@
         30,
         (b) => {
           this.board = b;
+
+          // <pgn-guess-black> starts after White's first move
           if (this.flipBoard && this.moves[0]?.isWhite) {
             this.index = 0;
             this.board.position(this.moves[0].fen, true);
@@ -221,15 +233,17 @@
       this.nextBtn.addEventListener("click", () => this.nextUserMove());
     }
 
+    // ---------- RIGHT PANE -------------------------------------------------
     renderRightPane() {
       this.rightPane.innerHTML = "";
       if (this.index < 0) return;
 
       const m = this.moves[this.index];
-      const div = document.createElement("div");
-      div.className = "pgn-guess-current-move";
-      div.textContent = m.label;
-      this.rightPane.appendChild(div);
+
+      const moveDiv = document.createElement("div");
+      moveDiv.className = "pgn-guess-current-move";
+      moveDiv.textContent = m.label;
+      this.rightPane.appendChild(moveDiv);
 
       m.comments.forEach((c) => {
         const p = document.createElement("p");
@@ -239,15 +253,16 @@
       });
     }
 
+    // ---------- NAVIGATION -------------------------------------------------
     nextUserMove() {
       if (this.index + 1 >= this.moves.length) return;
 
-      // user move
+      // play user's move
       this.index++;
       this.board.position(this.moves[this.index].fen, true);
       this.renderRightPane();
 
-      // autoplay opponent replies
+      // autoplay ALL opponent replies
       while (this.index + 1 < this.moves.length) {
         const next = this.moves[this.index + 1];
         if (next.isWhite === this.userIsWhite) break;
@@ -259,6 +274,7 @@
     }
   }
 
+  // ---------- INIT ---------------------------------------------------------
   function init() {
     document.querySelectorAll("pgn-guess, pgn-guess-black")
       .forEach((el) => new ReaderPGNView(el));

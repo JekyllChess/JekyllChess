@@ -60,6 +60,23 @@
   }
 
   /* -------------------------------------------------- */
+  /* Safe chessboard init                               */
+  /* -------------------------------------------------- */
+
+  function safeChessboard(el, opts, cb, tries = 60) {
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    if ((r.width === 0 || r.height === 0) && tries) {
+      requestAnimationFrame(() =>
+        safeChessboard(el, opts, cb, tries - 1)
+      );
+      return;
+    }
+    const board = Chessboard(el, opts);
+    cb && cb(board);
+  }
+
+  /* -------------------------------------------------- */
   /* Local puzzle renderer                              */
   /* -------------------------------------------------- */
 
@@ -160,20 +177,24 @@
       return true;
     }
 
-    Chessboard(boardDiv, {
-      draggable: true,
-      position: fen,
-      pieceTheme: PIECE_THEME,
-      onDrop,
-      onSnapEnd: () => hardSync(board, game),
-    });
-
-    board = Chessboard(boardDiv);
-    updateTurn();
-
-    loading.remove();
-    container.append(status);
-    afterReady && afterReady(status);
+    // ✅ SINGLE, CORRECT chessboard initialization
+    safeChessboard(
+      boardDiv,
+      {
+        draggable: true,
+        position: fen,
+        pieceTheme: PIECE_THEME,
+        onDrop,
+        onSnapEnd: () => hardSync(board, game),
+      },
+      (b) => {
+        board = b;
+        loading.remove();
+        container.append(status);
+        updateTurn();
+        afterReady && afterReady(status);
+      }
+    );
   }
 
   /* -------------------------------------------------- */
@@ -206,10 +227,24 @@
   async function renderRemotePGN(container, url) {
     container.textContent = "Loading...";
 
-    const res = await fetch(url, { cache: "no-store" });
-    const text = await res.text();
+    let res;
+    try {
+      res = await fetch(url, { cache: "no-store" });
+    } catch {
+      container.textContent = "❌ Failed to load PGN";
+      return;
+    }
 
-    const puzzles = splitIntoPgnGames(text).map(parseGame);
+    if (!res.ok) {
+      container.textContent = "❌ Failed to load PGN";
+      return;
+    }
+
+    const text = await res.text();
+    const puzzles = splitIntoPgnGames(text)
+      .map(parseGame)
+      .filter((p) => p.moves.length);
+
     let index = 0;
 
     function renderCurrent() {

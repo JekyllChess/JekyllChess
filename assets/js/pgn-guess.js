@@ -1,5 +1,5 @@
 // ============================================================================
-// pgn-guess.js — Guess-the-move PGN trainer (drag + button + feedback)
+// pgn-guess.js — Guess-the-move PGN trainer (drag-enabled, gated by turn)
 // ============================================================================
 
 (function () {
@@ -115,7 +115,6 @@
       this.moves = [];
       this.index = -1;
       this.currentRow = null;
-
       this.game = new Chess();
 
       this.build(src);
@@ -224,10 +223,10 @@
         {
           position: "start",
           orientation: this.flipBoard ? "black" : "white",
-          draggable: false,
+          draggable: true,                 // ✅ ALWAYS TRUE
           pieceTheme: C.PIECE_THEME_URL,
           moveSpeed: 200,
-          onDragStart: () => this.isGuessTurn(),
+          onDragStart: () => this.isGuessTurn(),  // ✅ gate dragging here
           onDrop: (s, t) => this.onUserDrop(s, t)
         },
         30,
@@ -256,7 +255,6 @@
     }
 
     updateUI() {
-      this.board.draggable = this.isGuessTurn();
       if (this.isGuessTurn()) {
         this.statusEl.textContent = "Your move";
         this.statusEl.style.opacity = "1";
@@ -274,10 +272,6 @@
       setTimeout(() => {
         el.classList.remove("flash-correct", "flash-wrong");
       }, 400);
-
-      if (navigator.vibrate) {
-        navigator.vibrate(correct ? 30 : [20, 40, 20]);
-      }
     }
 
     // ------------------------------------------------------------------------
@@ -326,7 +320,6 @@
 
     nextUserMove() {
       if (this.isGuessTurn()) return;
-
       if (this.index + 1 >= this.moves.length) return;
 
       this.index++;

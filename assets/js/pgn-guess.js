@@ -1,9 +1,6 @@
 // ============================================================================
 // pgn-guess.js — Guess-the-move PGN viewer
-// FINAL AUTOPLAY RULE:
-//   - <pgn-guess-black> → ALL White moves autoplay
-//   - <pgn-guess>       → ALL Black moves autoplay
-//   - ▶ always plays ONE user move + all opponent replies
+// FIX: autoplayed moves now update the right pane
 // ============================================================================
 
 (function () {
@@ -191,10 +188,10 @@
         (b) => {
           this.board = b;
 
-          // autoplay first White move for <pgn-guess-black>
           if (this.flipBoard && this.moves[0]?.isWhite) {
             this.index = 0;
             this.board.position(this.moves[0].fen, true);
+            this.renderRightPane(); // render autoplayed first move
           }
         }
       );
@@ -223,19 +220,19 @@
     nextUserMove() {
       if (this.index + 1 >= this.moves.length) return;
 
-      // play user's move
+      // User move
       this.index++;
-      let m = this.moves[this.index];
-      this.board.position(m.fen, true);
+      this.board.position(this.moves[this.index].fen, true);
       this.renderRightPane();
 
-      // autoplay ALL opponent replies
+      // Autoplay opponent replies
       while (this.index + 1 < this.moves.length) {
         const next = this.moves[this.index + 1];
         if (next.isWhite === this.userIsWhite) break;
 
         this.index++;
         this.board.position(next.fen, true);
+        this.renderRightPane(); // ⭐ render autoplayed move
       }
     }
   }

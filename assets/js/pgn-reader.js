@@ -1,6 +1,6 @@
 // ============================================================================
 // pgn-reader.js — Interactive PGN viewer (uses PGNCore)
-// FIXED: single safe Chessboard init + guaranteed position updates
+// FINAL: all methods restored + single safe Chessboard init
 // ============================================================================
 
 (function () {
@@ -26,31 +26,31 @@
       : (x) => x;
 
   // --------------------------------------------------------------------------
-  // Safe Chessboard initializer (prevents error 1003)
+  // Safe Chessboard init (prevents error 1003)
   // --------------------------------------------------------------------------
-  function safeChessboard(targetEl, options, tries = 30, onReady) {
-    if (!targetEl) return;
+  function safeChessboard(el, options, tries = 30, onReady) {
+    if (!el) return;
 
-    const rect = targetEl.getBoundingClientRect();
+    const rect = el.getBoundingClientRect();
     if ((rect.width <= 0 || rect.height <= 0) && tries > 0) {
       requestAnimationFrame(() =>
-        safeChessboard(targetEl, options, tries - 1, onReady)
+        safeChessboard(el, options, tries - 1, onReady)
       );
       return;
     }
 
     try {
-      const board = Chessboard(targetEl, options);
+      const board = Chessboard(el, options);
       if (onReady) onReady(board);
       return board;
     } catch (err) {
       if (tries > 0) {
         requestAnimationFrame(() =>
-          safeChessboard(targetEl, options, tries - 1, onReady)
+          safeChessboard(el, options, tries - 1, onReady)
         );
-        return;
+      } else {
+        console.warn("pgn-reader.js: Chessboard init failed", err);
       }
-      console.warn("pgn-reader.js: Chessboard init failed", err);
     }
   }
 
@@ -101,6 +101,9 @@
       return C.SAN_CORE_REGEX.test(tok);
     }
 
+    // ------------------------------------------------------------------------
+    // BUILD
+    // ------------------------------------------------------------------------
     build() {
       let raw = (this.sourceEl.textContent || "").trim();
       raw = C.normalizeFigurines(raw);
@@ -110,14 +113,10 @@
         (headers.length ? headers.join("\n") + "\n\n" : "") + moveText;
 
       const chess = new Chess();
-      try {
-        chess.load_pgn(pgn, { sloppy: true });
-      } catch {}
+      try { chess.load_pgn(pgn, { sloppy: true }); } catch {}
 
       let head = {};
-      try {
-        head = chess.header ? chess.header() : {};
-      } catch {}
+      try { head = chess.header ? chess.header() : {}; } catch {}
 
       const res = C.normalizeResult(head.Result || "");
       const hasResultAlready = / (1-0|0-1|1\/2-1\/2|½-½|\*)$/.test(moveText);
@@ -128,14 +127,15 @@
       this.wrapper.innerHTML =
         '<div class="pgn-reader-header"></div>' +
         '<div class="pgn-reader-cols">' +
-        '<div class="pgn-reader-left">' +
-        '<div class="pgn-reader-board"></div>' +
-        '<div class="pgn-reader-buttons">' +
-        '<button class="pgn-reader-btn pgn-reader-prev">◀</button>' +
-        '<button class="pgn-reader-btn pgn-reader-next">▶</button>' +
-        "</div></div>" +
-        '<div class="pgn-reader-right"></div>' +
-        "</div>";
+          '<div class="pgn-reader-left">' +
+            '<div class="pgn-reader-board"></div>' +
+            '<div class="pgn-reader-buttons">' +
+              '<button class="pgn-reader-btn pgn-reader-prev">◀</button>' +
+              '<button class="pgn-reader-btn pgn-reader-next">▶</button>' +
+            '</div>' +
+          '</div>' +
+          '<div class="pgn-reader-right"></div>' +
+        '</div>';
 
       this.sourceEl.replaceWith(this.wrapper);
 
@@ -164,37 +164,169 @@
       return H;
     }
 
+    ensure(ctx, cls) {
+      if (!ctx.container) {
+        const p = document.createElement("p");
+        p.className = cls;
+        this.movesCol.appendChild(p);
+        ctx.container = p;
+      }
+    }
+
+    parseComment(text, start, ctx) {
+      let j = start;
+      while (j < text.length && text[j] !== "}") j++;
+      let raw = text.substring(start, j).trim();
+      if (text[j] === "}") j++;
+      raw = raw.replace(/\[%.*?]/g, "").trim();
+      if (!raw) return j;
+
+      const parts = raw.split("[D]");
+      parts.forEach(c => {
+        if (!c) return;
+        if (ctx.type === "variation") {
+          this.ensure(ctx, "pgn-variation");
+          appendText(ctx.container, " " + c.trim());
+        } else {
+          const p = document.createElement("p");
+          p.className = "pgn-comment";
+          appendText(p, c.trim());
+          this.movesCol.appendChild(p);
+          ctx.container = null;
+        }
+      });
+
+      ctx.lastWasInterrupt = true;
+      return j;
+    }
+
+    handleSAN(tok, ctx) {
+      const core = tok.replace(/[^a-hKQRBN0-9=O0-]+$/g, "").replace(/0/g, "O");
+      if (!ReaderPGNView.isSANCore(core)) return null;
+
+      const ply = ctx.baseHistoryLen + ctx.chess.history().length;
+      const white = ply % 2 === 0;
+      const num = Math.floor(ply / 2) + 1;
+
+      if (white) appendText(ctx.container, num + "." + C.NBSP);
+      else if (ctx.lastWasInterrupt)
+        appendText(ctx.container, num + "..." + C.NBSP);
+
+      ctx.prevFen = ctx.chess.fen();
+      ctx.prevHistoryLen = ply;
+
+      const mv = ctx.chess.move(core, { sloppy: true });
+      if (!mv) return null;
+
+      ctx.lastWasInterrupt = false;
+
+      const span = document.createElement("span");
+      span.className = "pgn-move reader-move";
+      span.dataset.fen = ctx.chess.fen();
+      span.dataset.mainline = ctx.type === "main" ? "1" : "0";
+      span.textContent = unbreak(tok) + " ";
+      ctx.container.appendChild(span);
+
+      return span;
+    }
+
+    parseMovetext(t) {
+      const chess = new Chess();
+      let ctx = {
+        type: "main",
+        chess,
+        container: null,
+        parent: null,
+        lastWasInterrupt: false,
+        prevFen: chess.fen(),
+        prevHistoryLen: 0,
+        baseHistoryLen: 0
+      };
+
+      let i = 0;
+      while (i < t.length) {
+        const ch = t[i];
+
+        if (/\s/.test(ch)) { i++; continue; }
+
+        if (ch === "(") {
+          i++;
+          ctx = {
+            type: "variation",
+            chess: new Chess(ctx.prevFen),
+            container: null,
+            parent: ctx,
+            lastWasInterrupt: true,
+            prevFen: ctx.prevFen,
+            prevHistoryLen: ctx.prevHistoryLen,
+            baseHistoryLen: ctx.prevHistoryLen
+          };
+          continue;
+        }
+
+        if (ch === ")") {
+          i++;
+          ctx = ctx.parent || ctx;
+          ctx.container = null;
+          ctx.lastWasInterrupt = true;
+          continue;
+        }
+
+        if (ch === "{") {
+          i = this.parseComment(t, i + 1, ctx);
+          continue;
+        }
+
+        const start = i;
+        while (i < t.length && !/\s/.test(t[i]) && !"(){}".includes(t[i])) i++;
+        const tok = t.slice(start, i);
+
+        if (C.RESULT_REGEX.test(tok)) {
+          this.ensure(ctx, "pgn-mainline");
+          appendText(ctx.container, tok + " ");
+          continue;
+        }
+
+        this.ensure(ctx, ctx.type === "main" ? "pgn-mainline" : "pgn-variation");
+        const m = this.handleSAN(tok, ctx);
+        if (!m) appendText(ctx.container, tok + " ");
+      }
+    }
+
+    applyFigurines() {
+      const map = { K: "♔", Q: "♕", R: "♖", B: "♗", N: "♘" };
+      this.wrapper.querySelectorAll(".pgn-move").forEach(span => {
+        const m = span.textContent.match(/^([KQRBN])(.*)$/);
+        if (m) span.textContent = map[m[1]] + m[2];
+      });
+    }
+
     // ------------------------------------------------------------------------
-    // BOARD + CONTROLS (FIXED)
+    // BOARD + CONTROLS
     // ------------------------------------------------------------------------
     initBoardAndControls() {
+      this.moveSpans = Array.from(
+        this.wrapper.querySelectorAll(".reader-move")
+      );
+      this.mainlineMoves = this.moveSpans.filter(
+        s => s.dataset.mainline === "1"
+      );
+      this.mainlineIndex = this.mainlineMoves.length ? 0 : -1;
+
       safeChessboard(
         this.boardDiv,
         {
           position: "start",
           draggable: false,
-          pieceTheme: C.PIECE_THEME_URL,
-          appearSpeed: 200,
-          moveSpeed: 200,
-          snapSpeed: 25,
-          snapbackSpeed: 50
+          pieceTheme: C.PIECE_THEME_URL
         },
         30,
-        (board) => {
+        board => {
           this.board = board;
-          if (this.mainlineMoves?.length) {
+          if (this.mainlineIndex >= 0)
             this.gotoSpan(this.mainlineMoves[this.mainlineIndex]);
-          }
         }
       );
-
-      this.moveSpans = Array.from(
-        this.wrapper.querySelectorAll(".reader-move")
-      );
-      this.mainlineMoves = this.moveSpans.filter(
-        (s) => s.dataset.mainline === "1"
-      );
-      this.mainlineIndex = this.mainlineMoves.length ? 0 : -1;
 
       this.wrapper
         .querySelector(".pgn-reader-prev")
@@ -205,22 +337,10 @@
     }
 
     gotoSpan(span) {
-      if (!span) return;
+      if (!span || !this.board) return;
       window.__PGNReaderActive = this;
-
-      const fen = span.dataset.fen;
-
-      const apply = () => {
-        if (!this.board) {
-          requestAnimationFrame(apply);
-          return;
-        }
-        this.board.position(fen, false);
-      };
-
-      apply();
-
-      this.moveSpans.forEach((s) =>
+      this.board.position(span.dataset.fen, false);
+      this.moveSpans.forEach(s =>
         s.classList.toggle("reader-move-active", s === span)
       );
     }
@@ -241,7 +361,7 @@
     }
 
     bindMoveClicks() {
-      this.moveSpans.forEach((span) => {
+      this.moveSpans.forEach(span => {
         span.style.cursor = "pointer";
         span.addEventListener("click", () => {
           const idx = this.mainlineMoves.indexOf(span);
@@ -250,15 +370,12 @@
         });
       });
     }
-
-    // --- (parsing + figurines unchanged, intentionally omitted for clarity)
-    // Keep your existing parseMovetext(), applyFigurines(), etc.
   }
 
   function init() {
     document
       .querySelectorAll("pgn-reader")
-      .forEach((el) => new ReaderPGNView(el));
+      .forEach(el => new ReaderPGNView(el));
   }
 
   if (document.readyState === "loading") {

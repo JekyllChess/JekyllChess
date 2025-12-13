@@ -2,7 +2,7 @@ html {font-size:18px;font-weight:500;color:#333;line-height:1.5rem;}
 body {width: 50vw;margin:0 auto;padding-top:3rem;}
 @media (max-width: 768px) {body {width:100vw;margin:1rem;padding-top:0;}}
 a,a:visited,a:hover,a:active {color:#333}
-.header a {display: inline-flex;align-items: center;gap: 0.4em; /* space between icon and text */}
-.header a img {height: 1em;width: auto;display: block;}
+.header a {display: inline-flex;align-items: center;}
+.header a img {height: 2em;width: auto;display: block;}
 .post-item {margin-bottom: 3rem;}
 h1, h2, h3, h4, h3.post-item, h1.header, h1.header a, .post-item h3, .post-item h3 a {font-weight:900;}

@@ -1,5 +1,5 @@
 // ======================================================================
-// JekyllChess Puzzle Engine — FINAL, CLEAN, GLOBAL-SAFE
+// JekyllChess Puzzle Engine — SOLVER-MOVE–AWARE (FINAL)
 // ======================================================================
 
 (function () {
@@ -20,9 +20,6 @@
       const pgnUrlMatch = raw.match(/PGN:\s*(https?:\/\/[^\s<]+)/i);
       const pgnInline   = !pgnUrlMatch && raw.match(/PGN:\s*(1\.[\s\S]+)/i);
 
-      // --------------------------------------------------
-      // Remote PGN pack (only once per page)
-      // --------------------------------------------------
       if (pgnUrlMatch && !fenMatch) {
         if (remoteUsed) {
           wrap.textContent = "⚠️ Only one remote PGN pack allowed per page.";
@@ -33,21 +30,15 @@
         return;
       }
 
-      // --------------------------------------------------
-      // Inline PGN (single puzzle)
-      // --------------------------------------------------
       if (fenMatch && pgnInline) {
         renderLocalPuzzle(
           wrap,
           fenMatch[1].trim(),
-          parsePGNMoves(pgnInline[1])
+          extractSolverMoves(fenMatch[1], parsePGNMoves(pgnInline[1]))
         );
         return;
       }
 
-      // --------------------------------------------------
-      // FEN + Moves
-      // --------------------------------------------------
       if (fenMatch && movesMatch) {
         renderLocalPuzzle(
           wrap,
@@ -83,12 +74,17 @@
       .filter(Boolean);
   }
 
+  function extractSolverMoves(fen, sanMoves) {
+    // In tactics PGNs, the solver always plays the first move
+    return sanMoves.filter((_, i) => i % 2 === 0);
+  }
+
   function normalizeSAN(san) {
     return (san || "").replace(/[+#?!]/g, "");
   }
 
   // =====================================================================
-  // Feedback helpers
+  // UI helpers
   // =====================================================================
 
   function showCorrect(el) {
@@ -104,9 +100,8 @@
   }
 
   function updateTurn(el, game, solved) {
-    el.textContent = solved
-      ? ""
-      : (game.turn() === "w" ? "White to move" : "Black to move");
+    el.textContent = solved ? "" :
+      (game.turn() === "w" ? "White to move" : "Black to move");
   }
 
   // =====================================================================
@@ -168,9 +163,7 @@
 
       step++;
       showCorrect(feedback);
-      updateTurn(turnDiv, game, solved);
 
-      // If user's move finishes the line → solved now
       if (step >= solution.length) {
         solved = true;
         showSolved(feedback);
@@ -178,22 +171,7 @@
         return true;
       }
 
-      // Auto reply
-      game.move(sanMoves[step], { sloppy: true });
-      step++;
-
-      setTimeout(() => {
-        board.position(game.fen(), true);
-        updateTurn(turnDiv, game, solved);
-
-        // If auto move finishes the line → solved now
-        if (step >= solution.length || game.game_over()) {
-          solved = true;
-          showSolved(feedback);
-          updateTurn(turnDiv, game, solved);
-        }
-      }, 200);
-
+      updateTurn(turnDiv, game, solved);
       return true;
     }
 
@@ -201,7 +179,7 @@
   }
 
   // =====================================================================
-  // Remote PGN — lazy batch loader (WORKING SOLVED LOGIC)
+  // Remote PGN — SOLVER-MOVE AWARE
   // =====================================================================
 
   function initRemotePGNPackLazy(container, url) {
@@ -242,7 +220,7 @@
         let parsedUntil = 0;
 
         let index = 0;
-        let game, sanMoves, step = 0, solved = false;
+        let game, solution, step = 0, solved = false;
 
         const board = Chessboard(boardDiv, {
           draggable: true,
@@ -255,16 +233,10 @@
           for (let i = parsedUntil; i < end; i++) {
             const fen = games[i].match(/\[FEN\s+"([^"]+)"/)?.[1];
             if (!fen) continue;
-
-            const san = parsePGNMoves(games[i]);
+            const san = extractSolverMoves(fen, parsePGNMoves(games[i]));
             if (san.length) puzzles.push({ fen, san });
           }
           parsedUntil = end;
-        }
-
-        function updateButtons() {
-          prev.disabled = index <= 0;
-          next.disabled = index >= puzzles.length - 1;
         }
 
         function loadPuzzle(i) {
@@ -275,24 +247,23 @@
 
           index = i;
           game = new Chess(puzzles[i].fen);
-          sanMoves = puzzles[i].san;
+          solution = buildUCISolution(puzzles[i].fen, puzzles[i].san);
           step = 0;
           solved = false;
 
           board.position(game.fen());
           feedback.textContent = "";
           updateTurn(turnDiv, game, solved);
-          updateButtons();
         }
 
         function playMove(src, dst) {
           if (solved) return false;
 
-          const expected = sanMoves[step];
           const mv = game.move({ from: src, to: dst, promotion: "q" });
           if (!mv) return false;
 
-          if (normalizeSAN(mv.san) !== normalizeSAN(expected)) {
+          const uci = mv.from + mv.to + (mv.promotion || "");
+          if (uci !== solution[step]) {
             game.undo();
             showWrong(feedback);
             updateTurn(turnDiv, game, solved);
@@ -301,31 +272,12 @@
 
           step++;
           showCorrect(feedback);
-          updateTurn(turnDiv, game, solved);
 
-          // If user's move finishes the line → solved now
-          if (step >= sanMoves.length) {
+          if (step >= solution.length) {
             solved = true;
             showSolved(feedback);
             updateTurn(turnDiv, game, solved);
-            return true;
           }
-
-          // Auto reply
-          game.move(sanMoves[step], { sloppy: true });
-          step++;
-
-          setTimeout(() => {
-            board.position(game.fen(), true);
-            updateTurn(turnDiv, game, solved);
-
-            // If auto move finishes the line (or ends game) → solved now
-            if (step >= sanMoves.length || game.game_over()) {
-              solved = true;
-              showSolved(feedback);
-              updateTurn(turnDiv, game, solved);
-            }
-          }, 200);
 
           return true;
         }
@@ -340,11 +292,5 @@
         feedback.textContent = "❌ Failed to load PGN.";
       });
   }
-
-  // --------------------------------------------------------------------
-  // Global safety (Jekyll / cache-safe)
-  // --------------------------------------------------------------------
-  window.renderLocalPuzzle = renderLocalPuzzle;
-  window.initRemotePGNPackLazy = initRemotePGNPackLazy;
 
 })();

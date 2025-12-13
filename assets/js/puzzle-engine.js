@@ -9,6 +9,8 @@
   const PIECE_THEME =
     "https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png";
 
+  const ANIM_MS = 250; // animation duration for opponent replies
+
   /* -------------------------------------------------- */
   /* Utilities                                          */
   /* -------------------------------------------------- */
@@ -135,9 +137,16 @@
       }
 
       index++;
-      hardSync(board, game);
-      locked = false;
-      updateTurn();
+
+      // ✅ animate opponent move
+      board.move(mv.from + "-" + mv.to);
+
+      // safety sync after animation
+      setTimeout(() => {
+        hardSync(board, game);
+        locked = false;
+        updateTurn();
+      }, ANIM_MS);
     }
 
     function onDrop(from, to) {
@@ -156,7 +165,9 @@
 
       index++;
       feedback.textContent = "Correct! ✅";
-      hardSync(board, game);
+
+      // animate player move
+      board.move(mv.from + "-" + mv.to);
 
       if (index >= moves.length) {
         finishSolved();
@@ -183,7 +194,7 @@
       }
     );
 
-    return status; // so we can append buttons inline
+    return status;
   }
 
   /* -------------------------------------------------- */

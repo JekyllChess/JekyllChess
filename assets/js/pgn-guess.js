@@ -1,5 +1,5 @@
 // ============================================================================
-// pgn-guess.js — Guess-the-move PGN trainer (FINAL, with animation control)
+// pgn-guess.js — Guess-the-move PGN trainer (capture-safe, autoplay anim only)
 // ============================================================================
 
 (function () {
@@ -27,9 +27,7 @@
         align-items: flex-start;
       }
 
-      .pgn-guess-left {
-        flex: 0 0 auto;
-      }
+      .pgn-guess-left { flex: 0 0 auto; }
 
       .pgn-guess-board {
         width: 320px;
@@ -37,13 +35,8 @@
         touch-action: manipulation;
       }
 
-      @media (min-width: 480px) {
-        .pgn-guess-board { width: 360px; }
-      }
-
-      @media (min-width: 768px) {
-        .pgn-guess-board { width: 400px; }
-      }
+      @media (min-width: 480px) { .pgn-guess-board { width: 360px; } }
+      @media (min-width: 768px) { .pgn-guess-board { width: 400px; } }
 
       .pgn-guess-status {
         margin-top: 0.4em;
@@ -128,6 +121,9 @@
       this.currentRow = null;
       this.game = new Chess();
 
+      // authoritative fen for snap-end resync (fixes capture ghosts)
+      this.currentFen = "start";
+
       this.build(src);
       this.parsePGN();
       this.initBoard();
@@ -203,8 +199,8 @@
         this.moves.push({
           isWhite: ply % 2 === 0,
           moveNo: Math.floor(ply / 2) + 1,
-          san: tok,
-          fen: chess.fen(),
+          san: tok,         // display token
+          fen: chess.fen(), // authoritative resulting fen
           comments: pending.splice(0)
         });
 
@@ -221,16 +217,31 @@
           draggable: true,
           pieceTheme: C.PIECE_THEME_URL,
           moveSpeed: 200,
+
           onDragStart: () => this.isGuessTurn(),
-          onDrop: (s, t) => this.onUserDrop(s, t)
+          onDrop: (s, t) => this.onUserDrop(s, t),
+
+          // ✅ Critical: after any animation (especially captures), force-sync to authoritative fen
+          onSnapEnd: () => {
+            if (!this.board) return;
+            const fen = this.currentFen === "start" ? "start" : this.currentFen;
+            this.board.position(fen, false);
+          }
         },
         30,
         (b) => {
           this.board = b;
+          this.setBoardPosition("start", false);
           this.autoplayUntilUserTurn();
           this.updateUI();
         }
       );
+    }
+
+    // authoritative setter for board position (keeps captures correct)
+    setBoardPosition(fen, animate) {
+      this.currentFen = fen;
+      this.board.position(fen, !!animate);
     }
 
     autoplayUntilUserTurn() {
@@ -240,7 +251,9 @@
 
         this.index++;
         this.game.move(normalizeSAN(next.san), { sloppy: true });
-        this.board.position(next.fen, true); // ✅ animated
+
+        // ✅ autoplay is animated
+        this.setBoardPosition(next.fen, true);
         this.appendMove();
       }
     }
@@ -271,12 +284,17 @@
 
       if (!ok) return "snapback";
 
+      // accept: advance to expected position
       this.index++;
       this.game.load(expected.fen);
-      this.board.position(expected.fen, false); // ⛔ NO animation
+
+      // ⛔ user move should NOT animate
+      this.setBoardPosition(expected.fen, false);
+
       this.appendMove();
       this.autoplayUntilUserTurn();
       this.updateUI();
+      return;
     }
 
     appendMove() {
@@ -316,6 +334,8 @@
       this.rightPane.scrollTop = this.rightPane.scrollHeight;
     }
   }
+
+  // --------------------------------------------------------------------------
 
   function init() {
     document.querySelectorAll("pgn-guess, pgn-guess-black")

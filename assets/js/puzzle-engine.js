@@ -81,9 +81,7 @@
   /* Local puzzle renderer                              */
   /* -------------------------------------------------- */
 
-  function renderLocalPuzzle(container, fen, moves, counterText, done) {
-    container.innerHTML = "";
-
+  function renderLocalPuzzle(container, fen, moves, counterText, afterReady) {
     const game = new Chess(fen);
     const solverSide = game.turn();
     let index = 0;
@@ -107,7 +105,6 @@
     const feedback = document.createElement("span");
 
     status.append(counter, turn, feedback);
-    container.append(boardDiv, status);
 
     function updateTurn() {
       if (solved) {
@@ -185,8 +182,13 @@
       },
       (b) => {
         board = b;
+
+        // 🔑 ONLY NOW render everything
+        container.innerHTML = "";
+        container.append(boardDiv, status);
+
         updateTurn();
-        done && done(status);
+        afterReady && afterReady(status);
       }
     );
   }
@@ -218,20 +220,18 @@
   }
 
   async function renderRemotePGN(container, url) {
-    const loading = document.createElement("div");
-    loading.textContent = "Loading...";
-    container.append(loading);
+    container.textContent = "Loading...";
 
     let res;
     try {
       res = await fetch(url, { cache: "no-store" });
     } catch {
-      loading.textContent = "❌ Failed to load PGN";
+      container.textContent = "❌ Failed to load PGN";
       return;
     }
 
     if (!res.ok) {
-      loading.textContent = "❌ Failed to load PGN";
+      container.textContent = "❌ Failed to load PGN";
       return;
     }
 
@@ -243,7 +243,7 @@
     let index = 0;
 
     function renderCurrent() {
-      container.innerHTML = "";
+      container.textContent = "Loading...";
 
       renderLocalPuzzle(
         container,

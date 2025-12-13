@@ -1,6 +1,8 @@
 // ============================================================================
 // pgn-guess.js — Interactive PGN viewer (uses PGNCore)
 // Progressive reveal with correctly placed comments (mainline only)
+// FIX: move numbers (e.g. "2.") are revealed ONLY together with their move
+//      (so after 2 clicks you see "1. e4 c5", not "1. e4 c5 2.")
 // ============================================================================
 
 (function () {
@@ -63,8 +65,8 @@
           '<div class="pgn-guess-left">' +
             '<div class="pgn-guess-board"></div>' +
             '<div class="pgn-guess-buttons">' +
-              '<button class="pgn-guess-btn pgn-guess-prev">◀</button>' +
-              '<button class="pgn-guess-btn pgn-guess-next">▶</button>' +
+              '<button class="pgn-guess-btn pgn-guess-prev" type="button">◀</button>' +
+              '<button class="pgn-guess-btn pgn-guess-next" type="button">▶</button>' +
             '</div>' +
           '</div>' +
           '<div class="pgn-guess-right"></div>' +
@@ -75,8 +77,20 @@
       this.boardDiv = this.wrapper.querySelector(".pgn-guess-board");
       this.movesCol = this.wrapper.querySelector(".pgn-guess-right");
 
+      // enforce vertical wrapping/scroll even if site CSS is aggressive
+      if (this.movesCol) {
+        this.movesCol.style.whiteSpace = "normal";
+        this.movesCol.style.overflowX = "hidden";
+        this.movesCol.style.overflowY = "auto";
+        this.movesCol.style.wordBreak = "break-word";
+        this.movesCol.style.overflowWrap = "anywhere";
+      }
+
       this.stream = document.createElement("div");
       this.stream.className = "pgn-guess-stream";
+      this.stream.style.whiteSpace = "normal";
+      this.stream.style.wordBreak = "break-word";
+      this.stream.style.overflowWrap = "anywhere";
       this.movesCol.appendChild(this.stream);
 
       this.parsePGN(raw);
@@ -85,8 +99,8 @@
     parsePGN(text) {
       const chess = new Chess();
 
-      this.items = []; // ordered reveal items: move numbers, moves, comments
-      this.moveItems = []; // only move spans, for navigation
+      this.items = [];     // ordered reveal items: move numbers, moves, comments
+      this.moveItems = []; // only move spans (for navigation)
 
       let ply = 0;
       let i = 0;
@@ -134,9 +148,9 @@
         if (/\s/.test(ch)) { i++; continue; }
 
         // ---- token ----------------------------------------------------------
-        let start = i;
+        const start = i;
         while (i < text.length && !/\s/.test(text[i]) && !"(){}".includes(text[i])) i++;
-        let tok = text.slice(start, i);
+        const tok = text.slice(start, i);
 
         // ignore move numbers / results
         if (/^\d+\.*$/.test(tok)) continue;
@@ -185,54 +199,76 @@
     }
 
     hideAll() {
-      this.items.forEach((el) => el.style.display = "none");
+      this.items.forEach((el) => (el.style.display = "none"));
+    }
+
+    // Reveal items up to the current move, plus any immediately following comments.
+    // Crucially: do NOT reveal the next move number ("2.") until its move is revealed.
+    revealThroughMoveIndex(moveIdx) {
+      if (moveIdx < 0) {
+        this.hideAll();
+        return;
+      }
+
+      const moveEl = this.moveItems[moveIdx];
+      const movePos = this.items.indexOf(moveEl);
+      if (movePos < 0) return;
+
+      // extend cutoff to include consecutive comment paragraphs right after the move
+      let cutoff = movePos;
+      for (let j = movePos + 1; j < this.items.length; j++) {
+        const el = this.items[j];
+        // stop before the next move number or next move
+        if (el.classList && (el.classList.contains("guess-num") || el.classList.contains("guess-move"))) break;
+        // include comments (or any non-move/non-number items immediately after the move)
+        cutoff = j;
+      }
+
+      for (let k = 0; k < this.items.length; k++) {
+        this.items[k].style.display = k <= cutoff ? "" : "none";
+      }
     }
 
     next() {
       if (this.mainlineIndex + 1 >= this.moveItems.length) return;
       this.mainlineIndex++;
 
-      // reveal everything up to and including this move
-      let revealedMoves = 0;
-      for (const el of this.items) {
-        if (el.classList.contains("guess-move")) {
-          if (revealedMoves > this.mainlineIndex) break;
-          revealedMoves++;
-        }
-        el.style.display = "";
-      }
+      this.revealThroughMoveIndex(this.mainlineIndex);
 
       const span = this.moveItems[this.mainlineIndex];
-      this.board.position(span.dataset.fen, true);
+      if (this.board && typeof this.board.position === "function") {
+        this.board.position(span.dataset.fen, true);
+      } else {
+        const apply = () => {
+          if (!this.board || typeof this.board.position !== "function") {
+            requestAnimationFrame(apply);
+            return;
+          }
+          this.board.position(span.dataset.fen, true);
+        };
+        apply();
+      }
     }
 
     prev() {
       if (this.mainlineIndex < 0) return;
 
       this.mainlineIndex--;
+      this.revealThroughMoveIndex(this.mainlineIndex);
 
-      let revealedMoves = 0;
-      for (const el of this.items) {
-        if (el.classList.contains("guess-move")) {
-          if (revealedMoves > this.mainlineIndex) {
-            el.style.display = "none";
-          } else {
-            el.style.display = "";
-          }
-          revealedMoves++;
-        } else {
-          el.style.display = revealedMoves <= this.mainlineIndex + 1 ? "" : "none";
+      const apply = () => {
+        if (!this.board || typeof this.board.position !== "function") {
+          requestAnimationFrame(apply);
+          return;
         }
-      }
 
-      if (this.mainlineIndex < 0) {
-        this.board.position("start", true);
-      } else {
-        this.board.position(
-          this.moveItems[this.mainlineIndex].dataset.fen,
-          true
-        );
-      }
+        if (this.mainlineIndex < 0) {
+          this.board.position("start", true);
+        } else {
+          this.board.position(this.moveItems[this.mainlineIndex].dataset.fen, true);
+        }
+      };
+      apply();
     }
   }
 

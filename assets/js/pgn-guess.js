@@ -1,8 +1,8 @@
 // ============================================================================
 // pgn-guess.js — Guess-the-move PGN viewer (single-move display)
-// FINAL FIX:
-//   ▶ always advances to *your* move
-//   opponent moves auto-play internally (no click consumed)
+// FINAL INITIALIZATION RULES:
+//   - <pgn-guess>        → start from initial position
+//   - <pgn-guess-black>  → auto-play White's first move on load
 // ============================================================================
 
 (function () {
@@ -70,7 +70,6 @@
       this.build();
       this.parsePGN();
       this.initBoard();
-      this.renderRightPane();
     }
 
     buildHeaderContent(h) {
@@ -190,7 +189,15 @@
           moveSpeed: 200
         },
         30,
-        (b) => (this.board = b)
+        (b) => {
+          this.board = b;
+
+          // ⭐ INITIAL AUTO-PLAY RULE
+          if (this.flipBoard && this.moves.length && this.moves[0].isWhite) {
+            this.index = 0;
+            this.board.position(this.moves[0].fen, true);
+          }
+        }
       );
 
       this.nextBtn.addEventListener("click", () => this.nextUserMove());
@@ -223,12 +230,10 @@
         const isUserMove = m.isWhite === this.userIsWhite;
 
         if (!isUserMove) {
-          // opponent move → auto-play board
           this.board.position(m.fen, true);
           continue;
         }
 
-        // user's move → stop here
         this.renderRightPane();
         return;
       }

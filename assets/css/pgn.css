@@ -5,14 +5,16 @@
 
 /* Container for a single game */
 .pgn-blog-block,
-.pgn-reader-block {
+.pgn-reader-block,
+.pgn-guess-block {
   background: #fff;
   margin-bottom: 2rem;
 }
 
 /* Game header */
 .pgn-blog-block h4,
-.pgn-reader-header h4 {
+.pgn-reader-header h4,
+.pgn-guess-header h4 {
   margin: 0 0 0.75rem 0;
   font-weight: 600;
   line-height: 1.4;
@@ -34,7 +36,8 @@
 
 /* 🔥 NEW: Bold ONLY the move spans inside mainline */
 .pgn-mainline .pgn-move,
-.pgn-mainline .reader-move {
+.pgn-mainline .reader-move,
+.pgn-mainline .guess-move {
   font-weight: 600;
 }
 
@@ -51,7 +54,8 @@
 
 /* Moves */
 .pgn-move,
-.reader-move {
+.reader-move,
+.guess-move {
   white-space: nowrap;
 }
 
@@ -63,21 +67,24 @@
 }
 
 /* Active move highlight */
-.reader-move-active {
+.reader-move-active,
+.guess-move-active {
   background: #ffe38a;
   border-radius: 4px;
   padding: 2px 4px;
 }
 
 /* Buttons */
-.pgn-reader-buttons {
+.pgn-reader-buttons,
+.pgn-guess-buttons {
   display: flex;
   justify-content: center;
   gap: 0.5rem;
   margin-top: 0.5rem;
 }
 
-.pgn-reader-btn {
+.pgn-reader-btn,
+.pgn-guess-btn {
   font-size: 1.1rem;
   padding: 0.25rem 0.6rem;
   background: #fafafa;
@@ -88,7 +95,8 @@
   transition: background 0.1s;
 }
 
-.pgn-reader-btn:hover {
+.pgn-reader-btn:hover,
+.pgn-guess-btn:hover {
   background: #f0f0f0;
 }
 
@@ -96,13 +104,15 @@
    MOBILE
 ----------------------------------------------- */
 @media (max-width: 767px) {
-  .pgn-reader-cols {
+  .pgn-reader-cols,
+  .pgn-guess-cols {
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
   }
 
-  .pgn-reader-left {
+  .pgn-reader-left,
+  .pgn-guess-left {
     position: sticky;
     top: 0;
     z-index: 70;
@@ -117,7 +127,8 @@
     align-items: center;
   }
 
-  .pgn-reader-board {
+  .pgn-reader-board,
+  .pgn-guess-board {
     width: 320px;
     max-width: 100%;
     margin: 0 auto;
@@ -129,13 +140,15 @@
    DESKTOP
 ----------------------------------------------- */
 @media (min-width: 768px) {
-  .pgn-reader-cols {
+  .pgn-reader-cols,
+  .pgn-guess-cols {
     display: grid;
     grid-template-columns: 340px 1fr;
     gap: 2rem;
   }
 
-  .pgn-reader-left {
+  .pgn-reader-left,
+  .pgn-guess-left {
     position: static !important;
     top: auto !important;
     padding: 0;
@@ -143,17 +156,21 @@
   }
 
   .pgn-reader-board,
-  .pgn-reader-buttons {
+  .pgn-reader-buttons,
+  .pgn-guess-board,
+  .pgn-guess-buttons {
     margin-left: 0;
     margin-right: 0;
   }
 
-  .pgn-reader-right {
+  .pgn-reader-right,
+  .pgn-guess-right {
     height: 350px;
     overflow-y: auto;
   }
 
-  .pgn-reader-right * {
+  .pgn-reader-right *,
+  .pgn-guess-right * {
     line-height: 1.55;
     margin-top: 0;
     margin-bottom: 0.35rem;

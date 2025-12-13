@@ -1,1 +1,370 @@
-!function(){"use strict";var e="undefined"!=typeof window?window:globalThis;if("function"!=typeof e.Chess||"function"!=typeof e.Chessboard)return;document.addEventListener("DOMContentLoaded",function(){var e=[].slice.call(document.querySelectorAll("puzzle")),t=!1;e.forEach(function(e){if(e.__jcInit)return;e.__jcInit=!0;var n=(e.innerHTML||"").replace(/[♔♕♖♗♘♙♚♛♜♝♞♟]/g,"").trim(),r=document.createElement("div");r.className="jc-puzzle-wrapper",e.replaceWith(r);var o=n.match(/FEN:\s*([^\n<]+)/i),a=n.match(/Moves:\s*([^\n<]+)/i),i=n.match(/PGN:\s*(https?:\/\/[^\s<]+)/i),s=!i&&n.match(/PGN:\s*(1\.[\s\S]+)/i);if(i&&!o){if(t)return void(r.textContent="⚠️ Only one remote PGN pack allowed per page.");t=!0,initRemote(r,i[1].trim())}else o&&s?renderLocal(r,o[1].trim(),parsePGN(s[1])):o&&a?renderLocal(r,o[1].trim(),a[1].trim().split(/\s+/)):r.textContent="❌ Invalid <puzzle> block."})});function parsePGN(e){return e.replace(/\[[^\]]*]/g," ").replace(/\{[^}]*}/g," ").replace(/\([^)]*\)/g," ").replace(/\b\d+\.\.\./g," ").replace(/\b\d+\.(?:\.\.)?/g," ").replace(/\b(1-0|0-1|1\/2-1\/2|\*)\b/g," ").replace(/\s+/g," ").trim().split(" ").filter(Boolean)}function normSAN(e){return(e||"").replace(/[+#?!]/g,"")}function renderLocal(e,t,n){var r=new Chess(t),o=r.turn(),a=0,i=!1,s=document.createElement("div");s.className="jc-board";var l=document.createElement("div");l.className="jc-status-row";var c=document.createElement("span");c.className="jc-turn";var d=document.createElement("span");d.className="jc-feedback",l.append(c,d),e.append(s,l);var u=Chessboard(s,{draggable:!0,position:t,pieceTheme:"https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png",onDrop:function(e,t){return play(e,t)||"snapback"}});function sync(){u.position(r.fen(),!1)}function update(){c.textContent=i?"":("w"===r.turn()?"⚐ White to move":"⚑ Black to move")}function play(e,t){if(i||r.turn()!==o)return!1;var s=n[a],l=r.move({from:e,to:t,promotion:"q"});return l?normSAN(l.san)!==normSAN(s)?(r.undo(),sync(),d.textContent="Wrong move ❌",update(),!1):(a++,sync(),d.textContent="Correct move ✅",autoOpponent(),!0):!1}function autoOpponent(){if(a>=n.length)return i=!0,d.textContent="Puzzle solved 🏆",void update();if(r.turn()===o)return update();var e=n[a];setTimeout(function(){var t=r.move(e,{sloppy:!0});t?(a++,sync(),update()):(i=!0,d.textContent="Puzzle solved 🏆",update())},0)}sync(),update()}function initRemote(e,t){var n=document.createElement("div");n.className="jc-board";var r=document.createElement("div");r.className="jc-status-row";var o=document.createElement("span");o.className="jc-turn";var a=document.createElement("span");a.className="jc-feedback";var i=document.createElement("span");i.className="jc-controls";var s=document.createElement("span");s.className="jc-counter";var l=document.createElement("button");l.textContent="↶";var c=document.createElement("button");c.textContent="↷",i.append(l,c),r.append(o,a,s,i),e.append(n,r),a.textContent="Loading puzzle pack…";fetch(t).then(function(e){if(!e.ok)throw new Error("HTTP "+e.status);return e.text()}).then(function(e){var t=e.split(/\n\s*\n(?=\[|1\.)/),puzzles=[],puzzleIndex=0,moveIndex=0,chess=null,moves=null,solverSide=null,solved=!1,board=Chessboard(n,{draggable:!0,pieceTheme:"https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png",onDrop:function(e,t){return userMove(e,t)||"snapback"}});t.forEach(function(e){var t=e.match(/\[FEN\s+"([^"]+)"/);if(t){var n=parsePGN(e);n.length&&puzzles.push({fen:t[1],moves:n})}});if(!puzzles.length)return a.textContent="❌ No puzzles found in PGN.";function sync(){board.position(chess.fen(),!1)}function update(){o.textContent=solved?"":("w"===chess.turn()?"⚐ White to move":"⚑ Black to move"),s.textContent="Puzzle "+(puzzleIndex+1)+" / "+puzzles.length}function loadPuzzle(e){if(!puzzles[e])return;puzzleIndex=e,chess=new Chess(puzzles[e].fen),moves=puzzles[e].moves,solverSide=chess.turn(),moveIndex=0,solved=!1,sync(),a.textContent="",update()}function userMove(e,t){if(solved||chess.turn()!==solverSide)return!1;var n=moves[moveIndex],r=chess.move({from:e,to:t,promotion:"q"});return r?normSAN(r.san)!==normSAN(n)?(chess.undo(),sync(),a.textContent="Wrong move ❌",update(),!1):(moveIndex++,sync(),a.textContent="Correct move ✅",autoOpponent(),!0):!1}function autoOpponent(){if(moveIndex>=moves.length)return solved=!0,a.textContent="Puzzle solved 🏆",void update();if(chess.turn()===solverSide)return update();var e=moves[moveIndex];setTimeout(function(){var t=chess.move(e,{sloppy:!0});t?(moveIndex++,sync(),update()):(solved=!0,a.textContent="Puzzle solved 🏆",update())},0)}l.onclick=function(){loadPuzzle(puzzleIndex-1)},c.onclick=function(){loadPuzzle(puzzleIndex+1)},loadPuzzle(0)}).catch(function(e){console.error("PGN load failed:",e),a.textContent="❌ Failed to load PGN ("+e.message+")"})}}();
+// ======================================================================
+// JekyllChess Puzzle Engine
+// Patch: safeChessboard() to prevent Chessboard error 1003
+// ======================================================================
+
+(function () {
+  "use strict";
+
+  if (typeof Chess !== "function") {
+    console.warn("puzzle-engine.js: chess.js missing");
+    return;
+  }
+  if (typeof Chessboard !== "function") {
+    console.warn("puzzle-engine.js: chessboard.js missing");
+    return;
+  }
+
+  const PIECE_THEME = "https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png";
+
+  // ---- Chessboard 1003 fix (consistent across files) ------------------------
+  function safeChessboard(targetEl, options, tries = 30) {
+    const el = targetEl;
+    if (!el) {
+      if (tries > 0) requestAnimationFrame(() => safeChessboard(targetEl, options, tries - 1));
+      return null;
+    }
+
+    const rect = el.getBoundingClientRect();
+    if ((rect.width <= 0 || rect.height <= 0) && tries > 0) {
+      requestAnimationFrame(() => safeChessboard(targetEl, options, tries - 1));
+      return null;
+    }
+
+    try {
+      return Chessboard(el, options);
+    } catch (err) {
+      if (tries > 0) {
+        requestAnimationFrame(() => safeChessboard(targetEl, options, tries - 1));
+        return null;
+      }
+      console.warn("puzzle-engine.js: Chessboard init failed", err);
+      return null;
+    }
+  }
+  // --------------------------------------------------------------------------
+
+  document.addEventListener("DOMContentLoaded", () => {
+    const puzzleNodes = Array.from(document.querySelectorAll("puzzle"));
+    let remoteUsed = false;
+
+    puzzleNodes.forEach(node => {
+      const raw = stripFigurines(node.innerHTML || "").trim();
+      const wrap = document.createElement("div");
+      wrap.className = "jc-puzzle-wrapper";
+      node.replaceWith(wrap);
+
+      const fenMatch = raw.match(/FEN:\s*([^\n<]+)/i);
+      const movesMatch = raw.match(/Moves:\s*([^\n<]+)/i);
+      const pgnUrlMatch = raw.match(/PGN:\s*(https?:\/\/[^\s<]+)/i);
+      const pgnInline = !pgnUrlMatch && raw.match(/PGN:\s*(1\.[\s\S]+)/i);
+
+      if (pgnUrlMatch && !fenMatch) {
+        if (remoteUsed) {
+          wrap.textContent = "⚠️ Only one remote PGN pack allowed per page.";
+          return;
+        }
+        remoteUsed = true;
+        initRemotePGNPackLazy(wrap, pgnUrlMatch[1].trim());
+        return;
+      }
+
+      if (fenMatch && pgnInline) {
+        const allMoves = parsePGNMoves(pgnInline[1]);
+        renderLocalPuzzle(wrap, fenMatch[1].trim(), allMoves);
+        return;
+      }
+
+      if (fenMatch && movesMatch) {
+        renderLocalPuzzle(wrap, fenMatch[1].trim(), movesMatch[1].trim().split(/\s+/));
+        return;
+      }
+
+      wrap.textContent = "❌ Invalid <puzzle> block.";
+    });
+  });
+
+  function stripFigurines(s) {
+    return s.replace(/[♔♕♖♗♘♙♚♛♜♝♞♟]/g, "");
+  }
+
+  function parsePGNMoves(pgn) {
+    return pgn
+      .replace(/\[[^\]]*\]/g, " ")
+      .replace(/\{[^}]*\}/g, " ")
+      .replace(/\([^)]*\)/g, " ")
+      .replace(/\b\d+\.\.\./g, " ")
+      .replace(/\b\d+\.(?:\.\.)?/g, " ")
+      .replace(/\b(1-0|0-1|1\/2-1\/2|\*)\b/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .split(" ")
+      .filter(Boolean);
+  }
+
+  function normalizeSAN(san) {
+    return (san || "").replace(/[+#?!]/g, "");
+  }
+
+  function showCorrect(el) { el.innerHTML = `Correct move <span class="jc-icon">✅</span>`; }
+  function showWrong(el) { el.innerHTML = `Wrong move <span class="jc-icon">❌</span>`; }
+  function showSolved(el) { el.innerHTML = `Puzzle solved <span class="jc-icon">🏆</span>`; }
+
+  function updateTurn(el, game, solved) {
+    el.textContent = solved ? "" : (game.turn() === "w" ? "⚐ White to move" : "⚑ Black to move");
+  }
+
+  function renderLocalPuzzle(container, fen, allMoves) {
+    const game = new Chess(fen);
+    const solverSide = game.turn(); // side to move at start is the "solver"
+    let moveIndex = 0;
+    let solved = false;
+
+    const boardDiv = document.createElement("div");
+    boardDiv.className = "jc-board";
+
+    const statusRow = document.createElement("div");
+    statusRow.className = "jc-status-row";
+
+    const turnDiv = document.createElement("span");
+    turnDiv.className = "jc-turn";
+
+    const feedback = document.createElement("span");
+    feedback.className = "jc-feedback";
+
+    statusRow.append(turnDiv, feedback);
+    container.append(boardDiv, statusRow);
+
+    let board = null;
+    board = safeChessboard(boardDiv, {
+      draggable: true,
+      position: fen,
+      pieceTheme: PIECE_THEME,
+      onDrop: (s, t) => (playUserMove(s, t) ? true : "snapback")
+    });
+
+    function sync() {
+      if (!board || typeof board.position !== "function") return;
+      board.position(game.fen(), false);
+    }
+
+    function playUserMove(src, dst) {
+      if (solved) return false;
+      if (game.turn() !== solverSide) return false;
+
+      const expected = allMoves[moveIndex];
+      const mv = game.move({ from: src, to: dst, promotion: "q" });
+      if (!mv) return false;
+
+      if (normalizeSAN(mv.san) !== normalizeSAN(expected)) {
+        game.undo();
+        sync();
+        showWrong(feedback);
+        updateTurn(turnDiv, game, solved);
+        return false;
+      }
+
+      moveIndex++;
+      sync();
+      showCorrect(feedback);
+      autoOpponent();
+      return true;
+    }
+
+    function autoOpponent() {
+      if (moveIndex >= allMoves.length) {
+        solved = true;
+        showSolved(feedback);
+        updateTurn(turnDiv, game, solved);
+        return;
+      }
+
+      if (game.turn() === solverSide) {
+        updateTurn(turnDiv, game, solved);
+        return;
+      }
+
+      const san = allMoves[moveIndex];
+      setTimeout(() => {
+        const mv = game.move(san, { sloppy: true });
+        if (!mv) {
+          solved = true;
+          showSolved(feedback);
+          updateTurn(turnDiv, game, solved);
+          return;
+        }
+        moveIndex++;
+        sync();
+        updateTurn(turnDiv, game, solved);
+      }, 0);
+    }
+
+    // initial render (may be delayed if board hidden)
+    const initSync = () => {
+      if (board && typeof board.position === "function") {
+        sync();
+        updateTurn(turnDiv, game, solved);
+      } else {
+        requestAnimationFrame(initSync);
+      }
+    };
+    initSync();
+  }
+
+  function initRemotePGNPackLazy(container, url) {
+    const boardDiv = document.createElement("div");
+    boardDiv.className = "jc-board";
+
+    const statusRow = document.createElement("div");
+    statusRow.className = "jc-status-row";
+
+    const turnDiv = document.createElement("span");
+    turnDiv.className = "jc-turn";
+
+    const feedback = document.createElement("span");
+    feedback.className = "jc-feedback";
+
+    const controls = document.createElement("span");
+    controls.className = "jc-controls";
+
+    const counter = document.createElement("span");
+    counter.className = "jc-counter";
+
+    const prev = document.createElement("button");
+    prev.textContent = "↶";
+
+    const next = document.createElement("button");
+    next.textContent = "↷";
+
+    controls.append(prev, next);
+    statusRow.append(turnDiv, feedback, counter, controls);
+    container.append(boardDiv, statusRow);
+
+    feedback.textContent = "Loading puzzle pack…";
+
+    fetch(url)
+      .then(r => {
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        return r.text();
+      })
+      .then(txt => {
+        const chunks = txt.split(/\n\s*\n(?=\[|1\.)/);
+        const puzzles = [];
+
+        chunks.forEach(g => {
+          const fen = g.match(/\[FEN\s+"([^"]+)"/)?.[1];
+          if (!fen) return;
+          const all = parsePGNMoves(g);
+          if (all.length) puzzles.push({ fen, all });
+        });
+
+        if (!puzzles.length) {
+          feedback.textContent = "❌ No puzzles found in PGN.";
+          return;
+        }
+
+        let puzzleIndex = 0;
+        let moveIndex = 0;
+        let game = null;
+        let allMoves = null;
+        let solverSide = null;
+        let solved = false;
+
+        let board = null;
+        board = safeChessboard(boardDiv, {
+          draggable: true,
+          pieceTheme: PIECE_THEME,
+          onDrop: (s, t) => (playUserMove(s, t) ? true : "snapback")
+        });
+
+        function sync() {
+          if (!board || typeof board.position !== "function") return;
+          board.position(game.fen(), false);
+        }
+
+        function updateUI() {
+          counter.textContent = `Puzzle ${puzzleIndex + 1} / ${puzzles.length}`;
+          updateTurn(turnDiv, game, solved);
+        }
+
+        function loadPuzzle(i) {
+          if (!puzzles[i]) return;
+          puzzleIndex = i;
+          game = new Chess(puzzles[i].fen);
+          allMoves = puzzles[i].all;
+          solverSide = game.turn();
+          moveIndex = 0;
+          solved = false;
+
+          feedback.textContent = "";
+          sync();
+          updateUI();
+        }
+
+        function playUserMove(src, dst) {
+          if (solved) return false;
+          if (game.turn() !== solverSide) return false;
+
+          const expected = allMoves[moveIndex];
+          const mv = game.move({ from: src, to: dst, promotion: "q" });
+          if (!mv) return false;
+
+          if (normalizeSAN(mv.san) !== normalizeSAN(expected)) {
+            game.undo();
+            sync();
+            showWrong(feedback);
+            updateUI();
+            return false;
+          }
+
+          moveIndex++;
+          sync();
+          showCorrect(feedback);
+          autoOpponent();
+          return true;
+        }
+
+        function autoOpponent() {
+          if (moveIndex >= allMoves.length) {
+            solved = true;
+            showSolved(feedback);
+            updateUI();
+            return;
+          }
+
+          if (game.turn() === solverSide) {
+            updateUI();
+            return;
+          }
+
+          const san = allMoves[moveIndex];
+          setTimeout(() => {
+            const mv = game.move(san, { sloppy: true });
+            if (!mv) {
+              solved = true;
+              showSolved(feedback);
+              updateUI();
+              return;
+            }
+            moveIndex++;
+            sync();
+            updateUI();
+          }, 0);
+        }
+
+        prev.onclick = () => loadPuzzle(puzzleIndex - 1);
+        next.onclick = () => loadPuzzle(puzzleIndex + 1);
+
+        // wait until board is actually ready, then load puzzle 0
+        const start = () => {
+          if (board && typeof board.position === "function") loadPuzzle(0);
+          else requestAnimationFrame(start);
+        };
+        start();
+      })
+      .catch(err => {
+        console.error("PGN load failed:", err);
+        feedback.textContent = "❌ Failed to load PGN (" + err.message + ")";
+      });
+  }
+})();

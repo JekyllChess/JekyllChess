@@ -1,28 +1,407 @@
-!function(){"use strict";if("function"!=typeof Chess||!window.PGNCore)return;var C=window.PGNCore,hasBoard="function"==typeof window.Chessboard,diagramId=0;
-function renderDiagram(parent,fen){if(!parent||!fen||!hasBoard)return;var id="pgn-diagram-"+diagramId++,d=document.createElement("div");d.className="pgn-diagram",d.id=id,parent.appendChild(d);try{Chessboard(id,{position:fen,draggable:!1,pieceTheme:C.PIECE_THEME_URL})}catch(e){}}
-function isSAN(s){return C.SAN_CORE_REGEX.test(s)}
-function splitPGN(txt){var lines=txt.split(/\r?\n/),H=[],M=[],inH=!0;for(var i=0;i<lines.length;i++){var t=lines[i].trim();inH&&t.startsWith("[")&&t.endsWith("]")?H.push(lines[i]):inH&&""===t?inH=!1:(inH=!1,M.push(lines[i]))}return{headers:H,moveText:M.join(" ").replace(/\s+/g," ").trim()}}
-function append(el,txt){txt&&el.appendChild(document.createTextNode(txt))}
-function PGNView(src){this.sourceEl=src,this.wrapper=document.createElement("div"),this.wrapper.className="pgn-blog-block",this.finalResultPrinted=!1,this.build(),this.applyFigurines()}
-PGNView.prototype.build=function(){var raw="";try{raw=this.sourceEl.textContent.trim()}catch(e){return}raw=C.normalizeFigurines(raw);var sp=splitPGN(raw),H=sp.headers,M=sp.moveText,pgn=(H.length?H.join("\n")+"\n\n":"")+M,ch=new Chess;try{ch.load_pgn(pgn,{sloppy:!0})}catch(e){}var head={};try{head=ch.header?ch.header():{}}catch(e){}var res=C.normalizeResult(head.Result||""),need=/ (1-0|0-1|1\/2-1\/2|½-½|\*)$/.test(M),moves=need?M:M+(res?" "+res:"");this.renderHeader(head),this.parseMoves(moves);this.sourceEl.replaceWith(this.wrapper)};
-PGNView.prototype.renderHeader=function(h){var H=document.createElement("h3"),W=(h.WhiteTitle?h.WhiteTitle+" ":"")+C.flipName(h.White||"")+(h.WhiteElo?" ("+h.WhiteElo+")":""),B=(h.BlackTitle?h.BlackTitle+" ":"")+C.flipName(h.Black||"")+(h.BlackElo?" ("+h.BlackElo+")":""),Y=C.extractYear(h.Date),L=(h.Event||"")+(Y?", "+Y:"");append(H,W+" – "+B),H.appendChild(document.createElement("br")),append(H,L),this.wrapper.appendChild(H)};
-PGNView.prototype.ensure=function(ctx,cls){ctx.container||(ctx.container=document.createElement("p"),ctx.container.className=cls,this.wrapper.appendChild(ctx.container))};
-PGNView.prototype.parseComment=function(text,i,ctx){var j=i;for(;j<text.length&&"}"!==text[j];)j++;var raw=text.substring(i,j).trim();"}"===text[j]&&j++,raw=raw.replace(/\[%.*?]/g,"").trim();if(!raw.length)return j;var parts=raw.split("[D]");for(var k=0;k<parts.length;k++){var c=parts[k].trim();if("variation"===ctx.type){this.ensure(ctx,"pgn-variation"),c&&append(ctx.container," "+c)}else{if(c){var p=document.createElement("p");p.className="pgn-comment",append(p,c),this.wrapper.appendChild(p)}ctx.container=null}k<parts.length-1&&renderDiagram(this.wrapper,ctx.chess.fen())}ctx.lastWasInterrupt=!0;return j};
-PGNView.prototype.handleSAN=function(tok,ctx){var core=tok.replace(/[^a-hKQRBN0-9=O0-]+$/g,"").replace(/0/g,"O");if(!isSAN(core))return append(ctx.container,tok+" "),null;var base=ctx.baseHistoryLen||0,count=ctx.chess.history().length,ply=base+count,white=0==ply%2,num=Math.floor(ply/2)+1;white?append(ctx.container,num+"."+C.NBSP):ctx.lastWasInterrupt&&append(ctx.container,num+"..."+C.NBSP);ctx.prevFen=ctx.chess.fen(),ctx.prevHistoryLen=ply;var mv=null;try{mv=ctx.chess.move(core,{sloppy:!0})}catch(e){}if(!mv)return append(ctx.container,tok+" "),null;ctx.lastWasInterrupt=!1;var s=document.createElement("span");return s.className="pgn-move",s.textContent=C.makeCastlingUnbreakable(tok)+" ",ctx.container.appendChild(s),s};
-PGNView.prototype.parseMoves=function(text){var chess=new Chess,ctx={type:"main",chess:chess,container:null,parent:null,lastWasInterrupt:!1,prevFen:chess.fen(),prevHistoryLen:0,baseHistoryLen:null},i=0;for(;i<text.length;){var ch=text[i];if(/\s/.test(ch)){for(;i<text.length&&/\s/.test(text[i]);)i++;this.ensure(ctx,"main"===ctx.type?"pgn-mainline":"pgn-variation"),append(ctx.container," ");continue}
-if("("===ch){i++;var fen=ctx.prevFen||ctx.chess.fen(),len="number"==typeof ctx.prevHistoryLen?ctx.prevHistoryLen:ctx.chess.history().length;ctx={type:"variation",chess:new Chess(fen),container:null,parent:ctx,lastWasInterrupt:!0,prevFen:fen,prevHistoryLen:len,baseHistoryLen:len},this.ensure(ctx,"pgn-variation");continue}
-if(")"===ch){i++,ctx.parent&&(ctx=ctx.parent,ctx.lastWasInterrupt=!0,ctx.container=null);continue}
-if("{"===ch){i=this.parseComment(text,i+1,ctx);continue}
-for(var s=i;i<text.length&&!/\s/.test(text[i])&&-1==="(){}".indexOf(text[i]);)i++;var tok=text.substring(s,i);if(!tok)continue;
-if(/^\[%.*]$/.test(tok))continue;
-if("[D]"===tok){renderDiagram(this.wrapper,ctx.chess.fen()),ctx.lastWasInterrupt=!0,ctx.container=null;continue}
-if(C.RESULT_REGEX.test(tok)){this.finalResultPrinted||(this.finalResultPrinted=!0,this.ensure(ctx,"main"===ctx.type?"pgn-mainline":"pgn-variation"),append(ctx.container,tok+" "));continue}
-if(C.MOVE_NUMBER_REGEX.test(tok))continue;
-var core=tok.replace(/[^a-hKQRBN0-9=O0-]+$/g,"").replace(/0/g,"O");
-if(!isSAN(core)){if(C.EVAL_MAP[tok]){this.ensure(ctx,"main"===ctx.type?"pgn-mainline":"pgn-variation"),append(ctx.container,C.EVAL_MAP[tok]+" ");continue}
-if("$"===tok[0]){var code=+tok.slice(1);C.NAG_MAP[code]&&(this.ensure(ctx,"main"===ctx.type?"pgn-mainline":"pgn-variation"),append(ctx.container,C.NAG_MAP[code]+" "));continue}
-if(/[A-Za-zÇĞİÖŞÜçğıöşü]/.test(tok))"variation"===ctx.type?(this.ensure(ctx,"pgn-variation"),append(ctx.container," "+tok)):(function(self){var p=document.createElement("p");p.className="pgn-comment",append(p,tok),self.wrapper.appendChild(p)}).call(this,this),ctx.container=null,ctx.lastWasInterrupt=!1;else this.ensure(ctx,"main"===ctx.type?"pgn-mainline":"pgn-variation"),append(ctx.container,tok+" ");continue}
-this.ensure(ctx,"main"===ctx.type?"pgn-mainline":"pgn-variation");var sp=this.handleSAN(tok,ctx);sp||append(ctx.container,C.makeCastlingUnbreakable(tok)+" ")}};
-PGNView.prototype.applyFigurines=function(){if(this.wrapper.__pgnFigurined)return;this.wrapper.__pgnFigurined=!0;var map={K:"♔",Q:"♕",R:"♖",B:"♗",N:"♘"};this.wrapper.querySelectorAll(".pgn-move").forEach(function(s){var m=s.textContent.match(/^([KQRBN])(.+?)(\s*)$/);m&&(s.textContent=map[m[1]]+m[2]+(m[3]||""))})};
-function init(){document.querySelectorAll("pgn").forEach(function(el){el.__pgnRendered||(el.__pgnRendered=!0,new PGNView(el))})}
-"loading"===document.readyState?document.addEventListener("DOMContentLoaded",init,{once:!0}):init()}();
+// ============================================================================
+// pgn.js — Static PGN blog renderer (uses PGNCore)
+// Patch: safeChessboard() to prevent Chessboard error 1003
+// ============================================================================
+
+(function () {
+  "use strict";
+
+  if (typeof Chess !== "function") {
+    console.warn("pgn.js: chess.js missing");
+    return;
+  }
+  if (!window.PGNCore) {
+    console.error("pgn.js: PGNCore missing");
+    return;
+  }
+
+  const C = window.PGNCore;
+  const HAS_CHESSBOARD = typeof window.Chessboard === "function";
+
+  let diagramCounter = 0;
+
+  // ---- Chessboard 1003 fix (consistent across files) ------------------------
+  function safeChessboard(target, options, tries = 30) {
+    if (!HAS_CHESSBOARD) return null;
+
+    const el =
+      typeof target === "string" ? document.getElementById(target) : target;
+
+    if (!el) {
+      if (tries > 0) requestAnimationFrame(() => safeChessboard(target, options, tries - 1));
+      return null;
+    }
+
+    // must be in DOM & have layout
+    const rect = el.getBoundingClientRect();
+    if ((rect.width <= 0 || rect.height <= 0) && tries > 0) {
+      requestAnimationFrame(() => safeChessboard(target, options, tries - 1));
+      return null;
+    }
+
+    try {
+      return window.Chessboard(el, options);
+    } catch (err) {
+      // If layout is still not ready, retry a bit (prevents intermittent 1003)
+      if (tries > 0) {
+        requestAnimationFrame(() => safeChessboard(target, options, tries - 1));
+        return null;
+      }
+      console.warn("pgn.js: Chessboard init failed", err);
+      return null;
+    }
+  }
+  // --------------------------------------------------------------------------
+
+  function createDiagram(parent, fen) {
+    if (!HAS_CHESSBOARD || !parent || !fen) return;
+
+    const id = "pgn-diagram-" + diagramCounter++;
+    const div = document.createElement("div");
+    div.className = "pgn-diagram";
+    div.id = id;
+    parent.appendChild(div);
+
+    safeChessboard(div, {
+      position: fen,
+      draggable: false,
+      pieceTheme: C.PIECE_THEME_URL
+    });
+  }
+
+  function isSANCore(token) {
+    return C.SAN_CORE_REGEX.test(token);
+  }
+
+  function splitPGNText(text) {
+    const lines = text.split(/\r?\n/);
+    const headers = [];
+    const moves = [];
+    let inHeaders = true;
+
+    for (const line of lines) {
+      const t = line.trim();
+      if (inHeaders && t.startsWith("[") && t.endsWith("]")) headers.push(line);
+      else if (inHeaders && t === "") inHeaders = false;
+      else {
+        inHeaders = false;
+        moves.push(line);
+      }
+    }
+
+    return { headers, moveText: moves.join(" ").replace(/\s+/g, " ").trim() };
+  }
+
+  function appendText(el, txt) {
+    if (txt) el.appendChild(document.createTextNode(txt));
+  }
+
+  class PGNGameView {
+    constructor(srcEl) {
+      this.sourceEl = srcEl;
+      this.wrapper = document.createElement("div");
+      this.wrapper.className = "pgn-blog-block";
+      this.finalResultPrinted = false;
+
+      this.build();
+      this.applyFigurines();
+    }
+
+    build() {
+      let raw = "";
+      try {
+        raw = (this.sourceEl.textContent || "").trim();
+      } catch {
+        return;
+      }
+
+      raw = C.normalizeFigurines(raw);
+
+      const { headers, moveText } = splitPGNText(raw);
+      const pgn = (headers.length ? headers.join("\n") + "\n\n" : "") + moveText;
+
+      const chess = new Chess();
+      try {
+        chess.load_pgn(pgn, { sloppy: true });
+      } catch {}
+
+      let head = {};
+      try {
+        head = chess.header ? chess.header() : {};
+      } catch {}
+
+      const res = C.normalizeResult((head && head.Result) || "");
+      const hasResultAlready = / (1-0|0-1|1\/2-1\/2|½-½|\*)$/.test(moveText);
+      const movetext = hasResultAlready ? moveText : moveText + (res ? " " + res : "");
+
+      this.renderHeader(head);
+      this.parseMovetext(movetext);
+
+      try {
+        this.sourceEl.replaceWith(this.wrapper);
+      } catch {
+        this.sourceEl.parentNode && this.sourceEl.parentNode.replaceChild(this.wrapper, this.sourceEl);
+      }
+    }
+
+    renderHeader(h) {
+      const H = document.createElement("h3");
+      const W =
+        (h.WhiteTitle ? h.WhiteTitle + " " : "") +
+        C.flipName(h.White || "") +
+        (h.WhiteElo ? " (" + h.WhiteElo + ")" : "");
+      const B =
+        (h.BlackTitle ? h.BlackTitle + " " : "") +
+        C.flipName(h.Black || "") +
+        (h.BlackElo ? " (" + h.BlackElo + ")" : "");
+      const Y = C.extractYear(h.Date);
+      const line = (h.Event || "") + (Y ? ", " + Y : "");
+
+      appendText(H, W + " – " + B);
+      H.appendChild(document.createElement("br"));
+      appendText(H, line);
+      this.wrapper.appendChild(H);
+    }
+
+    ensureContainer(ctx, cls) {
+      if (!ctx.container) {
+        const p = document.createElement("p");
+        p.className = cls;
+        this.wrapper.appendChild(p);
+        ctx.container = p;
+      }
+    }
+
+    parseComment(text, startIndex, ctx) {
+      let j = startIndex;
+      while (j < text.length && text[j] !== "}") j++;
+
+      let raw = text.substring(startIndex, j).trim();
+      if (text[j] === "}") j++;
+
+      raw = raw.replace(/\[%.*?]/g, "").trim();
+      if (!raw.length) return j;
+
+      const parts = raw.split("[D]");
+      for (let k = 0; k < parts.length; k++) {
+        const c = parts[k].trim();
+
+        if (ctx.type === "variation") {
+          this.ensureContainer(ctx, "pgn-variation");
+          if (c) appendText(ctx.container, " " + c);
+        } else {
+          if (c) {
+            const p = document.createElement("p");
+            p.className = "pgn-comment";
+            appendText(p, c);
+            this.wrapper.appendChild(p);
+          }
+          ctx.container = null;
+        }
+
+        if (k < parts.length - 1) createDiagram(this.wrapper, ctx.chess.fen());
+      }
+
+      ctx.lastWasInterrupt = true;
+      return j;
+    }
+
+    handleSAN(tok, ctx) {
+      const core = tok.replace(/[^a-hKQRBN0-9=O0-]+$/g, "").replace(/0/g, "O");
+      if (!isSANCore(core)) {
+        appendText(ctx.container, tok + " ");
+        return null;
+      }
+
+      const base = ctx.baseHistoryLen || 0;
+      const count = ctx.chess.history().length;
+      const ply = base + count;
+      const white = ply % 2 === 0;
+      const num = Math.floor(ply / 2) + 1;
+
+      if (white) appendText(ctx.container, num + "." + C.NBSP);
+      else if (ctx.lastWasInterrupt) appendText(ctx.container, num + "..." + C.NBSP);
+
+      ctx.prevFen = ctx.chess.fen();
+      ctx.prevHistoryLen = ply;
+
+      const mv = ctx.chess.move(core, { sloppy: true });
+      if (!mv) {
+        appendText(ctx.container, tok + " ");
+        return null;
+      }
+
+      ctx.lastWasInterrupt = false;
+
+      const span = document.createElement("span");
+      span.className = "pgn-move";
+      const unbreak = typeof C.makeCastlingUnbreakable === "function" ? C.makeCastlingUnbreakable : (x) => x;
+      span.textContent = unbreak(tok) + " ";
+      ctx.container.appendChild(span);
+
+      return span;
+    }
+
+    parseMovetext(t) {
+      const chess = new Chess();
+
+      let ctx = {
+        type: "main",
+        chess,
+        container: null,
+        parent: null,
+        lastWasInterrupt: false,
+        prevFen: chess.fen(),
+        prevHistoryLen: 0,
+        baseHistoryLen: null
+      };
+
+      let i = 0;
+      while (i < t.length) {
+        const ch = t[i];
+
+        if (/\s/.test(ch)) {
+          while (i < t.length && /\s/.test(t[i])) i++;
+          this.ensureContainer(ctx, ctx.type === "main" ? "pgn-mainline" : "pgn-variation");
+          appendText(ctx.container, " ");
+          continue;
+        }
+
+        if (ch === "(") {
+          i++;
+          const fen = ctx.prevFen || ctx.chess.fen();
+          const len = typeof ctx.prevHistoryLen === "number" ? ctx.prevHistoryLen : ctx.chess.history().length;
+
+          ctx = {
+            type: "variation",
+            chess: new Chess(fen),
+            container: null,
+            parent: ctx,
+            lastWasInterrupt: true,
+            prevFen: fen,
+            prevHistoryLen: len,
+            baseHistoryLen: len
+          };
+          this.ensureContainer(ctx, "pgn-variation");
+          continue;
+        }
+
+        if (ch === ")") {
+          i++;
+          if (ctx.parent) {
+            ctx = ctx.parent;
+            ctx.lastWasInterrupt = true;
+            ctx.container = null;
+          }
+          continue;
+        }
+
+        if (ch === "{") {
+          i = this.parseComment(t, i + 1, ctx);
+          continue;
+        }
+
+        const start = i;
+        while (i < t.length && !/\s/.test(t[i]) && !"(){}".includes(t[i])) i++;
+        const tok = t.substring(start, i);
+        if (!tok) continue;
+
+        if (/^\[%.*]$/.test(tok)) continue;
+
+        if (tok === "[D]") {
+          createDiagram(this.wrapper, ctx.chess.fen());
+          ctx.lastWasInterrupt = true;
+          ctx.container = null;
+          continue;
+        }
+
+        if (C.RESULT_REGEX.test(tok)) {
+          if (!this.finalResultPrinted) {
+            this.finalResultPrinted = true;
+            this.ensureContainer(ctx, ctx.type === "main" ? "pgn-mainline" : "pgn-variation");
+            appendText(ctx.container, tok + " ");
+          }
+          continue;
+        }
+
+        if (C.MOVE_NUMBER_REGEX.test(tok)) continue;
+
+        const core = tok.replace(/[^a-hKQRBN0-9=O0-]+$/g, "").replace(/0/g, "O");
+        const san = isSANCore(core);
+
+        if (!san) {
+          if (C.EVAL_MAP[tok]) {
+            this.ensureContainer(ctx, ctx.type === "main" ? "pgn-mainline" : "pgn-variation");
+            appendText(ctx.container, C.EVAL_MAP[tok] + " ");
+            continue;
+          }
+
+          if (tok[0] === "$") {
+            const code = +tok.slice(1);
+            if (C.NAG_MAP[code]) {
+              this.ensureContainer(ctx, ctx.type === "main" ? "pgn-mainline" : "pgn-variation");
+              appendText(ctx.container, C.NAG_MAP[code] + " ");
+            }
+            continue;
+          }
+
+          if (/[A-Za-zÇĞİÖŞÜçğıöşü]/.test(tok)) {
+            if (ctx.type === "variation") {
+              this.ensureContainer(ctx, "pgn-variation");
+              appendText(ctx.container, " " + tok);
+            } else {
+              const p = document.createElement("p");
+              p.className = "pgn-comment";
+              appendText(p, tok);
+              this.wrapper.appendChild(p);
+              ctx.container = null;
+              ctx.lastWasInterrupt = false;
+            }
+          } else {
+            this.ensureContainer(ctx, ctx.type === "main" ? "pgn-mainline" : "pgn-variation");
+            appendText(ctx.container, tok + " ");
+          }
+
+          continue;
+        }
+
+        this.ensureContainer(ctx, ctx.type === "main" ? "pgn-mainline" : "pgn-variation");
+        const m = this.handleSAN(tok, ctx);
+        if (!m) {
+          const unbreak = typeof C.makeCastlingUnbreakable === "function" ? C.makeCastlingUnbreakable : (x) => x;
+          appendText(ctx.container, unbreak(tok) + " ");
+        }
+      }
+    }
+
+    applyFigurines() {
+      if (this.wrapper.__pgnFigurined) return;
+      this.wrapper.__pgnFigurined = true;
+
+      const map = { K: "♔", Q: "♕", R: "♖", B: "♗", N: "♘" };
+      this.wrapper.querySelectorAll(".pgn-move").forEach(span => {
+        const m = span.textContent.match(/^([KQRBN])(.+?)(\s*)$/);
+        if (m) span.textContent = map[m[1]] + m[2] + (m[3] || "");
+      });
+    }
+  }
+
+  function renderAll(root) {
+    (root || document).querySelectorAll("pgn").forEach(el => {
+      if (el.__pgnRendered) return;
+      el.__pgnRendered = true;
+      new PGNGameView(el);
+    });
+  }
+
+  function init() {
+    renderAll(document);
+    window.PGNRenderer = { run: renderAll };
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init, { once: true });
+  } else {
+    init();
+  }
+})();

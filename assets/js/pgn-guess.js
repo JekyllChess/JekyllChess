@@ -2,9 +2,10 @@
 // pgn-guess.js — Guess-the-move PGN viewer (single-move display)
 // Features:
 //   - Header above board
-//   - Only the last move shown in right pane
-//   - Comments attached correctly
-//   - Move line is font-weight: 900 (comments unchanged)
+//   - Single-move display in right pane
+//   - Correct comment attachment
+//   - Bold move line only
+//   - Board flips for <pgn-guess-black>
 // ============================================================================
 
 (function () {
@@ -21,19 +22,16 @@
   }
 
   // --------------------------------------------------------------------------
-  // Inject styling once (defeats theme CSS if needed)
+  // Inject styling once
   function ensureGuessStylesOnce() {
     if (document.getElementById("pgn-guess-style")) return;
 
     const style = document.createElement("style");
     style.id = "pgn-guess-style";
     style.textContent = `
-      /* Bold ONLY the move line */
       .pgn-guess-current-move {
         font-weight: 900 !important;
       }
-
-      /* Explicitly keep comments normal */
       .pgn-guess-right .pgn-comment {
         font-weight: 400 !important;
       }
@@ -77,6 +75,7 @@
 
       this.sourceEl = src;
       this.rawText = (src.textContent || "").trim();
+      this.flipBoard = src.tagName.toLowerCase() === "pgn-guess-black";
 
       this.wrapper = document.createElement("div");
       this.wrapper.className = "pgn-guess-block";
@@ -229,6 +228,7 @@
         this.boardDiv,
         {
           position: "start",
+          orientation: this.flipBoard ? "black" : "white",
           draggable: false,
           pieceTheme: C.PIECE_THEME_URL,
           moveSpeed: 200
@@ -301,7 +301,7 @@
 
   // --------------------------------------------------------------------------
   function init() {
-    document.querySelectorAll("pgn-guess")
+    document.querySelectorAll("pgn-guess, pgn-guess-black")
       .forEach((el) => new ReaderPGNView(el));
   }
 

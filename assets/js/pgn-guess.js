@@ -1,6 +1,6 @@
 // ============================================================================
 // pgn-guess.js — Interactive PGN viewer (uses PGNCore)
-// Progressive reveal, mainline-only, safe comments
+// Progressive reveal with correctly placed comments (mainline only)
 // ============================================================================
 
 (function () {
@@ -12,12 +12,13 @@
 
   const C = window.PGNCore;
 
+  // ---- chessboard init guard ----------------------------------------------
   function safeChessboard(targetEl, options, tries = 30, onReady) {
     const el = targetEl;
     if (!el) return null;
 
-    const rect = el.getBoundingClientRect();
-    if ((rect.width <= 0 || rect.height <= 0) && tries > 0) {
+    const r = el.getBoundingClientRect();
+    if ((r.width <= 0 || r.height <= 0) && tries > 0) {
       requestAnimationFrame(() =>
         safeChessboard(targetEl, options, tries - 1, onReady)
       );
@@ -25,9 +26,9 @@
     }
 
     try {
-      const board = Chessboard(el, options);
-      if (typeof onReady === "function") onReady(board);
-      return board;
+      const b = Chessboard(el, options);
+      if (onReady) onReady(b);
+      return b;
     } catch {
       if (tries > 0) {
         requestAnimationFrame(() =>
@@ -36,37 +37,6 @@
       }
       return null;
     }
-  }
-
-  function stripVariations(text) {
-    let out = "";
-    let depth = 0;
-    for (let i = 0; i < text.length; i++) {
-      if (text[i] === "(") { depth++; continue; }
-      if (text[i] === ")") { depth--; continue; }
-      if (depth === 0) out += text[i];
-    }
-    return out;
-  }
-
-  function extractComments(text) {
-    const comments = [];
-    let clean = "";
-    let i = 0;
-
-    while (i < text.length) {
-      if (text[i] === "{") {
-        let j = i + 1;
-        while (j < text.length && text[j] !== "}") j++;
-        const raw = text.slice(i + 1, j).replace(/\[%.*?]/g, "").trim();
-        if (raw) comments.push(raw);
-        i = j + 1;
-      } else {
-        clean += text[i++];
-      }
-    }
-
-    return { clean, comments };
   }
 
   class ReaderPGNView {
@@ -81,18 +51,12 @@
       this.board = null;
       this.build();
       this.initBoardAndControls();
-
-      this._hideAll();
+      this.hideAll();
     }
 
     build() {
       let raw = (this.sourceEl.textContent || "").trim();
       raw = C.normalizeFigurines(raw);
-
-      raw = stripVariations(raw);
-      const { clean, comments } = extractComments(raw);
-
-      this.comments = comments;
 
       this.wrapper.innerHTML =
         '<div class="pgn-guess-cols">' +
@@ -108,25 +72,73 @@
 
       this.sourceEl.replaceWith(this.wrapper);
 
-      this.movesCol = this.wrapper.querySelector(".pgn-guess-right");
       this.boardDiv = this.wrapper.querySelector(".pgn-guess-board");
+      this.movesCol = this.wrapper.querySelector(".pgn-guess-right");
 
       this.stream = document.createElement("div");
+      this.stream.className = "pgn-guess-stream";
       this.movesCol.appendChild(this.stream);
 
-      this.parseMainline(clean);
+      this.parsePGN(raw);
     }
 
-    parseMainline(text) {
+    parsePGN(text) {
       const chess = new Chess();
-      this.moveSpans = [];
-      this.numSpans = [];
+
+      this.items = []; // ordered reveal items: move numbers, moves, comments
+      this.moveItems = []; // only move spans, for navigation
 
       let ply = 0;
-      const tokens = text.split(/\s+/);
+      let i = 0;
+      let inVariation = 0;
 
-      for (const tok of tokens) {
-        if (!tok) continue;
+      const makeSpan = (cls, txt) => {
+        const s = document.createElement("span");
+        s.className = cls;
+        s.textContent = txt;
+        s.style.display = "none";
+        this.stream.appendChild(s);
+        this.items.push(s);
+        return s;
+      };
+
+      const makeComment = (txt) => {
+        const p = document.createElement("p");
+        p.className = "pgn-comment";
+        p.textContent = txt;
+        p.style.display = "none";
+        this.stream.appendChild(p);
+        this.items.push(p);
+        return p;
+      };
+
+      while (i < text.length) {
+        const ch = text[i];
+
+        // ---- skip variations completely ------------------------------------
+        if (ch === "(") { inVariation++; i++; continue; }
+        if (ch === ")" && inVariation > 0) { inVariation--; i++; continue; }
+        if (inVariation > 0) { i++; continue; }
+
+        // ---- comments -------------------------------------------------------
+        if (ch === "{") {
+          let j = i + 1;
+          while (j < text.length && text[j] !== "}") j++;
+          const raw = text.slice(i + 1, j).replace(/\[%.*?]/g, "").trim();
+          if (raw) makeComment(raw);
+          i = j + 1;
+          continue;
+        }
+
+        // ---- whitespace -----------------------------------------------------
+        if (/\s/.test(ch)) { i++; continue; }
+
+        // ---- token ----------------------------------------------------------
+        let start = i;
+        while (i < text.length && !/\s/.test(text[i]) && !"(){}".includes(text[i])) i++;
+        let tok = text.slice(start, i);
+
+        // ignore move numbers / results
         if (/^\d+\.*$/.test(tok)) continue;
         if (/^(1-0|0-1|1\/2-1\/2|\*)$/.test(tok)) continue;
 
@@ -137,26 +149,16 @@
         const moveNum = Math.floor(ply / 2) + 1;
 
         if (isWhite) {
-          const n = document.createElement("span");
-          n.textContent = moveNum + ". ";
-          n.style.display = "none";
-          this.stream.appendChild(n);
-          this.numSpans.push(n);
-        } else {
-          this.numSpans.push(null);
+          makeSpan("pgn-movenum guess-num", moveNum + ". ");
         }
 
         const mv = chess.move(core, { sloppy: true });
         if (!mv) continue;
 
-        const s = document.createElement("span");
-        s.className = "pgn-move guess-move";
-        s.textContent = tok + " ";
-        s.dataset.fen = chess.fen();
-        s.style.display = "none";
+        const m = makeSpan("pgn-move guess-move", tok + " ");
+        m.dataset.fen = chess.fen();
 
-        this.stream.appendChild(s);
-        this.moveSpans.push(s);
+        this.moveItems.push(m);
         ply++;
       }
 
@@ -182,50 +184,52 @@
         .addEventListener("click", () => this.prev());
     }
 
-    _hideAll() {
-      this.numSpans.forEach((n) => n && (n.style.display = "none"));
-      this.moveSpans.forEach((m) => m && (m.style.display = "none"));
+    hideAll() {
+      this.items.forEach((el) => el.style.display = "none");
     }
 
     next() {
-      if (this.mainlineIndex + 1 >= this.moveSpans.length) return;
+      if (this.mainlineIndex + 1 >= this.moveItems.length) return;
       this.mainlineIndex++;
 
-      const span = this.moveSpans[this.mainlineIndex];
-      const num = this.numSpans[this.mainlineIndex];
-
-      if (num) num.style.display = "";
-      span.style.display = "";
-
-      this.board.position(span.dataset.fen, true);
-
-      if (
-        this.comments.length &&
-        this.mainlineIndex === this.moveSpans.length - 1
-      ) {
-        const p = document.createElement("p");
-        p.className = "pgn-comment";
-        p.textContent = this.comments.join(" ");
-        this.stream.appendChild(p);
+      // reveal everything up to and including this move
+      let revealedMoves = 0;
+      for (const el of this.items) {
+        if (el.classList.contains("guess-move")) {
+          if (revealedMoves > this.mainlineIndex) break;
+          revealedMoves++;
+        }
+        el.style.display = "";
       }
+
+      const span = this.moveItems[this.mainlineIndex];
+      this.board.position(span.dataset.fen, true);
     }
 
     prev() {
       if (this.mainlineIndex < 0) return;
 
-      const span = this.moveSpans[this.mainlineIndex];
-      const num = this.numSpans[this.mainlineIndex];
-
-      span.style.display = "none";
-      if (num) num.style.display = "none";
-
       this.mainlineIndex--;
+
+      let revealedMoves = 0;
+      for (const el of this.items) {
+        if (el.classList.contains("guess-move")) {
+          if (revealedMoves > this.mainlineIndex) {
+            el.style.display = "none";
+          } else {
+            el.style.display = "";
+          }
+          revealedMoves++;
+        } else {
+          el.style.display = revealedMoves <= this.mainlineIndex + 1 ? "" : "none";
+        }
+      }
 
       if (this.mainlineIndex < 0) {
         this.board.position("start", true);
       } else {
         this.board.position(
-          this.moveSpans[this.mainlineIndex].dataset.fen,
+          this.moveItems[this.mainlineIndex].dataset.fen,
           true
         );
       }

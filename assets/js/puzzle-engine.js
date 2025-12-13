@@ -1,5 +1,5 @@
 // ======================================================================
-// JekyllChess Puzzle Engine — SOLVER-MOVE–AWARE (FINAL)
+// JekyllChess Puzzle Engine — FINAL (solver moves + full auto-play)
 // ======================================================================
 
 (function () {
@@ -31,11 +31,8 @@
       }
 
       if (fenMatch && pgnInline) {
-        renderLocalPuzzle(
-          wrap,
-          fenMatch[1].trim(),
-          extractSolverMoves(fenMatch[1], parsePGNMoves(pgnInline[1]))
-        );
+        const allMoves = parsePGNMoves(pgnInline[1]);
+        renderLocalPuzzle(wrap, fenMatch[1].trim(), allMoves);
         return;
       }
 
@@ -74,13 +71,13 @@
       .filter(Boolean);
   }
 
-  function extractSolverMoves(fen, sanMoves) {
-    // In tactics PGNs, the solver always plays the first move
-    return sanMoves.filter((_, i) => i % 2 === 0);
-  }
-
   function normalizeSAN(san) {
     return (san || "").replace(/[+#?!]/g, "");
+  }
+
+  function solverMoveIndexes(fen, allMoves) {
+    // In tactics PGNs, solver always plays first move
+    return allMoves.map((_, i) => i).filter(i => i % 2 === 0);
   }
 
   // =====================================================================
@@ -105,24 +102,15 @@
   }
 
   // =====================================================================
-  // Local puzzle
+  // Local puzzle (FEN + PGN or Moves)
   // =====================================================================
 
-  function buildUCISolution(fen, sanMoves) {
-    const g = new Chess(fen);
-    const out = [];
-    for (const m of sanMoves) {
-      const mv = g.move(m, { sloppy: true });
-      if (!mv) break;
-      out.push(mv.from + mv.to + (mv.promotion || ""));
-    }
-    return out;
-  }
-
-  function renderLocalPuzzle(container, fen, sanMoves) {
+  function renderLocalPuzzle(container, fen, allMoves) {
     const game = new Chess(fen);
-    const solution = buildUCISolution(fen, sanMoves);
-    let step = 0;
+    const solverIndexes = solverMoveIndexes(fen, allMoves);
+    const solverMoves = solverIndexes.map(i => allMoves[i]);
+    let solverStep = 0;
+    let autoStep = 0;
     let solved = false;
 
     const boardDiv = document.createElement("div");
@@ -144,42 +132,61 @@
       draggable: true,
       position: fen,
       pieceTheme: "https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png",
-      onDrop: (s, t) => playMove(s, t) ? true : "snapback"
+      onDrop: (s, t) => playUserMove(s, t) ? true : "snapback"
     });
 
-    function playMove(src, dst) {
+    function playUserMove(src, dst) {
       if (solved) return false;
 
       const mv = game.move({ from: src, to: dst, promotion: "q" });
       if (!mv) return false;
 
-      const uci = mv.from + mv.to + (mv.promotion || "");
-      if (uci !== solution[step]) {
+      if (normalizeSAN(mv.san) !== normalizeSAN(solverMoves[solverStep])) {
         game.undo();
         showWrong(feedback);
         updateTurn(turnDiv, game, solved);
         return false;
       }
 
-      step++;
+      solverStep++;
       showCorrect(feedback);
 
-      if (step >= solution.length) {
-        solved = true;
-        showSolved(feedback);
+      autoPlayRemaining();
+      return true;
+    }
+
+    function autoPlayRemaining() {
+      function step() {
+        if (solverStep + autoStep >= allMoves.length) {
+          solved = true;
+          showSolved(feedback);
+          updateTurn(turnDiv, game, solved);
+          return;
+        }
+
+        const san = allMoves[solverStep + autoStep];
+        const mv = game.move(san, { sloppy: true });
+        if (!mv) {
+          solved = true;
+          showSolved(feedback);
+          updateTurn(turnDiv, game, solved);
+          return;
+        }
+
+        autoStep++;
+        board.position(game.fen(), true);
         updateTurn(turnDiv, game, solved);
-        return true;
+        setTimeout(step, 250);
       }
 
-      updateTurn(turnDiv, game, solved);
-      return true;
+      setTimeout(step, 250);
     }
 
     updateTurn(turnDiv, game, solved);
   }
 
   // =====================================================================
-  // Remote PGN — SOLVER-MOVE AWARE
+  // Remote PGN — lazy batch loader (FULL AUTO-PLAY)
   // =====================================================================
 
   function initRemotePGNPackLazy(container, url) {
@@ -220,12 +227,12 @@
         let parsedUntil = 0;
 
         let index = 0;
-        let game, solution, step = 0, solved = false;
+        let game, allMoves, solverMoves, solverStep, autoStep, solved;
 
         const board = Chessboard(boardDiv, {
           draggable: true,
           pieceTheme: "https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png",
-          onDrop: (s, t) => playMove(s, t) ? true : "snapback"
+          onDrop: (s, t) => playUserMove(s, t) ? true : "snapback"
         });
 
         function parseNextBatch() {
@@ -233,8 +240,8 @@
           for (let i = parsedUntil; i < end; i++) {
             const fen = games[i].match(/\[FEN\s+"([^"]+)"/)?.[1];
             if (!fen) continue;
-            const san = extractSolverMoves(fen, parsePGNMoves(games[i]));
-            if (san.length) puzzles.push({ fen, san });
+            const all = parsePGNMoves(games[i]);
+            if (all.length) puzzles.push({ fen, all });
           }
           parsedUntil = end;
         }
@@ -247,8 +254,10 @@
 
           index = i;
           game = new Chess(puzzles[i].fen);
-          solution = buildUCISolution(puzzles[i].fen, puzzles[i].san);
-          step = 0;
+          allMoves = puzzles[i].all;
+          solverMoves = solverMoveIndexes(puzzles[i].fen, allMoves).map(i => allMoves[i]);
+          solverStep = 0;
+          autoStep = 0;
           solved = false;
 
           board.position(game.fen());
@@ -256,30 +265,50 @@
           updateTurn(turnDiv, game, solved);
         }
 
-        function playMove(src, dst) {
+        function playUserMove(src, dst) {
           if (solved) return false;
 
           const mv = game.move({ from: src, to: dst, promotion: "q" });
           if (!mv) return false;
 
-          const uci = mv.from + mv.to + (mv.promotion || "");
-          if (uci !== solution[step]) {
+          if (normalizeSAN(mv.san) !== normalizeSAN(solverMoves[solverStep])) {
             game.undo();
             showWrong(feedback);
             updateTurn(turnDiv, game, solved);
             return false;
           }
 
-          step++;
+          solverStep++;
           showCorrect(feedback);
+          autoPlayRemaining();
+          return true;
+        }
 
-          if (step >= solution.length) {
-            solved = true;
-            showSolved(feedback);
+        function autoPlayRemaining() {
+          function step() {
+            if (solverStep + autoStep >= allMoves.length) {
+              solved = true;
+              showSolved(feedback);
+              updateTurn(turnDiv, game, solved);
+              return;
+            }
+
+            const san = allMoves[solverStep + autoStep];
+            const mv = game.move(san, { sloppy: true });
+            if (!mv) {
+              solved = true;
+              showSolved(feedback);
+              updateTurn(turnDiv, game, solved);
+              return;
+            }
+
+            autoStep++;
+            board.position(game.fen(), true);
             updateTurn(turnDiv, game, solved);
+            setTimeout(step, 250);
           }
 
-          return true;
+          setTimeout(step, 250);
         }
 
         prev.onclick = () => loadPuzzle(index - 1);

@@ -18,3 +18,13 @@ Moves: Nxb5 cxb5 Bxb5+ Nbd7 O-O-O Rd8 Rxd7 Rxd7 Rd1 Qe6 Bxd7 Nxd7 Qb8+ Nxb8 Rd8#
 <puzzle>
 PGN: {{ "/assets/pgn/puzzle-sample.pgn" | prepend: full_base_url }}
 </puzzle>
+
+Lorem ipsum dolor sit amet, 7. Nc4 Be7 8. Nce5 O-O 9. Be2 cxd4 10. Qxd4 Qxd4 consectetur adipiscing elit. Donec enim mi, cursus aliquet pharetra sit amet, facilisis vel orci. Duis eget consectetur neque, et vestibulum tortor. Sed a lacus euismod, sagittis mi ut, bibendum turpis.
+
+Lorem ipsum dolor sit amet, 7. Nc4 Be7 8. Nce5 O-O 9. Be2 cxd4 10. Qxd4 Qxd4 consectetur adipiscing elit. Donec enim mi, cursus aliquet pharetra sit amet, facilisis vel orci. Duis eget consectetur neque, et vestibulum tortor. Sed a lacus euismod, sagittis mi ut, bibendum turpis.
+
+Lorem ipsum dolor sit amet, 7. Nc4 Be7 8. Nce5 O-O 9. Be2 cxd4 10. Qxd4 Qxd4 consectetur adipiscing elit. Donec enim mi, cursus aliquet pharetra sit amet, facilisis vel orci. Duis eget consectetur neque, et vestibulum tortor. Sed a lacus euismod, sagittis mi ut, bibendum turpis.
+
+Lorem ipsum dolor sit amet, 7. Nc4 Be7 8. Nce5 O-O 9. Be2 cxd4 10. Qxd4 Qxd4 consectetur adipiscing elit. Donec enim mi, cursus aliquet pharetra sit amet, facilisis vel orci. Duis eget consectetur neque, et vestibulum tortor. Sed a lacus euismod, sagittis mi ut, bibendum turpis.
+
+Lorem ipsum dolor sit amet, 7. Nc4 Be7 8. Nce5 O-O 9. Be2 cxd4 10. Qxd4 Qxd4 consectetur adipiscing elit. Donec enim mi, cursus aliquet pharetra sit amet, facilisis vel orci. Duis eget consectetur neque, et vestibulum tortor. Sed a lacus euismod, sagittis mi ut, bibendum turpis.

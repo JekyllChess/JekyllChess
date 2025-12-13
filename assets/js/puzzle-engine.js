@@ -1,1 +1,91 @@
-!function(){"use strict";if("function"!=typeof Chess||"function"!=typeof Chessboard)return;const e="https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png";function t(e,t,n=40){if(!e)return n>0&&requestAnimationFrame(()=>t(e,t,n-1)),null;const r=e.getBoundingClientRect();return(r.width<=0||r.height<=0)&&n>0?requestAnimationFrame(()=>t(e,t,n-1)):function(){try{return Chessboard(e,t)}catch(e){return n>0?(requestAnimationFrame(()=>t(e,t,n-1)),null):null}}()}function n(e){return e.replace(/[♔♕♖♗♘♙♚♛♜♝♞♟]/g,"")}function r(e){return e.replace(/\[[^\]]*\]/g," ").replace(/\{[^}]*\}/g," ").replace(/\([^)]*\)/g," ").replace(/\b\d+\.\.\./g," ").replace(/\b\d+\.(?:\.\.)?/g," ").replace(/\b(1-0|0-1|1\/2-1\/2|\*)\b/g," ").replace(/\s+/g," ").trim().split(" ").filter(Boolean)}function o(e,t,n){return e.innerHTML=t+" <span class='jc-icon'>"+n+"</span>"}function i(e,t,n){e.textContent=n?"":("w"===t.turn()?"⚐ White to move":"⚑ Black to move")}function a(e,n,a){const s=new Chess(e),l=a.slice(),c=s.turn();let u=0,d=!1;const p=document.createElement("div");p.className="jc-board";const m=document.createElement("div");m.className="jc-status-row";const f=document.createElement("span"),h=document.createElement("span");f.className="jc-turn",h.className="jc-feedback",m.append(f,h),n.append(p,m);let v=null;function g(){v&&v.position(s.fen(),!1)}function b(){if(u>=l.length)return d=!0,o(h,"Puzzle solved","🏆"),void i(f,s,d);if(s.turn()===c)return i(f,s,d);const e=l[u];setTimeout(()=>{const t=s.move(e,{sloppy:!0});t?(u++,g(),i(f,s,d)):d=!0},200)}function y(e){const t=new Chess(s.fen());return!!t.move(e,{sloppy:!0})&&t.fen()}v=t(p,{draggable:!0,position:e,pieceTheme:e,onDrop:(e,t)=>{if(d||s.turn()!==c)return"snapback";const n=l[u],r=y({from:e,to:t,promotion:"q"}),o=y(n);return r&&o&&r===o?(s.move({from:e,to:t,promotion:"q"}),u++,g(),o(h,"Correct move","✅"),b(),!0):(s.undo(),g(),o(h,"Wrong move","❌"),!1)}}),function e(){v&&v.position&&(g(),i(f,s,d))||requestAnimationFrame(e)}()}function s(e,t){const n=document.createElement("div");n.className="jc-board";const r=document.createElement("div");r.className="jc-status-row";const o=document.createElement("span"),i=document.createElement("span"),a=document.createElement("span"),s=document.createElement("button"),l=document.createElement("button");o.className="jc-turn",i.className="jc-feedback",a.className="jc-counter",s.textContent="↶",l.textContent="↷",r.append(o,i,a,s,l),e.append(n,r),i.textContent="Loading puzzle pack…";fetch(t).then(e=>e.text()).then(t=>{const r=t.split(/\n\s*\n(?=\[|1\.)/),s=[];r.forEach(e=>{const t=e.match(/\[FEN\s+"([^"]+)"/)?.[1];if(!t)return;const n=r(e);n.length&&s.push({fen:t,moves:n})});if(!s.length)return i.textContent="❌ No puzzles found.";let l=0,c=null,u=null,d=null,p=!1,m=0;let f=null;function h(){f&&f.position(d.fen(),!1)}function v(){a.textContent=`Puzzle ${l+1} / ${s.length}`,i(o,d,p)}function g(e){const t=s[e];t&&(l=e,d=new Chess(t.fen),u=t.moves,m=0,p=!1,h(),v())}f=t(n,{draggable:!0,pieceTheme:e,onDrop:(e,t)=>{if(p||d.turn()!==d.turn())return"snapback";const n=u[m],r=new Chess(d.fen());if(!r.move({from:e,to:t,promotion:"q"}))return"snapback";const o=new Chess(d.fen());if(!o.move(n,{sloppy:!0})||r.fen()!==o.fen())return d.undo(),h(),o(i,"Wrong move","❌"),"snapback";return d.move({from:e,to:t,promotion:"q"}),m++,h(),o(i,"Correct move","✅"),function(){if(m>=u.length)return p=!0,o(i,"Puzzle solved","🏆"),void v();if(d.turn()!==d.turn()){const e=u[m];setTimeout(()=>{d.move(e,{sloppy:!0}),m++,h(),v()},200)}}(),!0}}),s.onclick=()=>g(l-1),l.onclick=()=>g(l+1),function e(){f&&f.position?g(0):requestAnimationFrame(e)}()}).catch(()=>{i.textContent="❌ Failed to load PGN."})}document.addEventListener("DOMContentLoaded",()=>{document.querySelectorAll("puzzle").forEach(e=>{const t=n(e.innerHTML||"").trim(),r=document.createElement("div");r.className="jc-puzzle-wrapper",e.replaceWith(r);const o=t.match(/FEN:\s*([^\n<]+)/i),i=t.match(/Moves:\s*([^\n<]+)/i),l=t.match(/PGN:\s*(https?:\/\/[^\s<]+)/i),c=!l&&t.match(/PGN:\s*(1\.[\s\S]+)/i);l&&!o?s(r,l[1].trim()):o&&c?a(r,o[1].trim(),r(c[1])):o&&i?a(r,o[1].trim(),i[1].trim().split(/\s+/)):r.textContent="❌ Invalid <puzzle> block."})})}();
+function renderLocalPuzzle(container, fen, allMoves) {
+  const game = new Chess(fen);
+  let moveIndex = 0;
+  let solved = false;
+
+  const boardDiv = document.createElement("div");
+  boardDiv.className = "jc-board";
+
+  const statusRow = document.createElement("div");
+  statusRow.className = "jc-status-row";
+
+  const turnDiv = document.createElement("span");
+  turnDiv.className = "jc-turn";
+
+  const feedback = document.createElement("span");
+  feedback.className = "jc-feedback";
+
+  statusRow.append(turnDiv, feedback);
+  container.append(boardDiv, statusRow);
+
+  const board = Chessboard(boardDiv, {
+    draggable: true,
+    position: fen,
+    pieceTheme: "https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png",
+    onDrop: onDrop
+  });
+
+  function onDrop(src, dst) {
+    if (solved) return "snapback";
+    if (!isSolverTurn()) return "snapback";
+
+    const expected = allMoves[moveIndex];
+    if (typeof expected !== "string") return "snapback";
+
+    const mv = game.move({ from: src, to: dst, promotion: "q" });
+    if (!mv) return "snapback";
+
+    if (normalizeSAN(mv.san) !== normalizeSAN(expected)) {
+      game.undo();
+      showWrong(feedback);
+      updateTurn(turnDiv, game, solved);
+      return "snapback";
+    }
+
+    moveIndex++;
+    board.position(game.fen());
+    showCorrect(feedback);
+
+    setTimeout(autoPlayOpponent, 300);
+    return;
+  }
+
+  function isSolverTurn() {
+    const solverIsWhite = game.turn() === "w";
+    return solverIsWhite === (moveIndex % 2 === 0);
+  }
+
+  function autoPlayOpponent() {
+    if (moveIndex >= allMoves.length) {
+      solved = true;
+      showSolved(feedback);
+      updateTurn(turnDiv, game, solved);
+      return;
+    }
+
+    if (isSolverTurn()) {
+      updateTurn(turnDiv, game, solved);
+      return;
+    }
+
+    const san = allMoves[moveIndex];
+    if (typeof san !== "string") {
+      solved = true;
+      showSolved(feedback);
+      return;
+    }
+
+    const mv = game.move(san, { sloppy: true });
+    if (!mv) {
+      solved = true;
+      showSolved(feedback);
+      return;
+    }
+
+    moveIndex++;
+    board.position(game.fen());
+    updateTurn(turnDiv, game, solved);
+  }
+
+  updateTurn(turnDiv, game, solved);
+}

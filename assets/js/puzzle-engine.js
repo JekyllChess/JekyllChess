@@ -17,6 +17,15 @@
     return String(s || "").replace(/[♔♕♖♗♘♙♚♛♜♝♞♟]/g, "");
   }
 
+  function normalizePuzzleText(s) {
+    return String(s || "")
+      .replace(/\r/g, "")
+      .replace(/\n+/g, "\n")
+      .replace(/[ \t]+/g, " ")
+      .replace(/\s*:\s*/g, ": ")
+      .trim();
+  }
+
   function normalizeSAN(s) {
     return String(s || "")
       .replace(/[+#?!]/g, "")
@@ -168,7 +177,19 @@
   async function renderRemotePGN(container, url) {
     container.textContent = "Loading…";
 
-    const res = await fetch(url);
+    let res;
+    try {
+      res = await fetch(url);
+    } catch (e) {
+      container.textContent = "❌ Failed to load PGN";
+      return;
+    }
+
+    if (!res.ok) {
+      container.textContent = "❌ Failed to load PGN";
+      return;
+    }
+
     const text = await res.text();
     const games = text.split(/\n\n(?=\[Event|\[FEN|\[Site)/);
 
@@ -182,6 +203,11 @@
     }
 
     const puzzles = games.map(parseGame).filter((p) => p.moves.length);
+
+    if (!puzzles.length) {
+      container.textContent = "❌ No puzzles found in PGN";
+      return;
+    }
 
     function renderCurrent() {
       const wrap = document.createElement("div");
@@ -221,19 +247,24 @@
 
   document.addEventListener("DOMContentLoaded", () => {
     document.querySelectorAll("puzzle").forEach((node) => {
-      const raw = stripFigurines(node.textContent);
+      const raw = normalizePuzzleText(stripFigurines(node.textContent));
+
       const wrap = document.createElement("div");
       wrap.className = "jc-puzzle-wrapper";
       node.replaceWith(wrap);
 
-      const pgnUrl = raw.match(/PGN:\s*(https?:\/\/\S+)/i);
-      if (pgnUrl) {
-        renderRemotePGN(wrap, pgnUrl[1]);
+      const pgnMatch = raw.match(/PGN:\s*([^\s]+)/i);
+      if (pgnMatch) {
+        const url = new URL(pgnMatch[1], window.location.href).href;
+        renderRemotePGN(wrap, url);
         return;
       }
 
-      const fen = raw.match(/FEN:\s*([\s\S]*?)\s*Moves:/i)?.[1]?.trim();
-      const movesText = raw.match(/Moves:\s*([\s\S]+)/i)?.[1];
+      const fenMatch = raw.match(/FEN:\s*([^]*?)\s+Moves:/i);
+      const movesMatch = raw.match(/Moves:\s*([^]*)$/i);
+
+      const fen = fenMatch?.[1]?.trim();
+      const movesText = movesMatch?.[1];
 
       if (fen && movesText) {
         renderLocalPuzzle(wrap, fen, tokenizeMoves(movesText));

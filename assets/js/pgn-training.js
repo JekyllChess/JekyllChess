@@ -1,5 +1,5 @@
 // ============================================================================
-// pgn-training.js — Guess-the-move PGN trainer (literature-correct, puzzle-safe)
+// pgn-training.js — Guess-the-move PGN trainer (no spoilers, literature-correct)
 // ============================================================================
 
 (function () {
@@ -24,8 +24,6 @@
     style.id = "pgn-training-style";
     style.textContent = `
       .pgn-training-wrapper { margin-bottom: 1rem; }
-      .pgn-training-header { margin:0 0 .6rem 0; font-weight:600; }
-
       .pgn-training-cols { display:flex; gap:1rem; align-items:flex-start; }
 
       .pgn-training-board {
@@ -38,12 +36,6 @@
         margin-top:.4em;
         font-size:.95em;
         white-space:nowrap;
-      }
-
-      .pgn-training-status button {
-        margin-left:.3em;
-        font-size:1em;
-        padding:0 .4em;
       }
 
       .pgn-training-right {
@@ -86,26 +78,6 @@
     return c || null;
   }
 
-  function parseHeaders(text) {
-    const headers = {};
-    (text || "").replace(/\[(\w+)\s+"([^"]*)"\]/g, (_, k, v) => {
-      headers[k] = v;
-    });
-    return headers;
-  }
-
-  function flipNameSafe(name) {
-    return typeof C.flipName === "function"
-      ? C.flipName(name || "")
-      : (name || "");
-  }
-
-  function extractYearSafe(date) {
-    if (typeof C.extractYear === "function") return C.extractYear(date);
-    const m = String(date || "").match(/(\d{4})/);
-    return m ? m[1] : "";
-  }
-
   // --------------------------------------------------------------------------
   // Main class
   // --------------------------------------------------------------------------
@@ -118,8 +90,6 @@
       ensureGuessStylesOnce();
 
       this.rawText = (src.textContent || "").trim();
-      this.headers = parseHeaders(this.rawText);
-
       this.flipBoard = src.tagName.toLowerCase() === "pgn-training-black";
       this.userIsWhite = !this.flipBoard;
 
@@ -129,8 +99,6 @@
 
       this.game = new Chess();
       this.currentFen = "start";
-      this.resultMessage = "";
-      this.solved = false;
 
       this.build(src);
       this.parsePGN();
@@ -138,51 +106,10 @@
     }
 
     // ------------------------------------------------------------------------
-    // Header
-    // ------------------------------------------------------------------------
-
-    renderHeader() {
-      const h = this.headers;
-
-      const W =
-        (h.WhiteTitle ? h.WhiteTitle + " " : "") +
-        flipNameSafe(h.White) +
-        (h.WhiteElo ? " (" + h.WhiteElo + ")" : "");
-
-      const B =
-        (h.BlackTitle ? h.BlackTitle + " " : "") +
-        flipNameSafe(h.Black) +
-        (h.BlackElo ? " (" + h.BlackElo + ")" : "");
-
-      const year = extractYearSafe(h.Date);
-      const eventLine = (h.Event || "") + (year ? ", " + year : "");
-      const opening = (h.Opening || "").trim();
-
-      if (!W && !B && !eventLine && !opening) return;
-
-      const H = document.createElement("h3");
-      H.className = "pgn-training-header";
-
-      if (W || B) {
-        H.append(W || "?", " – ", B || "?");
-        H.appendChild(document.createElement("br"));
-      }
-      if (eventLine) {
-        H.append(eventLine);
-        if (opening) H.appendChild(document.createElement("br"));
-      }
-      if (opening) H.append(opening);
-
-      this.wrapper.appendChild(H);
-    }
-
-    // ------------------------------------------------------------------------
 
     build(src) {
-      this.wrapper = document.createElement("div");
-      this.wrapper.className = "pgn-training-wrapper";
-
-      this.renderHeader();
+      const wrapper = document.createElement("div");
+      wrapper.className = "pgn-training-wrapper";
 
       const cols = document.createElement("div");
       cols.className = "pgn-training-cols";
@@ -194,8 +121,8 @@
         <div class="pgn-training-right"></div>
       `;
 
-      this.wrapper.appendChild(cols);
-      src.replaceWith(this.wrapper);
+      wrapper.appendChild(cols);
+      src.replaceWith(wrapper);
 
       this.boardDiv = cols.querySelector(".pgn-training-board");
       this.statusEl = cols.querySelector(".pgn-training-status");
@@ -216,28 +143,13 @@
 
       const attach = (t) => {
         const c = sanitizeComment(t);
-        if (c === null) {
-          pending.length = 0;
-          return;
-        }
+        if (!c) { pending.length = 0; return; }
         if (this.moves.length) this.moves[this.moves.length - 1].comments.push(c);
         else pending.push(c);
       };
 
       while (i < raw.length) {
         const ch = raw[i];
-
-        if (ch === "(") {
-          let d = 1, j = i + 1;
-          while (j < raw.length && d) {
-            if (raw[j] === "(") d++;
-            else if (raw[j] === ")") d--;
-            j++;
-          }
-          attach(raw.slice(i + 1, j - 1));
-          i = j;
-          continue;
-        }
 
         if (ch === "{") {
           let j = i + 1;
@@ -272,7 +184,7 @@
     }
 
     // ------------------------------------------------------------------------
-    // Board + logic
+    // Board logic
     // ------------------------------------------------------------------------
 
     initBoard() {
@@ -281,18 +193,12 @@
         orientation: this.flipBoard ? "black" : "white",
         draggable: true,
         pieceTheme: C.PIECE_THEME_URL,
-        moveSpeed: 200,
-        onDragStart: () => !this.solved && this.isGuessTurn(),
+        onDragStart: () => this.isGuessTurn(),
         onDrop: (s, t) => this.onUserDrop(s, t),
         onSnapEnd: () => this.board.position(this.currentFen, false)
       });
 
-      this.updateStatus();
-
-      setTimeout(() => {
-        this.autoplayOpponentMoves();
-        this.updateStatus();
-      }, AUTOPLAY_DELAY);
+      setTimeout(() => this.autoplayOpponentMoves(), AUTOPLAY_DELAY);
     }
 
     isGuessTurn() {
@@ -311,55 +217,6 @@
         this.board.position(n.fen, true);
         this.appendMove();
       }
-      this.resultMessage = "";
-    }
-
-    updateStatus() {
-      this.statusEl.innerHTML = "";
-
-      if (this.solved) {
-        const s = document.createElement("span");
-        s.textContent = "Training solved! 🏆";
-        this.statusEl.appendChild(s);
-
-        this.statusEl.append(
-          this.navBtn("↻", () => this.goto(-1), this.index < 0),
-          this.navBtn("◀", () => this.goto(this.index - 1), this.index < 0),
-          this.navBtn("▶", () => this.goto(this.index + 1), this.index >= this.moves.length - 1)
-        );
-        return;
-      }
-
-      const flag = this.game.turn() === "w" ? "⚐" : "⚑";
-      const side = this.game.turn() === "w" ? "White" : "Black";
-      const msg = this.resultMessage ? ` · ${this.resultMessage}` : "";
-      this.statusEl.textContent = `${flag} ${side} to move${msg}`;
-    }
-
-    navBtn(icon, cb, dis) {
-      const b = document.createElement("button");
-      b.textContent = icon;
-      b.disabled = dis;
-      b.onclick = cb;
-      return b;
-    }
-
-    goto(i) {
-      if (i < -1) i = -1;
-      if (i >= this.moves.length) i = this.moves.length - 1;
-
-      this.index = i;
-
-      if (i === -1) {
-        this.game.reset();
-        this.currentFen = "start";
-      } else {
-        this.game.load(this.moves[i].fen);
-        this.currentFen = this.moves[i].fen;
-      }
-
-      this.board.position(this.currentFen, false);
-      this.updateStatus();
     }
 
     onUserDrop(source, target) {
@@ -376,11 +233,7 @@
         return g.fen() === expected.fen;
       });
 
-      if (!ok) {
-        this.resultMessage = "Wrong move ❌";
-        this.updateStatus();
-        return "snapback";
-      }
+      if (!ok) return "snapback";
 
       this.index++;
       this.game.load(expected.fen);
@@ -388,25 +241,12 @@
       this.board.position(expected.fen, false);
       this.appendMove();
 
-      if (this.index === this.moves.length - 1) {
-        this.solved = true;
-        this.updateStatus();
-        return;
-      }
-
-      this.resultMessage = "Correct! ✅";
-      this.updateStatus();
-
-      setTimeout(() => {
-        this.autoplayOpponentMoves();
-        this.updateStatus();
-      }, FEEDBACK_DELAY);
+      setTimeout(() => this.autoplayOpponentMoves(), FEEDBACK_DELAY);
     }
 
-    formatBlackReplyAfterComment(moveNo, san) {
-      if (/^\d+\.\.\./.test(san)) return san;
-      return `${moveNo}... ${san}`;
-    }
+    // ------------------------------------------------------------------------
+    // Move list rendering (NO SPOILERS)
+    // ------------------------------------------------------------------------
 
     appendMove() {
       const m = this.moves[this.index];
@@ -416,41 +256,24 @@
         const row = document.createElement("div");
         row.className = "pgn-move-row";
 
-        const no = document.createElement("span");
-        no.className = "pgn-move-no";
-        no.textContent = `${m.moveNo}.`;
+        row.innerHTML =
+          `<span class="pgn-move-no">${m.moveNo}.</span>` +
+          `<span class="pgn-move-white">${m.san}</span>`;
 
-        const w = document.createElement("span");
-        w.className = "pgn-move-white";
-        w.textContent = m.san;
-
-        row.appendChild(no);
-        row.appendChild(w);
         this.rightPane.appendChild(row);
         this.currentRow = row;
 
-        if (m.comments.length) {
-          m.comments.forEach(c => {
-            const span = document.createElement("span");
-            span.className = "pgn-comment";
-            span.textContent = " " + c;
-            row.appendChild(span);
-          });
-
-          const next = this.moves[this.index + 1];
-          if (next && !next.isWhite) {
-            const b = document.createElement("span");
-            b.className = "pgn-move-black";
-            b.textContent =
-              " " + this.formatBlackReplyAfterComment(m.moveNo, next.san);
-            row.appendChild(b);
-          }
-        }
+        m.comments.forEach(c => {
+          const span = document.createElement("span");
+          span.className = "pgn-comment";
+          span.textContent = " " + c;
+          row.appendChild(span);
+        });
 
       } else if (this.currentRow) {
         const b = document.createElement("span");
         b.className = "pgn-move-black";
-        b.textContent = m.san;
+        b.textContent = ` ${m.moveNo}... ${m.san}`;
         this.currentRow.appendChild(b);
       }
 

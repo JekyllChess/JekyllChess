@@ -10,6 +10,42 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.12.0/chess.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.js"></script>
+
+<style>
+body {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+}
+
+.app {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+#board {
+  width: 360px;
+  max-width: 100%;
+  margin-bottom: 1rem;
+}
+
+.controls button {
+  margin-right: 0.25rem;
+}
+
+.moves-panel {
+  margin-top: 1rem;
+}
+
+.move {
+  cursor: pointer;
+  padding: 0 0.15rem;
+}
+
+.move.active {
+  background: #ffe08a;
+}
+</style>
 </head>
 
 <body data-theme="dark">
@@ -17,47 +53,37 @@
 <div class="app">
 
 <header class="topbar">
-  <div class="brand">
-    <div class="logo">♟</div>
-    <div class="titles">
-      <div class="title">PGN Viewer</div>
-      <div class="subtitle" id="gameLine">—</div>
-    </div>
-  </div>
+  <h1>PGN Viewer</h1>
+  <div id="gameLine">—</div>
+</header>
 
-  <div class="top-actions">
+<main>
+  <div id="board"></div>
+
+  <div class="controls">
+    <button id="btnFirst">⏮</button>
+    <button id="btnPrev">◀</button>
+    <button id="btnPlay">▶</button>
+    <button id="btnNext">▶</button>
+    <button id="btnLast">⏭</button>
+
+    <label>
+      Speed
+      <input id="speed" type="range" min="200" max="1200" step="50" value="450">
+    </label>
+
     <button id="btnFlip">Flip</button>
     <button id="btnCopyFEN">Copy FEN</button>
     <button id="btnCopyPGN">Copy PGN</button>
-    <button id="btnTheme">☾</button>
   </div>
-</header>
 
-<main class="grid">
-  <section class="panel board-panel">
-    <div id="board"></div>
-
-    <div class="controls">
-      <button id="btnFirst">⏮</button>
-      <button id="btnPrev">◀</button>
-      <button id="btnPlay">▶</button>
-      <button id="btnNext">▶</button>
-      <button id="btnLast">⏭</button>
-
-      <label>
-        Speed
-        <input id="speed" type="range" min="200" max="1200" step="50" value="450">
-      </label>
-    </div>
-  </section>
-
-  <section class="panel moves-panel">
+  <div class="moves-panel">
     <div id="moves"></div>
-  </section>
-</main>
+  </div>
 
-<!-- PGN DATA -->
-<pgn-data>
+  <!-- PGN DATA (protected from Jekyll) -->
+  {% raw %}
+  <pgn-data>
 [Event "Demo Game"]
 [Site "Istanbul"]
 [Date "2025.12.16"]
@@ -70,19 +96,23 @@
 4. Ba4 Nf6 5. O-O Be7
 6. Re1 b5 7. Bb3 d6
 8. c3 O-O 9. h3 1-0
-</pgn-data>
+  </pgn-data>
+  {% endraw %}
 
+</main>
 </div>
 
 <script>
 (() => {
   "use strict";
 
-  /* custom element definition (required) */
+  /* define custom element so the browser accepts it */
   customElements.define("pgn-data", class extends HTMLElement {});
 
-  const pgnText =
-    document.querySelector("pgn-data").textContent.trim();
+  const pgnEl = document.querySelector("pgn-data");
+  if (!pgnEl) return;
+
+  const pgnText = pgnEl.textContent.trim();
 
   const chess = new Chess();
   chess.load_pgn(pgnText, { sloppy: true });
@@ -109,7 +139,7 @@
   let autoplay = null;
   let orientation = "white";
 
-  /* render moves */
+  /* render move list */
   moves.forEach((m, i) => {
     const span = document.createElement("span");
     span.className = "move";
@@ -122,6 +152,13 @@
   function highlight(i) {
     document.querySelectorAll(".move")
       .forEach((m, k) => m.classList.toggle("active", k === i));
+  }
+
+  function resetBoard() {
+    chess.reset();
+    board.position("start", true);
+    index = -1;
+    highlight(-1);
   }
 
   function goto(i) {
@@ -147,17 +184,9 @@
     else resetBoard();
   }
 
-  function resetBoard() {
-    chess.reset();
-    board.position("start", true);
-    index = -1;
-    highlight(-1);
-  }
-
-  /* controls */
-  btnNext.onclick = next;
-  btnPrev.onclick = prev;
   btnFirst.onclick = resetBoard;
+  btnPrev.onclick = prev;
+  btnNext.onclick = next;
   btnLast.onclick = () => goto(moves.length - 1);
 
   btnPlay.onclick = () => {
@@ -181,11 +210,6 @@
 
   btnCopyPGN.onclick = () =>
     navigator.clipboard.writeText(pgnText);
-
-  btnTheme.onclick = () => {
-    document.body.dataset.theme =
-      document.body.dataset.theme === "dark" ? "light" : "dark";
-  };
 
   window.addEventListener("keydown", e => {
     if (e.key === "ArrowRight") next();

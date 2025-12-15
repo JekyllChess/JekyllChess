@@ -1,6 +1,6 @@
 html {font-size:18px;font-weight:500;color:#333;line-height:1.5rem;}
 body {width: 50vw;margin:0 auto;padding-top:3rem;}
-@media (max-width: 768px) {body {width:90vw;}}
+@media (max-width: 768px) {body {width:90vw;padding-top:1rem;}}
 a,a:visited,a:hover,a:active {color:#333}
 .header a {display: inline-flex;align-items: center;}
 .header a img {height: 1.5em;width: auto;display: block;}

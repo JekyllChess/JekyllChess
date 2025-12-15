@@ -1,5 +1,11 @@
 // ============================================================================
-// pgn-training.js — correct turn flag using game.turn()
+// pgn-training.js — stable + correct turn flag + richer comments/variations
+// Fixes requested:
+// 1) Show final variation text + "White resigns. 0-1" after last move
+// 2) Triangle buttons not black: color inherits / #333
+// 3) ◀ ▶ slightly smaller
+// 4) Header format: "First Last (Elo) – GM First Last (Elo)" + "Event, Opening"
+// 5) Header sits ABOVE the 2-column layout (outside flex row)
 // ============================================================================
 
 (function () {
@@ -35,9 +41,11 @@
     s.textContent = `
       .pgn-training-wrapper { margin-bottom:1.5rem; }
       .pgn-training-header { margin:0 0 .6rem 0; font-weight:600; }
+
       .pgn-training-cols { display:flex; gap:1rem; align-items:flex-start; }
       .pgn-training-board { width:360px; max-width:100%; }
 
+      /* move list slightly shorter */
       .pgn-training-right {
         flex:1;
         max-height:360px;
@@ -45,27 +53,29 @@
       }
 
       .pgn-move-row { font-weight:700; margin-top:.5em; }
-      .pgn-move-no { margin-right:.3em; }
-      .pgn-move-white { margin-right:.6em; }
+      .pgn-move-no { margin-right:.25em; }
+      .pgn-move-white { margin-right:.5em; }
       .pgn-move-black { margin-left:.3em; }
       .pgn-comment { font-weight:400; }
+      .pgn-result-line { margin-top:.6em; font-weight:400; }
 
       .pgn-training-status span {
-        margin-right:.4em;
+        margin-right:.35em;
         font-size:1.1em;
         vertical-align:middle;
       }
 
+      /* ◀ ▶ slightly smaller + not black */
       .pgn-training-actions button {
-        font-size:0.95em;
+        font-size:0.85em;
         line-height:1;
-        padding:0 .15em;
-        margin-right:.2em;
+        padding:0 .12em;
+        margin-right:.15em;
         cursor:pointer;
         background:none;
         border:none;
+        color:#333;
       }
-
       .pgn-training-actions button:disabled {
         opacity:.35;
         cursor:default;
@@ -99,6 +109,23 @@
     return c || null;
   }
 
+  function sanitizeVariationText(t) {
+    // Keep move numbers + SAN text, drop engine tags / nested comments, normalize spaces.
+    let x = String(t || "");
+    x = x.replace(/\[%.*?]/g, "");
+    x = x.replace(/\[D\]/g, "");
+    x = x.replace(/\{[^}]*\}/g, ""); // remove braces blocks within variation
+    x = x.replace(/\s+/g, " ").trim();
+    if (!x) return null;
+
+    // User wants closing ")" but not necessarily opening "(":
+    // "(40. Kf1 ... Be6)" -> "40. Kf1 ... Be6)"
+    if (x.startsWith("(")) x = x.slice(1).trim();
+    if (!x.endsWith(")")) x = x + ")";
+
+    return x;
+  }
+
   function stripHeaders(pgn) {
     return pgn.replace(/^\s*\[[^\]]*\]\s*$/gm, "");
   }
@@ -124,6 +151,41 @@
     return i;
   }
 
+  function captureVariation(raw, i) {
+    // raw[i] is '('; capture "( ... )" including parentheses
+    let j = i;
+    let d = 0;
+    while (j < raw.length) {
+      if (raw[j] === "(") d++;
+      else if (raw[j] === ")") {
+        d--;
+        if (d === 0) return { text: raw.slice(i, j + 1), next: j + 1 };
+      }
+      j++;
+    }
+    return { text: raw.slice(i), next: raw.length };
+  }
+
+  function resultFromRaw(rawAll) {
+    const m = String(rawAll || "").match(/\b(1-0|0-1|1\/2-1\/2)\b\s*$/);
+    return m ? m[1] : "";
+  }
+
+  function swapCommaName(name) {
+    const s = String(name || "").trim();
+    if (!s) return "";
+    const parts = s.split(",").map(x => x.trim());
+    if (parts.length === 2) return `${parts[1]} ${parts[0]}`.trim();
+    return s;
+  }
+
+  function formatPlayer(name, elo, title) {
+    const n = swapCommaName(name);
+    const t = String(title || "").trim();
+    const e = String(elo || "").trim();
+    return `${t ? t + " " : ""}${n}${e ? " (" + e + ")" : ""}`.trim();
+  }
+
   // --------------------------------------------------------------------------
   // Main class
   // --------------------------------------------------------------------------
@@ -145,6 +207,7 @@
       this.game = new Chess();
       this.currentFen = "start";
 
+      this.currentRow = null;
       this.build(src);
       this.initBoard();
       this.parsePGNAsync();
@@ -156,22 +219,9 @@
       const wrap = document.createElement("div");
       wrap.className = "pgn-training-wrapper";
 
-      if (this.headers.White && this.headers.Black) {
-        const h = document.createElement("h3");
-        h.className = "pgn-training-header";
-
-        const year = this.headers.Date ? this.headers.Date.slice(0, 4) : "";
-        const line1 = `${this.headers.White} – ${this.headers.Black}`;
-        const line2 = [this.headers.Event, this.headers.Site, year].filter(Boolean).join(", ");
-        const line3 = this.headers.Opening || "";
-
-        h.innerHTML =
-          line1 +
-          (line2 ? `<br>${line2}` : "") +
-          (line3 ? `<br>${line3}` : "");
-
-        wrap.appendChild(h);
-      }
+      // (5) Header is OUTSIDE the 2-column flex container (placed before it)
+      const header = this.buildHeader();
+      if (header) wrap.appendChild(header);
 
       const cols = document.createElement("div");
       cols.className = "pgn-training-cols";
@@ -209,6 +259,24 @@
       this.btnNext.onclick = () => this.step(1);
     }
 
+    buildHeader() {
+      const w = this.headers.White;
+      const b = this.headers.Black;
+      if (!w || !b) return null;
+
+      // (4) New header format
+      const whiteLine = formatPlayer(w, this.headers.WhiteElo, this.headers.WhiteTitle);
+      const blackLine = formatPlayer(b, this.headers.BlackElo, this.headers.BlackTitle);
+
+      const line1 = `${whiteLine} – ${blackLine}`.trim();
+      const line2 = [this.headers.Event, this.headers.Opening].filter(Boolean).join(", ");
+
+      const h = document.createElement("h3");
+      h.className = "pgn-training-header";
+      h.innerHTML = line1 + (line2 ? `<br>${line2}` : "");
+      return h;
+    }
+
     // ----------------------------------------------------------------------
 
     initBoard() {
@@ -231,6 +299,8 @@
       const rawAll = PGNCore.normalizeFigurines(this.rawText);
       const raw = stripHeaders(rawAll);
 
+      this.result = resultFromRaw(rawAll);
+
       const chess = new Chess();
       let i = 0, ply = 0;
 
@@ -245,6 +315,7 @@
 
           const ch = raw[i];
 
+          // Comments { ... } attach to last parsed move
           if (ch === "{") {
             let j = i + 1;
             while (j < raw.length && raw[j] !== "}") j++;
@@ -256,8 +327,14 @@
             continue;
           }
 
+          // Capture variation text as display-only annotation; skip its moves for parsing
           if (ch === "(") {
-            i = skipVariation(raw, i);
+            const cap = captureVariation(raw, i);
+            const v = sanitizeVariationText(cap.text);
+            if (v && this.moves.length) {
+              this.moves[this.moves.length - 1].variations.push(v);
+            }
+            i = cap.next;
             continue;
           }
 
@@ -273,7 +350,7 @@
           if (!san) continue;
 
           let moved = false;
-          try { moved = chess.move(san, { sloppy:true }); } catch {}
+          try { moved = chess.move(san, { sloppy: true }); } catch {}
           if (!moved) continue;
 
           this.moves.push({
@@ -281,7 +358,8 @@
             moveNo: Math.floor(ply / 2) + 1,
             san: tok,
             fen: chess.fen(),
-            comments: []
+            comments: [],
+            variations: []
           });
 
           ply++;
@@ -295,7 +373,7 @@
     }
 
     // ----------------------------------------------------------------------
-    // ✅ FIX: turn flag now uses chess.js engine state
+    // Turn / training logic
     // ----------------------------------------------------------------------
 
     updateTurn() {
@@ -312,7 +390,7 @@
         if (n.isWhite === this.userIsWhite) break;
 
         this.index++;
-        this.game.move(normalizeSAN(n.san), { sloppy:true });
+        try { this.game.move(normalizeSAN(n.san), { sloppy: true }); } catch {}
         this.currentFen = n.fen;
         this.board.position(n.fen, true);
         this.appendMove();
@@ -326,13 +404,19 @@
       if (source === target) return "snapback";
 
       const expected = this.moves[this.index + 1];
-      const legal = this.game.moves({ verbose:true });
+      if (!expected) return "snapback";
+
+      const legal = this.game.moves({ verbose: true });
 
       const ok = legal.some(m => {
         if (m.from !== source || m.to !== target) return false;
-        const g = new Chess(this.game.fen());
-        g.move(m);
-        return g.fen() === expected.fen;
+        try {
+          const g = new Chess(this.game.fen());
+          g.move(m);
+          return g.fen() === expected.fen;
+        } catch {
+          return false;
+        }
       });
 
       this.feedbackEl.textContent = ok ? "✅" : "❌";
@@ -361,7 +445,7 @@
       this.game.reset();
 
       for (let i = 0; i <= this.index; i++) {
-        this.game.move(normalizeSAN(this.moves[i].san), { sloppy:true });
+        try { this.game.move(normalizeSAN(this.moves[i].san), { sloppy: true }); } catch {}
       }
 
       this.currentFen = this.index >= 0 ? this.moves[this.index].fen : "start";
@@ -377,6 +461,10 @@
       this.btnNext.disabled = this.index >= this.moves.length - 1;
     }
 
+    // ----------------------------------------------------------------------
+    // Right pane rendering (moves + comments + variation text + final result)
+    // ----------------------------------------------------------------------
+
     appendMove() {
       const m = this.moves[this.index];
       if (!m) return;
@@ -386,32 +474,83 @@
         row.className = "pgn-move-row";
         row.dataset.hasAnalysis = "false";
 
+        // add space after move number: "40. ♔g1?"
         row.innerHTML =
-          `<span class="pgn-move-no">${m.moveNo}.</span>` +
+          `<span class="pgn-move-no">${m.moveNo}. </span>` +
           `<span class="pgn-move-white">${m.san}</span>`;
 
         this.rightPane.appendChild(row);
         this.currentRow = row;
 
+        // comments after this move
         if (m.comments && m.comments.length) {
           row.dataset.hasAnalysis = "true";
           m.comments.forEach(c => {
+            // keep "White resigns." for final line instead of inline
+            if (/^White resigns\.$/i.test(c.trim())) return;
             const sp = document.createElement("span");
             sp.className = "pgn-comment";
             sp.textContent = " " + c;
             row.appendChild(sp);
           });
         }
+
+        // variations after this move (display-only)
+        if (m.variations && m.variations.length) {
+          row.dataset.hasAnalysis = "true";
+          m.variations.forEach(v => {
+            const sp = document.createElement("span");
+            sp.className = "pgn-comment";
+            sp.textContent = " " + v;
+            row.appendChild(sp);
+          });
+        }
+
       } else if (this.currentRow) {
         const hasAnalysis = this.currentRow.dataset.hasAnalysis === "true";
 
         const b = document.createElement("span");
         b.className = "pgn-move-black";
+
+        // (2) If [White move] [analysis/variation] [Black mainline], prefix with "7... "
         b.textContent = hasAnalysis
           ? ` ${m.moveNo}... ${m.san}`
           : ` ${m.san}`;
 
         this.currentRow.appendChild(b);
+
+        // black move comments (except resign)
+        if (m.comments && m.comments.length) {
+          m.comments.forEach(c => {
+            if (/^White resigns\.$/i.test(c.trim())) return;
+            const sp = document.createElement("span");
+            sp.className = "pgn-comment";
+            sp.textContent = " " + c;
+            this.currentRow.appendChild(sp);
+          });
+        }
+
+        // black move variations (rare, but handle)
+        if (m.variations && m.variations.length) {
+          m.variations.forEach(v => {
+            const sp = document.createElement("span");
+            sp.className = "pgn-comment";
+            sp.textContent = " " + v;
+            this.currentRow.appendChild(sp);
+          });
+        }
+
+        // (1) If this is the last move, append "White resigns. 0-1" as a separate line
+        if (this.index === this.moves.length - 1) {
+          const resign = (m.comments || []).find(c => /^White resigns\.$/i.test(String(c).trim()));
+          const tail = [resign ? "White resigns." : "", this.result || ""].filter(Boolean).join(" ").trim();
+          if (tail) {
+            const line = document.createElement("div");
+            line.className = "pgn-result-line";
+            line.textContent = tail;
+            this.rightPane.appendChild(line);
+          }
+        }
       }
 
       this.rightPane.scrollTop = this.rightPane.scrollHeight;

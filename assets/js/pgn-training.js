@@ -1,5 +1,5 @@
 // ============================================================================
-// pgn-training.js — refined move list layout & notation (smaller ◀ ▶)
+// pgn-training.js — correct turn flag using game.turn()
 // ============================================================================
 
 (function () {
@@ -38,7 +38,6 @@
       .pgn-training-cols { display:flex; gap:1rem; align-items:flex-start; }
       .pgn-training-board { width:360px; max-width:100%; }
 
-      /* move list slightly shorter */
       .pgn-training-right {
         flex:1;
         max-height:360px;
@@ -57,7 +56,6 @@
         vertical-align:middle;
       }
 
-      /* ◀ ▶ slightly smaller than ⚐ / ⚑ */
       .pgn-training-actions button {
         font-size:0.95em;
         line-height:1;
@@ -297,16 +295,15 @@
     }
 
     // ----------------------------------------------------------------------
+    // ✅ FIX: turn flag now uses chess.js engine state
+    // ----------------------------------------------------------------------
 
     updateTurn() {
-      const n = this.moves[this.index + 1];
-      if (!n) return;
-      this.turnEl.textContent = n.isWhite ? "⚐" : "⚑";
+      this.turnEl.textContent = this.game.turn() === "w" ? "⚐" : "⚑";
     }
 
     isGuessTurn() {
-      const n = this.moves[this.index + 1];
-      return n && n.isWhite === this.userIsWhite;
+      return this.game.turn() === (this.userIsWhite ? "w" : "b");
     }
 
     autoplayOpponentMoves() {
@@ -356,8 +353,6 @@
       setTimeout(() => this.autoplayOpponentMoves(), 400);
     }
 
-    // ----------------------------------------------------------------------
-
     step(dir) {
       const next = this.index + dir;
       if (next < -1 || next >= this.moves.length) return;
@@ -381,10 +376,6 @@
       this.btnPrev.disabled = this.index < 0;
       this.btnNext.disabled = this.index >= this.moves.length - 1;
     }
-
-    // ----------------------------------------------------------------------
-    // Move list rendering (with 7... indicator when analysis intervenes)
-    // ----------------------------------------------------------------------
 
     appendMove() {
       const m = this.moves[this.index];
@@ -421,15 +412,6 @@
           : ` ${m.san}`;
 
         this.currentRow.appendChild(b);
-
-        if (m.comments && m.comments.length) {
-          m.comments.forEach(c => {
-            const sp = document.createElement("span");
-            sp.className = "pgn-comment";
-            sp.textContent = " " + c;
-            this.currentRow.appendChild(sp);
-          });
-        }
       }
 
       this.rightPane.scrollTop = this.rightPane.scrollHeight;

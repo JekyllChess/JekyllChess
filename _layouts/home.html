@@ -2,6 +2,6 @@
 title: JekyllChess
 layout: default
 ---
-{{ site.description }}
+{{ site.description | markdownify }}
 {% include post-block.html %}
 {{ content }}

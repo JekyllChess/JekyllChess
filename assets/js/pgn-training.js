@@ -1,5 +1,5 @@
 // ============================================================================
-// pgn-training.js — FINAL with correct flag update after correct move
+// pgn-training.js — strict mutual exclusivity for ❌ / ✅ / 🏆
 // ============================================================================
 
 (function () {
@@ -186,6 +186,24 @@
       this.parsePGNAsync();
     }
 
+    // -------------------- STATUS CONTROLLER --------------------
+
+    setStatus(type) {
+      // clear all
+      this.feedbackEl.textContent = "";
+      this.solvedEl.hidden = true;
+
+      if (type === "wrong") {
+        this.feedbackEl.textContent = "❌";
+      } else if (type === "correct") {
+        this.feedbackEl.textContent = "✅";
+      } else if (type === "solved") {
+        this.solvedEl.hidden = false;
+      }
+    }
+
+    // -----------------------------------------------------------
+
     build(src) {
       const wrap = document.createElement("div");
       wrap.className = "pgn-training-wrapper";
@@ -365,8 +383,12 @@
         return g.fen() === expected.fen;
       });
 
-      this.feedbackEl.textContent = ok ? "✅" : "❌";
-      if (!ok) return "snapback";
+      if (!ok) {
+        this.setStatus("wrong");
+        return "snapback";
+      }
+
+      this.setStatus("correct");
 
       this.index++;
       this.game.load(expected.fen);
@@ -374,12 +396,11 @@
       this.board.position(expected.fen, false);
       this.appendMove();
 
-      // ✅ FIX: immediately update turn flag after correct move
       this.updateTurn();
 
       if (this.index === this.moves.length - 1 && !this.isSolved) {
         this.isSolved = true;
-        this.solvedEl.hidden = false;
+        this.setStatus("solved");
         this.actionsEl.hidden = false;
       }
 
@@ -400,7 +421,7 @@
       this.board.position(this.currentFen, false);
       this.updateTurn();
       this.updateButtons();
-      this.feedbackEl.textContent = "";
+      this.setStatus(null);
     }
 
     updateButtons() {

@@ -1,5 +1,5 @@
 // ============================================================================
-// pgn-training.js — refined move list layout & notation
+// pgn-training.js — refined move list layout & notation (smaller ◀ ▶)
 // ============================================================================
 
 (function () {
@@ -38,7 +38,7 @@
       .pgn-training-cols { display:flex; gap:1rem; align-items:flex-start; }
       .pgn-training-board { width:360px; max-width:100%; }
 
-      /* (1) move list slightly shorter: ~3 lines below the fold */
+      /* move list slightly shorter */
       .pgn-training-right {
         flex:1;
         max-height:360px;
@@ -57,11 +57,11 @@
         vertical-align:middle;
       }
 
-      /* (3) ◀ ▶ same visual size as ⚐ / ⚑ */
+      /* ◀ ▶ slightly smaller than ⚐ / ⚑ */
       .pgn-training-actions button {
-        font-size:1.1em;
+        font-size:0.95em;
         line-height:1;
-        padding:0 .2em;
+        padding:0 .15em;
         margin-right:.2em;
         cursor:pointer;
         background:none;

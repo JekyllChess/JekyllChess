@@ -9,7 +9,6 @@
 <!-- jQuery REQUIRED by chessboard.js -->
 <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
 
-<!-- Chess libraries -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.12.0/chess.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.js"></script>
 <link rel="stylesheet"
@@ -23,57 +22,8 @@ body{
   color:#e6e6e6;
   font-family:system-ui,-apple-system,sans-serif;
 }
-.top{
-  padding:10px 14px;
-  background:#171a21;
-  border-bottom:1px solid #222;
-  display:flex;
-  align-items:center;
-  gap:10px;
-}
-.top img{width:22px;height:22px;filter:invert(1)}
-.top .title{font-weight:700}
-.wrap{display:flex;flex-direction:column;gap:10px;padding:12px}
+.wrap{padding:12px;display:flex;flex-direction:column;gap:10px}
 #board{width:min(92vw,560px);margin:0 auto}
-
-.controls{
-  width:min(92vw,560px);
-  margin:0 auto;
-  display:flex;
-  gap:6px;
-}
-.controls button{
-  flex:1;
-  padding:10px 0;
-  border:none;
-  border-radius:10px;
-  background:#1f2430;
-  color:#ddd;
-  cursor:pointer;
-}
-.controls button:disabled{opacity:.4}
-
-.panels{
-  width:min(92vw,900px);
-  margin:0 auto;
-  display:grid;
-  grid-template-columns:1fr;
-  gap:10px;
-}
-@media(min-width:900px){.panels{grid-template-columns:1fr 1fr}}
-
-.card{
-  border:1px solid #222;
-  border-radius:12px;
-  background:#0f1115;
-}
-.card .head{
-  padding:10px 12px;
-  background:#141820;
-  border-bottom:1px solid #222;
-  font-weight:600;
-}
-.card .body{padding:12px}
 
 .moves{font-size:18px;line-height:2.1}
 .move{
@@ -83,13 +33,6 @@ body{
   cursor:pointer;
 }
 .move.active{background:#3a7afe;color:#fff}
-
-.iconBtn{
-  width:26px;height:26px;
-  border:none;border-radius:999px;
-  background:#1f2430;color:#ddd;
-  cursor:pointer;margin-left:4px;
-}
 
 .variation{
   margin:6px 0 10px 26px;
@@ -105,91 +48,42 @@ body{
   font-size:14px;
 }
 
-.pgnBox{
-  width:100%;
-  height:320px;
-  border-radius:12px;
-  border:1px solid #222;
-  background:#0f1115;
-  color:#e6e6e6;
-  padding:12px;
-  font-family:ui-monospace,monospace;
-}
-
-.pgnActions{display:flex;gap:8px;margin-top:10px}
-.pgnActions button{
-  flex:1;
-  padding:10px 0;
-  border:none;
+/* contextual menu */
+#moveMenu{
+  position:absolute;
+  display:none;
+  background:#141820;
+  border:1px solid #2a3150;
   border-radius:10px;
+  padding:6px;
+  gap:6px;
+  z-index:1000;
+}
+#moveMenu button{
   background:#1f2430;
+  border:none;
+  border-radius:8px;
+  padding:6px 8px;
+  font-size:16px;
   color:#ddd;
   cursor:pointer;
 }
-
-/* Underpromotion */
-#promoOverlay{
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,.6);
-  display:none;
-  align-items:center;
-  justify-content:center;
-}
-#promoBox{
-  background:#141820;
-  border-radius:12px;
-  padding:16px;
-  display:flex;
-  gap:10px;
-}
-#promoBox button{
-  font-size:26px;
-  width:50px;height:50px;
-  border:none;border-radius:10px;
-  background:#1f2430;color:#fff;
-  cursor:pointer;
-}
+#moveMenu button:hover{background:#2a3150}
 </style>
 </head>
 
 <body>
 
-<div class="top">
-  <img src="https://jekyllchess.github.io/assets/favicon.png" alt="">
-  <div class="title">JekyllChess PGN App</div>
-</div>
-
 <div class="wrap">
   <div id="board"></div>
-
-  <div class="controls">
-    <button id="btnStart">⏮</button>
-    <button id="btnPrev">◀</button>
-    <button id="btnNext">▶</button>
-    <button id="btnEnd">⏭</button>
-  </div>
-
-  <div class="panels">
-    <div class="card">
-      <div class="head">Moves</div>
-      <div class="body"><div class="moves" id="moves"></div></div>
-    </div>
-
-    <div class="card">
-      <div class="head">PGN editor</div>
-      <div class="body">
-        <textarea id="pgnText" class="pgnBox"></textarea>
-        <div class="pgnActions">
-          <button id="copyPGN">Copy PGN</button>
-          <button id="copyFEN">Copy FEN</button>
-        </div>
-      </div>
-    </div>
-  </div>
+  <div class="moves" id="moves"></div>
 </div>
 
-<div id="promoOverlay"><div id="promoBox"></div></div>
+<div id="moveMenu">
+  <button id="menuPromote">⬆</button>
+  <button id="menuComment">➕</button>
+  <button id="menuDelete">🗑</button>
+</div>
 
 <script>
 (() => {
@@ -213,73 +107,40 @@ class Node{
 
 const root=new Node(null,null);
 let cursor=root;
-let navNode=null;
-let currentFEN="start";
+let activeNode=null;
+
 const chess=new Chess();
+const board=Chessboard("board",{position:"start",draggable:true,onDrop});
 
-const board=Chessboard("board",{
-  position:"start",
-  draggable:true,
-  pieceTheme:"https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png",
-  onDrop
-});
-
-/* ---------- helpers ---------- */
-
-function rebuildChessToNode(n,animate=true){
+function rebuildTo(n){
   chess.reset();
   const chain=[];
   while(n&&n!==root){chain.push(n);n=n.parent}
   chain.reverse().forEach(m=>chess.move(m.san));
-  currentFEN=chess.fen();
-  board.position(currentFEN,animate);
+  board.position(chess.fen(),true);
 }
-
-function isOnMainline(n){
-  let m=root.next;
-  while(m){if(m.id===n.id)return true;m=m.next}
-  return false;
-}
-
-function mainlineNodes(){
-  const a=[];
-  let n=root.next;
-  while(n){a.push(n);n=n.next}
-  return a;
-}
-
-function highlight(id){
-  document.querySelectorAll(".move").forEach(m=>m.classList.remove("active"));
-  if(!id)return;
-  const el=document.querySelector(`.move[data-node-id="${id}"]`);
-  if(el)el.classList.add("active");
-}
-
-/* ---------- rendering ---------- */
 
 const movesDiv=document.getElementById("moves");
-const pgnText=document.getElementById("pgnText");
+const menu=document.getElementById("moveMenu");
+const btnPromote=document.getElementById("menuPromote");
+const btnDelete=document.getElementById("menuDelete");
+const btnComment=document.getElementById("menuComment");
 
 function renderLine(start,container,ply){
   let n=start.next;
   while(n){
-    const s=document.createElement("span");
-    s.className="move";
-    s.dataset.nodeId=n.id;
-    s.textContent=((ply%2===0)?`${Math.floor(ply/2)+1}. `:"")+figSAN(n.san)+" ";
-    s.onclick=()=>{
-      if(isOnMainline(n))navNode=n;
-      cursor=n;
-      rebuildChessToNode(n,true);
-      highlight(n.id);
+    const span=document.createElement("span");
+    span.className="move";
+    span.textContent=((ply%2===0)?`${Math.floor(ply/2)+1}. `:"")+figSAN(n.san)+" ";
+    span.onclick=(e)=>{
+      e.stopPropagation();
+      document.querySelectorAll(".move").forEach(m=>m.classList.remove("active"));
+      span.classList.add("active");
+      activeNode=n;
+      rebuildTo(n);
+      showMenu(e.pageX,e.pageY,n);
     };
-    container.appendChild(s);
-
-    const del=document.createElement("button");
-    del.className="iconBtn";
-    del.textContent="🗑";
-    del.onclick=()=>deleteNode(n);
-    container.appendChild(del);
+    container.appendChild(span);
 
     if(n.comment){
       const c=document.createElement("div");
@@ -289,10 +150,10 @@ function renderLine(start,container,ply){
     }
 
     n.variations.forEach(v=>{
-      const vd=document.createElement("div");
-      vd.className="variation";
-      renderLine(v,vd,ply+1);
-      container.appendChild(vd);
+      const vDiv=document.createElement("div");
+      vDiv.className="variation";
+      renderVariation(v,vDiv,ply);
+      container.appendChild(vDiv);
     });
 
     n=n.next;
@@ -300,159 +161,95 @@ function renderLine(start,container,ply){
   }
 }
 
+function renderVariation(vRoot,container,ply){
+  const span=document.createElement("span");
+  span.className="move";
+  span.textContent=((ply%2===0)?`${Math.floor(ply/2)+1}. `:`${Math.floor(ply/2)+1}... `)+figSAN(vRoot.san)+" ";
+  span.onclick=(e)=>{
+    e.stopPropagation();
+    activeNode=vRoot;
+    rebuildTo(vRoot);
+    showMenu(e.pageX,e.pageY,vRoot);
+  };
+  container.appendChild(span);
+
+  if(vRoot.comment){
+    const c=document.createElement("div");
+    c.className="commentRow";
+    c.textContent=vRoot.comment;
+    container.appendChild(c);
+  }
+
+  renderLine(vRoot,container,ply+1);
+}
+
 function renderAll(){
   movesDiv.innerHTML="";
   renderLine(root,movesDiv,0);
 }
 
-/* ---------- PGN ---------- */
+function showMenu(x,y,node){
+  menu.style.left=x+"px";
+  menu.style.top=y+"px";
+  menu.style.display="flex";
 
-function serialize(node,ply){
-  let out=[],n=node.next;
-  while(n){
-    if(ply%2===0)out.push(`${Math.floor(ply/2)+1}.`);
-    out.push(n.san);
-    if(n.comment)out.push(`{${n.comment}}`);
-    n.variations.forEach(v=>out.push(`(${serialize({next:v},ply+1)})`));
-    n=n.next;ply++;
-  }
-  return out.join(" ");
+  btnPromote.style.display =
+    node.parent && node.parent.variations.includes(node) ? "inline-flex" : "none";
 }
 
-function syncPGN(){
-  pgnText.value=(serialize(root,0)+" *").trim();
-}
+document.body.onclick=()=>menu.style.display="none";
 
-/* ---------- deletion ---------- */
-
-function deleteNode(n){
-  if(!n||n===root)return;
-  const p=n.parent;
-  if(p.next===n)p.next=null;
-  p.variations=p.variations.filter(v=>v!==n);
-  cursor=p;
-  navNode=isOnMainline(p)?p:null;
-  rebuildChessToNode(p,true);
+btnDelete.onclick=()=>{
+  if(!activeNode||activeNode===root)return;
+  const p=activeNode.parent;
+  if(p.next===activeNode)p.next=null;
+  p.variations=p.variations.filter(v=>v!==activeNode);
+  activeNode=null;
+  menu.style.display="none";
+  rebuildTo(p);
   renderAll();
-  syncPGN();
-}
+};
 
-/* ---------- underpromotion ---------- */
+btnComment.onclick=()=>{
+  if(!activeNode)return;
+  const txt=prompt("Comment:",activeNode.comment||"");
+  if(txt!==null)activeNode.comment=txt.replace(/\}/g,"").trim();
+  menu.style.display="none";
+  renderAll();
+};
 
-function showPromotion(){
-  return new Promise(res=>{
-    const box=document.getElementById("promoBox");
-    box.innerHTML="";
-    ["q","r","b","n"].forEach(p=>{
-      const b=document.createElement("button");
-      b.textContent=FIG[p.toUpperCase()];
-      b.onclick=()=>{hidePromo();res(p)};
-      box.appendChild(b);
-    });
-    document.getElementById("promoOverlay").style.display="flex";
-  });
-}
-function hidePromo(){
-  document.getElementById("promoOverlay").style.display="none";
-}
-
-/* ---------- move entry ---------- */
+btnPromote.onclick=()=>{
+  const p=activeNode.parent;
+  p.variations=p.variations.filter(v=>v!==activeNode);
+  const old=p.next;
+  if(old)p.variations.unshift(old);
+  p.next=activeNode;
+  activeNode.parent=p;
+  menu.style.display="none";
+  renderAll();
+};
 
 async function onDrop(from,to){
   let promotion="q";
   if(chess.get(from).type==="p"&&(to[1]==="8"||to[1]==="1")){
-    promotion=await showPromotion();
+    promotion=prompt("Promote to (q,r,b,n):","q")||"q";
   }
   const m=chess.move({from,to,promotion});
   if(!m)return"snapback";
 
   let next;
-  if(cursor.next&&cursor.next.san===m.san) next=cursor.next;
+  if(cursor.next&&cursor.next.san===m.san)next=cursor.next;
   else{
     next=new Node(m.san,cursor);
     if(!cursor.next)cursor.next=next;
     else cursor.variations.push(next);
   }
   cursor=next;
-  if(isOnMainline(cursor))navNode=cursor;
-  currentFEN=chess.fen();
-  board.position(currentFEN,false);
+  board.position(chess.fen(),false);
   renderAll();
-  syncPGN();
-  highlight(cursor.id);
 }
-
-/* ---------- navigation ---------- */
-
-function updateNavButtons(){
-  const has=mainlineNodes().length>0;
-  [btnStart,btnPrev,btnNext,btnEnd].forEach(b=>b.disabled=!has);
-}
-
-function goStart(){
-  navNode=null;
-  cursor=root;
-  rebuildChessToNode(root,true);
-  highlight("");
-}
-
-function goEnd(){
-  const a=mainlineNodes();
-  if(!a.length)return goStart();
-  navNode=a[a.length-1];
-  cursor=navNode;
-  rebuildChessToNode(navNode,true);
-  highlight(navNode.id);
-}
-
-function goPrev(){
-  const a=mainlineNodes();
-  if(!navNode||!a.length)return;
-  const i=a.findIndex(x=>x.id===navNode.id);
-  if(i<=0)return goStart();
-  navNode=a[i-1];
-  cursor=navNode;
-  rebuildChessToNode(navNode,true);
-  highlight(navNode.id);
-}
-
-function goNext(){
-  const a=mainlineNodes();
-  if(!a.length)return;
-  if(!navNode)navNode=a[0];
-  else{
-    const i=a.findIndex(x=>x.id===navNode.id);
-    navNode=a[Math.min(a.length-1,i+1)];
-  }
-  cursor=navNode;
-  rebuildChessToNode(navNode,true);
-  highlight(navNode.id);
-}
-
-btnStart.onclick=goStart;
-btnPrev.onclick=goPrev;
-btnNext.onclick=goNext;
-btnEnd.onclick=goEnd;
-
-document.addEventListener("keydown",e=>{
-  const t=document.activeElement;
-  if(t&&t.tagName==="TEXTAREA")return;
-  if(e.key==="Home"){e.preventDefault();goStart();}
-  if(e.key==="End"){e.preventDefault();goEnd();}
-  if(e.key==="ArrowLeft"){e.preventDefault();goPrev();}
-  if(e.key==="ArrowRight"){e.preventDefault();goNext();}
-});
-
-/* ---------- copy ---------- */
-
-copyPGN.onclick=()=>navigator.clipboard.writeText(pgnText.value);
-copyFEN.onclick=()=>navigator.clipboard.writeText(currentFEN);
-
-/* ---------- init ---------- */
 
 renderAll();
-syncPGN();
-updateNavButtons();
 })();
 </script>
 

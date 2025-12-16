@@ -23,8 +23,6 @@ body{
   color:#e6e6e6;
   font-family:system-ui,-apple-system,sans-serif;
 }
-
-/* ---------- banner ---------- */
 .top{
   padding:10px 14px;
   background:#171a21;
@@ -36,13 +34,7 @@ body{
 .top img{width:22px;height:22px;filter:invert(1)}
 .top .title{font-weight:700}
 
-/* ---------- layout ---------- */
-.wrap{
-  padding:12px;
-  display:flex;
-  flex-direction:column;
-  gap:12px;
-}
+.wrap{padding:12px;display:flex;flex-direction:column;gap:12px}
 .main{
   display:grid;
   grid-template-columns:1fr;
@@ -52,10 +44,8 @@ body{
   .main{grid-template-columns:560px 1fr}
 }
 
-/* ---------- board ---------- */
 #board{margin:0 auto}
 
-/* ---------- nav ---------- */
 .controls{
   display:flex;
   gap:6px;
@@ -71,7 +61,6 @@ body{
 }
 .controls button:disabled{opacity:.4}
 
-/* ---------- panels ---------- */
 .card{
   border:1px solid #222;
   border-radius:12px;
@@ -85,7 +74,6 @@ body{
 }
 .card .body{padding:12px}
 
-/* ---------- moves ---------- */
 .moves{font-size:18px;line-height:2.1}
 .move{
   display:inline-block;
@@ -109,7 +97,6 @@ body{
   font-size:14px;
 }
 
-/* ---------- pgn ---------- */
 .pgnBox{
   width:100%;
   height:320px;
@@ -135,7 +122,7 @@ body{
   cursor:pointer;
 }
 
-/* ---------- tooltip ---------- */
+/* tooltip */
 #tooltip{
   position:absolute;
   display:none;
@@ -176,10 +163,8 @@ body{
 </div>
 
 <div class="wrap">
-
   <div class="main">
 
-    <!-- LEFT -->
     <div>
       <div id="board"></div>
       <div class="controls">
@@ -190,7 +175,6 @@ body{
       </div>
     </div>
 
-    <!-- RIGHT -->
     <div>
       <div class="card">
         <div class="head">Moves</div>
@@ -219,7 +203,6 @@ body{
 const FIG={K:"♔",Q:"♕",R:"♖",B:"♗",N:"♘"};
 const figSAN=s=>s.replace(/^[KQRBN]/,p=>FIG[p]||p).replace(/=([QRBN])/g,(_,p)=>"="+FIG[p]);
 
-/* ---------- tree ---------- */
 let NODE_SEQ=1;
 class Node{
   constructor(san,parent){
@@ -231,12 +214,14 @@ class Node{
     this.variations=[];
   }
 }
+
 const root=new Node(null,null);
 let cursor=root;
 let navNode=null;
 
-/* ---------- chess ---------- */
 const chess=new Chess();
+const boardEl=document.getElementById("board");
+
 const board=Chessboard("board",{
   position:"start",
   draggable:true,
@@ -271,7 +256,6 @@ function renderLine(start,container,ply){
       clearActive();
       span.classList.add("active");
       cursor=n;
-      if(isOnMainline(n))navNode=n;
       rebuildTo(n,true);
       showMoveMenu(e.pageX,e.pageY,n);
     };
@@ -324,49 +308,6 @@ function renderAll(){
   movesDiv.innerHTML="";
   renderLine(root,movesDiv,0);
 }
-
-/* ---------- navigation ---------- */
-function mainlineNodes(){
-  const a=[];
-  let n=root.next;
-  while(n){a.push(n);n=n.next}
-  return a;
-}
-
-function isOnMainline(n){
-  return mainlineNodes().some(x=>x===n);
-}
-
-function goStart(){ navNode=null; cursor=root; rebuildTo(root,true); clearActive(); }
-function goEnd(){
-  const a=mainlineNodes();
-  if(!a.length)return;
-  navNode=a[a.length-1];
-  cursor=navNode;
-  rebuildTo(navNode,true);
-}
-function goPrev(){
-  const a=mainlineNodes();
-  if(!navNode)return;
-  const i=a.indexOf(navNode);
-  if(i<=0)return goStart();
-  navNode=a[i-1];
-  cursor=navNode;
-  rebuildTo(navNode,true);
-}
-function goNext(){
-  const a=mainlineNodes();
-  if(!a.length)return;
-  if(!navNode)navNode=a[0];
-  else navNode=a[Math.min(a.length-1,a.indexOf(navNode)+1)];
-  cursor=navNode;
-  rebuildTo(navNode,true);
-}
-
-btnStart.onclick=goStart;
-btnPrev.onclick=goPrev;
-btnNext.onclick=goNext;
-btnEnd.onclick=goEnd;
 
 /* ---------- tooltip ---------- */
 const tooltip=document.getElementById("tooltip");
@@ -465,19 +406,21 @@ function showPromotionUI(x,y,cb){
   showTooltip(x,y,row);
 }
 
-/* ---------- move entry ---------- */
+/* ---------- move entry (FIXED) ---------- */
 function onDrop(from,to){
   const piece=chess.get(from);
-  const doMove=(promotion)=>{
+
+  const tryMove=(promotion)=>{
     const test=new Chess(chess.fen());
     const m=test.move({from,to,promotion});
-    if(!m)return"snapback";
+    if(!m) return "snapback";
 
+    // legal: commit to tree
     if(cursor.next&&cursor.next.san===m.san){
       cursor=cursor.next;
     }else{
       const n=new Node(m.san,cursor);
-      if(!cursor.next)cursor.next=n;
+      if(!cursor.next) cursor.next=n;
       else cursor.variations.push(n);
       cursor=n;
     }
@@ -485,15 +428,18 @@ function onDrop(from,to){
     renderAll();
   };
 
-  if(piece&&piece.type==="p"&&(to[1]==="8"||to[1]==="1")){
+  // promotion candidate
+  if(piece && piece.type==="p" && (to[1]==="8" || to[1]==="1")){
+    const test=new Chess(chess.fen());
+    if(!test.move({from,to,promotion:"q"})) return "snapback";
+
     const r=boardEl.getBoundingClientRect();
-    showPromotionUI(r.left+r.width/2,r.top+r.height/2,doMove);
+    showPromotionUI(r.left+r.width/2, r.top+r.height/2, tryMove);
     return;
   }
-  doMove("q");
-}
 
-const boardEl=document.getElementById("board");
+  return tryMove("q");
+}
 
 /* ---------- init ---------- */
 renderAll();

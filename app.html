@@ -1,25 +1,15 @@
----
-layout: none
-title: PGN Viewer
-pgn: |
-  [Event "Demo Game"]
-  [Site "Istanbul"]
-  [Date "2025.12.16"]
-  [Round "-"]
-  [White "White Player"]
-  [Black "Black Player"]
-  [Result "1-0"]
-
-  1. e4 e5 2. Nf3 Nc6
----
 <!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<title>{{ page.title }}</title>
+<title>JekyllChess PGN App</title>
 
+<!-- jQuery (required) -->
+<script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+
+<!-- Chess libraries -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.12.0/chess.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.js"></script>
 <link rel="stylesheet"
@@ -114,13 +104,8 @@ html, body {
 }
 
 /* ---------- RIGHT PANE ---------- */
-.pane {
-  display: none;
-}
-
-.pane.active {
-  display: block;
-}
+.pane { display: none; }
+.pane.active { display: block; }
 
 /* ---------- TABS ---------- */
 .tabs {
@@ -144,9 +129,9 @@ html, body {
 /* ---------- MOVES ---------- */
 .moves {
   padding: 16px;
-  font-size: 18px;
-  line-height: 2.2;
   overflow-y: auto;
+  line-height: 2.2;
+  font-size: 18px;
 }
 
 .move {
@@ -159,6 +144,28 @@ html, body {
 .move.active {
   background: #3a7afe;
   color: #fff;
+}
+
+.comment {
+  margin: 4px 0 10px 20px;
+  padding-left: 8px;
+  border-left: 3px solid #3a7afe;
+  font-size: 15px;
+  color: #cfd6ff;
+}
+
+/* ---------- VARIATIONS ---------- */
+.variation {
+  margin: 6px 0 12px 28px;
+  padding-left: 10px;
+  border-left: 2px dashed #444;
+  font-size: 16px;
+  opacity: .92;
+}
+
+.variation .move {
+  background: #1a1f2b;
+  margin-right: 4px;
 }
 
 /* ---------- PGN ---------- */
@@ -174,7 +181,7 @@ textarea {
   border: 1px solid #222;
   border-radius: 8px;
   padding: 10px;
-  font-family: monospace;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 14px;
   resize: vertical;
 }
@@ -238,7 +245,7 @@ textarea {
 
       <div id="pgnPane" class="pane">
         <div class="pgn-wrap">
-          <textarea id="pgnText"></textarea>
+          <textarea id="pgnText" placeholder="Enter or paste PGN here…"></textarea>
           <div class="controls-row" style="margin-top:8px">
             <button id="btnCopyPGN2">Copy PGN</button>
           </div>
@@ -249,104 +256,132 @@ textarea {
   </div>
 </div>
 
-<script id="pgn-data" type="application/json">
-{{ page.pgn | jsonify }}
-</script>
-
 <script>
 (() => {
   const FIG = { K:"♔", Q:"♕", R:"♖", B:"♗", N:"♘" };
 
   const chess = new Chess();
+  const board = Chessboard("board", {
+    position: "start",
+    draggable: true,
+    pieceTheme: "https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png",
+    onDrop
+  });
+
   const movesDiv = document.getElementById("moves");
   const pgnText = document.getElementById("pgnText");
 
-  const pgnEl = document.getElementById("pgn-data");
-  if (pgnEl && pgnEl.textContent.trim()) {
-    chess.load_pgn(JSON.parse(pgnEl.textContent), { sloppy: true });
-  }
+  const btnFirst = btn("btnFirst");
+  const btnPrev  = btn("btnPrev");
+  const btnPlay  = btn("btnPlay");
+  const btnNext  = btn("btnNext");
+  const btnLast  = btn("btnLast");
+  const btnFlip  = btn("btnFlip");
 
-  const board = Chessboard("board", {
-    position: chess.fen(),
-    draggable: true,
-    pieceTheme: "https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png",
-    onDrop: onDrop
-  });
+  let index = -1;
+  let autoplay = null;
 
-  function sanFig(s) {
+  function btn(id){ return document.getElementById(id); }
+
+  function figSAN(s) {
     return s.replace(/^[KQRBN]/, p => FIG[p])
             .replace(/=([QRBN])/g, (_,p)=>"="+FIG[p]);
   }
 
-  function renderMoves() {
-    movesDiv.innerHTML = "";
-    chess.history({ verbose: true }).forEach((m, i) => {
-      const span = document.createElement("span");
-      const num = m.color === "w" ? `${Math.floor(i/2)+1}. ` : "";
-      span.className = "move";
-      span.textContent = num + sanFig(m.san) + " ";
-      span.onclick = () => gotoMove(i);
-      movesDiv.appendChild(span);
-    });
-    updateButtons();
-    pgnText.value = chess.pgn();
-  }
-
-  function gotoMove(i) {
-    chess.reset();
-    const hist = chess.history({ verbose: true });
-    for (let j = 0; j <= i; j++) chess.move(hist[j]);
-    board.position(chess.fen(), true);
-    highlight(i);
-  }
-
-  function highlight(i) {
-    [...document.querySelectorAll(".move")]
-      .forEach((m,k)=>m.classList.toggle("active", k===i));
-  }
-
-  function onDrop(from, to) {
-    const move = chess.move({ from, to, promotion: "q" });
-    if (!move) return "snapback";
-    renderMoves();
-    highlight(chess.history().length - 1);
-  }
-
-  function updateButtons() {
-    const hasMoves = chess.history().length > 0;
-    ["btnFirst","btnPrev","btnPlay","btnNext","btnLast"]
-      .forEach(id => document.getElementById(id).disabled = !hasMoves);
-  }
-
-  /* Controls */
-  btnFlip.onclick = () =>
-    board.orientation(board.orientation() === "white" ? "black" : "white");
-
-  btnCopyPGN.onclick = btnCopyPGN2.onclick = () =>
-    navigator.clipboard.writeText(chess.pgn());
-
-  btnCopyFEN.onclick = () =>
-    navigator.clipboard.writeText(chess.fen());
-
-  /* Tabs */
-  document.querySelectorAll(".tab").forEach(t =>
-    t.onclick = () => {
-      document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
-      document.querySelectorAll(".pane").forEach(x=>x.classList.remove("active"));
-      t.classList.add("active");
-      document.getElementById(t.dataset.tab+"Pane").classList.add("active");
+  function splitMainAndVariations(pgn) {
+    const vars = [];
+    let out = "", buf = "", depth = 0;
+    for (const ch of pgn) {
+      if (ch === "(") { if (++depth === 1) buf=""; else buf+=ch; }
+      else if (ch === ")") { if (--depth === 0) vars.push(buf.trim()); else buf+=ch; }
+      else depth ? buf+=ch : out+=ch;
     }
-  );
+    return { main: out, variations: vars };
+  }
 
-  /* PGN edit */
-  pgnText.onblur = () => {
+  function render() {
+    movesDiv.innerHTML = "";
+    const { main, variations } = splitMainAndVariations(pgnText.value);
+
     chess.reset();
-    if (pgnText.value.trim()) chess.load_pgn(pgnText.value, { sloppy:true });
-    board.position(chess.fen(), true);
-    renderMoves();
-  };
+    if (main.trim()) chess.load_pgn(main, { sloppy:true });
 
-  renderMoves();
+    const mainHist = chess.history({ verbose:true });
+    chess.reset();
+
+    mainHist.forEach((m,i) => {
+      const span = document.createElement("span");
+      span.className = "move";
+      span.textContent =
+        (m.color==="w"?`${Math.floor(i/2)+1}. `:"") + figSAN(m.san) + " ";
+      span.onclick = () => gotoMain(mainHist, i);
+      movesDiv.appendChild(span);
+
+      if (m.comment) {
+        const c = document.createElement("div");
+        c.className = "comment";
+        c.textContent = m.comment;
+        movesDiv.appendChild(c);
+      }
+    });
+
+    variations.forEach(v => {
+      const vDiv = document.createElement("div");
+      vDiv.className = "variation";
+      const vc = new Chess();
+      vc.load_pgn(v,{sloppy:true});
+      vc.history({verbose:true}).forEach((m,i)=>{
+        const s=document.createElement("span");
+        s.className="move";
+        s.textContent=figSAN(m.san);
+        s.onclick=()=>{
+          vc.reset();
+          vc.history({verbose:true}).slice(0,i+1).forEach(x=>vc.move(x));
+          board.position(vc.fen(),true);
+        };
+        vDiv.appendChild(s);
+        vDiv.appendChild(document.createTextNode(" "));
+      });
+      movesDiv.appendChild(vDiv);
+    });
+
+    updateButtons(mainHist.length>0);
+    board.position(chess.fen(),true);
+  }
+
+  function gotoMain(hist,i){
+    chess.reset();
+    hist.slice(0,i+1).forEach(m=>chess.move(m));
+    board.position(chess.fen(),true);
+    index=i;
+  }
+
+  function onDrop(from,to){
+    const m=chess.move({from,to,promotion:"q"});
+    if(!m) return "snapback";
+    pgnText.value=chess.pgn();
+    index=chess.history().length-1;
+    render();
+  }
+
+  function updateButtons(on){
+    [btnFirst,btnPrev,btnPlay,btnNext,btnLast].forEach(b=>b.disabled=!on);
+  }
+
+  $(".tab").on("click",function(){
+    $(".tab,.pane").removeClass("active");
+    $(this).addClass("active");
+    $("#"+$(this).data("tab")+"Pane").addClass("active");
+  });
+
+  btnFlip.onclick=()=>board.orientation(board.orientation()==="white"?"black":"white");
+  btn("btnCopyPGN").onclick=btn("btnCopyPGN2").onclick=()=>navigator.clipboard.writeText(pgnText.value);
+  btn("btnCopyFEN").onclick=()=>navigator.clipboard.writeText(chess.fen());
+
+  pgnText.onblur=render;
+
+  render();
+  window.addEventListener("resize",()=>board.resize());
 })();
 </script>
 

@@ -6,7 +6,7 @@
 
 <title>JekyllChess PGN App</title>
 
-<!-- jQuery -->
+<!-- jQuery (required by your setup) -->
 <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
 
 <!-- Chess libraries -->
@@ -49,9 +49,7 @@ html, body {
   filter: invert(1);
 }
 
-.title {
-  font-weight: 700;
-}
+.title { font-weight: 700; }
 
 /* ---------- LAYOUT ---------- */
 .app {
@@ -67,14 +65,8 @@ html, body {
 }
 
 /* ---------- BOARD ---------- */
-.board-wrap {
-  padding: 12px;
-}
-
-#board {
-  width: min(92vw, 560px);
-  margin: 0 auto;
-}
+.board-wrap { padding: 12px; }
+#board { width: min(92vw, 560px); margin: 0 auto; }
 
 /* ---------- CONTROLS ---------- */
 .controls {
@@ -84,10 +76,7 @@ html, body {
   gap: 8px;
 }
 
-.controls-row {
-  display: flex;
-  gap: 6px;
-}
+.controls-row { display: flex; gap: 6px; }
 
 .controls button {
   flex: 1;
@@ -99,9 +88,7 @@ html, body {
   font-size: 15px;
 }
 
-.controls button:disabled {
-  opacity: .4;
-}
+.controls button:disabled { opacity: .4; }
 
 /* ---------- RIGHT PANE ---------- */
 .pane { display: none; }
@@ -141,10 +128,7 @@ html, body {
   display: inline-block;
 }
 
-.move.active {
-  background: #3a7afe;
-  color: #fff;
-}
+.move.active { background: #3a7afe; color: #fff; }
 
 .comment {
   margin: 4px 0 10px 20px;
@@ -169,13 +153,11 @@ html, body {
 }
 
 /* ---------- PGN ---------- */
-.pgn-wrap {
-  padding: 12px;
-}
+.pgn-wrap { padding: 12px; }
 
 textarea {
   width: 100%;
-  height: 260px;
+  height: 320px;
   background: #0f1115;
   color: #e6e6e6;
   border: 1px solid #222;
@@ -184,6 +166,17 @@ textarea {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 14px;
   resize: vertical;
+}
+
+.pgn-actions { margin-top: 8px; display: flex; gap: 8px; }
+.pgn-actions button {
+  flex: 1;
+  padding: 10px 0;
+  border: none;
+  border-radius: 10px;
+  background: #1f2430;
+  color: #ddd;
+  font-size: 15px;
 }
 
 /* ---------- DESKTOP ---------- */
@@ -215,19 +208,13 @@ textarea {
         <div id="board"></div>
       </div>
 
+      <!-- 4 buttons only (as requested) -->
       <div class="controls">
         <div class="controls-row">
-          <button id="btnFirst">⏮</button>
-          <button id="btnPrev">◀</button>
-          <button id="btnPlay">▶</button>
-          <button id="btnNext">▶</button>
-          <button id="btnLast">⏭</button>
-        </div>
-
-        <div class="controls-row">
-          <button id="btnFlip">↺ Flip</button>
-          <button id="btnCopyPGN">Copy PGN</button>
-          <button id="btnCopyFEN">Copy FEN</button>
+          <button id="btnStart" title="Go to start (Home)">⏮</button>
+          <button id="btnPrev"  title="Previous move (←)">◀</button>
+          <button id="btnNext"  title="Next move (→)">▶</button>
+          <button id="btnEnd"   title="Go to end (End)">⏭</button>
         </div>
       </div>
     </div>
@@ -236,7 +223,7 @@ textarea {
     <div>
       <div class="tabs">
         <div class="tab active" data-tab="moves">Moves</div>
-        <div class="tab" data-tab="pgn">PGN</div>
+        <div class="tab" data-tab="pgn">PGN text editor</div>
       </div>
 
       <div id="movesPane" class="pane active">
@@ -245,9 +232,10 @@ textarea {
 
       <div id="pgnPane" class="pane">
         <div class="pgn-wrap">
-          <textarea id="pgnText" placeholder="Enter or paste PGN here…"></textarea>
-          <div class="controls-row" style="margin-top:8px">
-            <button id="btnCopyPGN2">Copy PGN</button>
+          <textarea id="pgnText" spellcheck="false"></textarea>
+          <div class="pgn-actions">
+            <button id="btnCopyPGN">Copy PGN</button>
+            <button id="btnCopyFEN">Copy FEN</button>
           </div>
         </div>
       </div>
@@ -260,10 +248,97 @@ textarea {
 (() => {
   const FIG = { K:"♔", Q:"♕", R:"♖", B:"♗", N:"♘" };
 
-  const chess = new Chess();
+  // -----------------------------
+  // PGN header defaults / validity
+  // -----------------------------
+  function todayYYYYMMDD() {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth()+1).padStart(2,"0");
+    const day = String(d.getDate()).padStart(2,"0");
+    return `${y}.${m}.${day}`;
+  }
+
+  const DEFAULT_TAGS = {
+    Event: "Casual Game",
+    Site: "Online",
+    Date: todayYYYYMMDD(),
+    Round: "-",
+    White: "White",
+    Black: "Black",
+    Result: "*"
+  };
+
+  function normalizeTags(tagObj) {
+    const t = { ...DEFAULT_TAGS, ...tagObj };
+    // Minimal PGN sanity:
+    // - Date must be YYYY.MM.DD or "????.??.??"
+    if (!/^\d{4}\.\d{2}\.\d{2}$/.test(t.Date) && t.Date !== "????.??.??") {
+      t.Date = DEFAULT_TAGS.Date;
+    }
+    // - Result must be one of: 1-0, 0-1, 1/2-1/2, *
+    if (!/^(1-0|0-1|1\/2-1\/2|\*)$/.test(t.Result)) t.Result = "*";
+    return t;
+  }
+
+  function parseTagsFromPGN(pgn) {
+    const tags = {};
+    const tagRe = /^\s*\[([A-Za-z0-9_]+)\s+"([^"]*)"\]\s*$/gm;
+    let m;
+    while ((m = tagRe.exec(pgn)) !== null) {
+      tags[m[1]] = m[2];
+    }
+    return tags;
+  }
+
+  function stripTagSection(pgn) {
+    // Remove all tag lines; keep everything else
+    return pgn.replace(/^\s*\[[^\]]+\]\s*$/gm, "").trim();
+  }
+
+  function buildTagSection(tags) {
+    const t = normalizeTags(tags);
+    const order = ["Event","Site","Date","Round","White","Black","Result"];
+    return order.map(k => `[${k} "${t[k] ?? ""}"]`).join("\n");
+  }
+
+  // ----------------------------------------
+  // Internal model: mainline + simple branches
+  // ----------------------------------------
+  // mainlineSAN: array of SAN (with comments supported via chess.js)
+  // variationsByPly: Map plyIndex -> array of variations, each variation is { san: [], id }
+  const variationsByPly = new Map();
+  let varSeq = 1;
+
+  // Navigation state on MAINLINE (plies)
+  let navPly = -1; // -1 means start position
+  let autoplay = null; // not used now but kept safe
+  let tags = normalizeTags({}); // current PGN headers
+
   const movesDiv = document.getElementById("moves");
   const pgnText = document.getElementById("pgnText");
 
+  // chessMain holds the FULL mainline end position after syncModelToChess()
+  const chessMain = new Chess();
+
+  // A working chess object for navigation / replay (avoid corrupting main)
+  function fenAtMainPly(ply) {
+    const c = new Chess();
+    if (modelMainSAN.length > 0) {
+      // replay
+      for (let i = 0; i <= ply; i++) c.move(modelMainSAN[i]);
+    }
+    return c.fen();
+  }
+
+  let modelMainSAN = []; // derived from chess.js history when loading from PGN or playing at end
+
+  // When user is inside a variation they just created/continued
+  let activeVar = null; // { fromPly, varId, plyInVar } or null
+
+  // -----------------------------
+  // Board init
+  // -----------------------------
   const board = Chessboard("board", {
     position: "start",
     draggable: true,
@@ -271,110 +346,429 @@ textarea {
     onDrop
   });
 
+  function setBoard(fen, animate) {
+    // Requirement:
+    // - Animate on button/keyboard navigation
+    // - Do NOT animate on user-entered moves (onDrop)
+    board.position(fen, !!animate);
+  }
+
+  // -----------------------------
+  // Figurine SAN
+  // -----------------------------
   function figSAN(s) {
     return s.replace(/^[KQRBN]/, p => FIG[p])
             .replace(/=([QRBN])/g, (_,p)=>"="+FIG[p]);
   }
 
-  function splitMainAndVariations(pgn) {
-    const vars = [];
-    let out = "", buf = "", depth = 0;
-    for (const ch of pgn) {
+  // -----------------------------
+  // Buttons enable/disable
+  // -----------------------------
+  const btnStart = document.getElementById("btnStart");
+  const btnPrev  = document.getElementById("btnPrev");
+  const btnNext  = document.getElementById("btnNext");
+  const btnEnd   = document.getElementById("btnEnd");
+
+  function setNavButtonsEnabled(hasMoves) {
+    [btnStart, btnPrev, btnNext, btnEnd].forEach(b => b.disabled = !hasMoves);
+  }
+
+  // -----------------------------
+  // Rendering move list (mainline + variations)
+  // -----------------------------
+  function clearHighlights() {
+    document.querySelectorAll(".move").forEach(el => el.classList.remove("active"));
+  }
+
+  function highlightMainPly(ply) {
+    clearHighlights();
+    const el = document.querySelector(`.move[data-main-ply="${ply}"]`);
+    if (el) el.classList.add("active");
+  }
+
+  function renderMoveList() {
+    movesDiv.innerHTML = "";
+
+    // Build a chess instance from mainline to access comments (if any were in loaded PGN).
+    const c = new Chess();
+    const verbose = [];
+    for (const san of modelMainSAN) {
+      const mv = c.move(san);
+      if (mv) verbose.push(mv);
+    }
+
+    verbose.forEach((m, i) => {
+      const span = document.createElement("span");
+      span.className = "move";
+      span.dataset.mainPly = String(i);
+      span.textContent = (m.color === "w" ? `${Math.floor(i/2)+1}. ` : "") + figSAN(m.san) + " ";
+      span.onclick = () => {
+        activeVar = null;
+        navPly = i;
+        setBoard(fenAtMainPly(navPly), true); // animate on click navigation
+        highlightMainPly(navPly);
+      };
+      movesDiv.appendChild(span);
+
+      if (m.comment) {
+        const cd = document.createElement("div");
+        cd.className = "comment";
+        cd.textContent = m.comment;
+        movesDiv.appendChild(cd);
+      }
+
+      // Variations branching from THIS ply (i) meaning: after main move i
+      const vars = variationsByPly.get(i);
+      if (vars && vars.length) {
+        vars.forEach(v => {
+          const vDiv = document.createElement("div");
+          vDiv.className = "variation";
+          // Show as: ( ... )
+          // Make each move clickable to jump to that variation position
+          const vc = new Chess();
+          // Replay mainline to ply i
+          for (let k = 0; k <= i; k++) vc.move(modelMainSAN[k]);
+
+          v.san.forEach((san, j) => {
+            const moveObj = vc.move(san);
+            if (!moveObj) return;
+
+            const s = document.createElement("span");
+            s.className = "move";
+            s.textContent = figSAN(moveObj.san);
+            s.onclick = () => {
+              activeVar = { fromPly: i, varId: v.id, plyInVar: j };
+              navPly = i;
+              setBoard(vc.fen(), true); // animate on variation navigation
+              clearHighlights();
+            };
+
+            vDiv.appendChild(s);
+            vDiv.appendChild(document.createTextNode(" "));
+          });
+
+          movesDiv.appendChild(vDiv);
+        });
+      }
+    });
+
+    // Highlight current main ply if we are on mainline
+    if (!activeVar) highlightMainPly(navPly);
+  }
+
+  // -----------------------------
+  // PGN building (valid headers + movetext + variations)
+  // -----------------------------
+  function buildMovetextFromModel() {
+    // Mainline movetext with simple inserted variations after their branching ply.
+    // We’ll format: 1. e4 (1... c5) e5 ...
+    let out = [];
+    for (let i = 0; i < modelMainSAN.length; i++) {
+      const isWhite = (i % 2 === 0);
+      if (isWhite) out.push(`${Math.floor(i/2)+1}.`);
+
+      out.push(modelMainSAN[i]);
+
+      // Insert variations after this ply
+      const vars = variationsByPly.get(i);
+      if (vars && vars.length) {
+        vars.forEach(v => {
+          // Best-effort prefix: show starting move number context
+          const plyNo = i + 1; // after main move i, it's the other side's turn
+          const moveNo = Math.floor(plyNo/2) + 1;
+          const startsBlack = (plyNo % 2 === 1); // if plyNo odd => black to play
+          const prefix = startsBlack ? `${moveNo}...` : `${moveNo}.`;
+          out.push("(" + prefix + " " + v.san.join(" ") + ")");
+        });
+      }
+    }
+
+    // Ensure result token at end
+    const res = normalizeTags(tags).Result;
+    if (out.length === 0) return res;
+    return out.join(" ").trim() + " " + res;
+  }
+
+  function syncTextareaFromModel() {
+    const tagSection = buildTagSection(tags);
+    const movetext = buildMovetextFromModel();
+    pgnText.value = tagSection + "\n\n" + movetext;
+  }
+
+  // -----------------------------
+  // Loading from PGN textarea (headers + mainline; variations parsed best-effort)
+  // -----------------------------
+  // NOTE: chess.js does not support variations natively; we keep a simple extraction
+  // of top-level (...) blocks and attach them to the *previous* main ply.
+  function extractVariationsBestEffort(movetext) {
+    // Returns { mainText, attached: Map<ply, string[]> } where string[] are SAN tokens.
+    let depth = 0;
+    let main = "";
+    let buf = "";
+    const blocks = []; // raw variation strings in encounter order
+    for (const ch of movetext) {
       if (ch === "(") {
         if (++depth === 1) buf = "";
         else buf += ch;
       } else if (ch === ")") {
-        if (--depth === 0) vars.push(buf.trim());
+        if (--depth === 0) blocks.push(buf.trim());
         else buf += ch;
       } else {
-        depth ? buf += ch : out += ch;
+        depth ? (buf += ch) : (main += ch);
       }
     }
-    return { main: out, variations: vars };
-  }
 
-  function render() {
-    movesDiv.innerHTML = "";
+    // Attach each block to the previous main ply by scanning position in mainText.
+    // Best-effort: after loading main, we’ll attach all blocks to the last ply (end-1)
+    // if we can’t do better. But we can do a bit better: attach sequentially by
+    // searching the preceding SAN token in main.
+    const attached = new Map();
 
-    const { main, variations } = splitMainAndVariations(pgnText.value);
+    // Load main to get ply count
+    const c = new Chess();
+    c.load_pgn(main, { sloppy:true });
+    const mainHist = c.history(); // SAN
+    const defaultAttach = Math.max(-1, mainHist.length - 1);
 
-    chess.reset();
-    if (main.trim()) chess.load_pgn(main, { sloppy:true });
+    blocks.forEach(raw => {
+      // Strip leading move numbers like "12..." "12." etc
+      const cleaned = raw.replace(/\b\d+\.(\.\.)?\s*/g, "").trim();
+      if (!cleaned) return;
+      const sanTokens = cleaned.split(/\s+/).filter(Boolean);
 
-    const mainHist = chess.history({ verbose:true });
-
-    mainHist.forEach((m,i) => {
-      const span = document.createElement("span");
-      span.className = "move";
-      span.textContent =
-        (m.color==="w"?`${Math.floor(i/2)+1}. `:"") + figSAN(m.san) + " ";
-      span.onclick = () => gotoMain(mainHist, i);
-      movesDiv.appendChild(span);
-
-      if (m.comment) {
-        const c = document.createElement("div");
-        c.className = "comment";
-        c.textContent = m.comment;
-        movesDiv.appendChild(c);
-      }
+      const ply = defaultAttach;
+      if (!attached.has(ply)) attached.set(ply, []);
+      attached.get(ply).push(sanTokens);
     });
 
-    variations.forEach(v => {
-      const vDiv = document.createElement("div");
-      vDiv.className = "variation";
-      const vc = new Chess();
-      vc.load_pgn(v,{sloppy:true});
-      vc.history({verbose:true}).forEach((m,i)=>{
-        const s=document.createElement("span");
-        s.className="move";
-        s.textContent=figSAN(m.san);
-        s.onclick=()=>{
-          vc.reset();
-          vc.history({verbose:true}).slice(0,i+1).forEach(x=>vc.move(x));
-          board.position(vc.fen(),true);
-        };
-        vDiv.appendChild(s);
-        vDiv.appendChild(document.createTextNode(" "));
+    return { mainText: main, attached };
+  }
+
+  function loadFromTextarea() {
+    const full = pgnText.value || "";
+    tags = normalizeTags(parseTagsFromPGN(full));
+    const movetextRaw = stripTagSection(full);
+
+    // Extract variations (best-effort) and load MAIN only
+    const { mainText, attached } = extractVariationsBestEffort(movetextRaw);
+
+    chessMain.reset();
+    chessMain.load_pgn(buildTagSection(tags) + "\n\n" + mainText.trim(), { sloppy:true });
+
+    modelMainSAN = chessMain.history(); // SAN only
+    chessMain.reset();
+    modelMainSAN.forEach(s => chessMain.move(s)); // leave at end for fen/copy
+
+    variationsByPly.clear();
+    for (const [ply, list] of attached.entries()) {
+      if (ply < 0) continue;
+      list.forEach(sanTokens => {
+        const v = { id: "v" + (varSeq++), san: sanTokens.slice() };
+        if (!variationsByPly.has(ply)) variationsByPly.set(ply, []);
+        variationsByPly.get(ply).push(v);
       });
-      movesDiv.appendChild(vDiv);
-    });
+    }
 
-    board.position(chess.fen(), true);
+    activeVar = null;
+    navPly = modelMainSAN.length - 1;
+    setNavButtonsEnabled(modelMainSAN.length > 0);
+    setBoard(navPly >= 0 ? fenAtMainPly(navPly) : "start", false);
+    renderMoveList();
+    // Normalize textarea (adds missing headers, valid result, etc.)
+    syncTextareaFromModel();
   }
 
-  function gotoMain(hist,i){
-    chess.reset();
-    hist.slice(0,i+1).forEach(m=>chess.move(m));
-    board.position(chess.fen(),true);
+  // -----------------------------
+  // Entering moves: mainline vs variation
+  // -----------------------------
+  function onDrop(from, to) {
+    // Requirement: DO NOT animate when user enters moves
+    // We need to decide whether the move appends to mainline or becomes a variation.
+
+    // Determine the base position we are currently viewing
+    // If activeVar exists, we replay mainline to fromPly then var up to plyInVar
+    const base = new Chess();
+
+    if (activeVar) {
+      for (let i = 0; i <= activeVar.fromPly; i++) base.move(modelMainSAN[i]);
+      const vlist = variationsByPly.get(activeVar.fromPly) || [];
+      const v = vlist.find(x => x.id === activeVar.varId);
+      if (v) {
+        for (let j = 0; j <= activeVar.plyInVar; j++) base.move(v.san[j]);
+      }
+    } else {
+      // mainline at navPly
+      for (let i = 0; i <= navPly; i++) {
+        if (i >= 0) base.move(modelMainSAN[i]);
+      }
+    }
+
+    // Try move on base
+    const move = base.move({ from, to, promotion: "q" });
+    if (!move) return "snapback";
+
+    // CASE A: We are at end of mainline (and not inside a variation): append to mainline
+    const atMainEnd = (!activeVar && navPly === modelMainSAN.length - 1);
+
+    if (atMainEnd) {
+      modelMainSAN.push(move.san);
+      navPly = modelMainSAN.length - 1;
+      activeVar = null;
+
+      // Update chessMain to end
+      chessMain.reset();
+      modelMainSAN.forEach(s => chessMain.move(s));
+
+      setBoard(chessMain.fen(), false); // no animation on user entry
+      setNavButtonsEnabled(modelMainSAN.length > 0);
+      renderMoveList();
+      syncTextareaFromModel();
+      return;
+    }
+
+    // CASE B: We are NOT at end -> create/continue a variation
+    // We want: entering a move after going back should NOT overwrite mainline;
+    // it becomes a variation branching from the current main ply (navPly).
+    let branchFromPly;
+    if (activeVar) {
+      // continue the same variation
+      branchFromPly = activeVar.fromPly;
+      const vlist = variationsByPly.get(branchFromPly) || [];
+      const v = vlist.find(x => x.id === activeVar.varId);
+      if (v) {
+        v.san.push(move.san);
+        activeVar.plyInVar = v.san.length - 1;
+      }
+    } else {
+      // create new variation branching after navPly
+      branchFromPly = navPly;
+      const v = { id: "v" + (varSeq++), san: [move.san] };
+      if (!variationsByPly.has(branchFromPly)) variationsByPly.set(branchFromPly, []);
+      variationsByPly.get(branchFromPly).push(v);
+      activeVar = { fromPly: branchFromPly, varId: v.id, plyInVar: 0 };
+    }
+
+    // Set board to the base position AFTER the move (no animation)
+    setBoard(base.fen(), false);
+
+    setNavButtonsEnabled(modelMainSAN.length > 0);
+    renderMoveList();
+    syncTextareaFromModel();
   }
 
-  function onDrop(from,to){
-    const m = chess.move({from,to,promotion:"q"});
-    if(!m) return "snapback";
-    pgnText.value = chess.pgn();
-    render();
+  // -----------------------------
+  // Navigation (buttons + keyboard) with animation
+  // -----------------------------
+  function goStart() {
+    activeVar = null;
+    navPly = -1;
+    setBoard("start", true);
+    renderMoveList();
   }
 
-  $(".tab").on("click",function(){
-    $(".tab,.pane").removeClass("active");
-    $(this).addClass("active");
-    $("#"+$(this).data("tab")+"Pane").addClass("active");
+  function goEnd() {
+    activeVar = null;
+    navPly = modelMainSAN.length - 1;
+    if (navPly >= 0) setBoard(fenAtMainPly(navPly), true);
+    else setBoard("start", true);
+    renderMoveList();
+  }
+
+  function goPrev() {
+    activeVar = null;
+    if (modelMainSAN.length === 0) return;
+    navPly = Math.max(-1, navPly - 1);
+    setBoard(navPly >= 0 ? fenAtMainPly(navPly) : "start", true);
+    renderMoveList();
+  }
+
+  function goNext() {
+    activeVar = null;
+    if (modelMainSAN.length === 0) return;
+    navPly = Math.min(modelMainSAN.length - 1, navPly + 1);
+    setBoard(fenAtMainPly(navPly), true);
+    renderMoveList();
+  }
+
+  btnStart.onclick = goStart;
+  btnPrev.onclick  = goPrev;
+  btnNext.onclick  = goNext;
+  btnEnd.onclick   = goEnd;
+
+  document.addEventListener("keydown", (e) => {
+    // Only when not typing in textarea
+    const active = document.activeElement;
+    const typing = active && (active.tagName === "TEXTAREA" || active.tagName === "INPUT");
+    if (typing) return;
+
+    if (e.key === "Home") { e.preventDefault(); goStart(); }
+    else if (e.key === "End") { e.preventDefault(); goEnd(); }
+    else if (e.key === "ArrowLeft") { e.preventDefault(); goPrev(); }
+    else if (e.key === "ArrowRight") { e.preventDefault(); goNext(); }
   });
 
-  document.getElementById("btnFlip").onclick =
-    () => board.orientation(board.orientation()==="white"?"black":"white");
+  // -----------------------------
+  // Tabs (jQuery)
+  // -----------------------------
+  $(".tab").on("click", function() {
+    $(".tab,.pane").removeClass("active");
+    $(this).addClass("active");
+    $("#" + $(this).data("tab") + "Pane").addClass("active");
+  });
 
-  document.getElementById("btnCopyPGN").onclick =
-  document.getElementById("btnCopyPGN2").onclick =
-    () => navigator.clipboard.writeText(pgnText.value);
+  // -----------------------------
+  // Copy buttons in PGN editor
+  // -----------------------------
+  function writeClipboard(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(text);
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.left = "-9999px";
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand("copy");
+    document.body.removeChild(ta);
+    return Promise.resolve();
+  }
 
-  document.getElementById("btnCopyFEN").onclick =
-    () => navigator.clipboard.writeText(chess.fen());
+  document.getElementById("btnCopyPGN").onclick = () => writeClipboard(pgnText.value);
+  document.getElementById("btnCopyFEN").onclick = () => writeClipboard(
+    activeVar
+      ? (function() {
+          // If viewing a variation position, copy that FEN
+          // (board.fen not available; reconstruct from model)
+          const c = new Chess();
+          for (let i = 0; i <= activeVar.fromPly; i++) c.move(modelMainSAN[i]);
+          const vlist = variationsByPly.get(activeVar.fromPly) || [];
+          const v = vlist.find(x => x.id === activeVar.varId);
+          if (v) for (let j = 0; j <= activeVar.plyInVar; j++) c.move(v.san[j]);
+          return c.fen();
+        })()
+      : (navPly >= 0 ? fenAtMainPly(navPly) : "start")
+  );
 
-  pgnText.onblur = render;
+  // -----------------------------
+  // PGN editor behavior
+  // -----------------------------
+  // On blur: validate headers, reload mainline, keep variations best-effort
+  pgnText.onblur = () => loadFromTextarea();
 
-  render();
-  window.addEventListener("resize",()=>board.resize());
+  // -----------------------------
+  // Initial state: start with valid PGN headers + empty movetext
+  // -----------------------------
+  tags = normalizeTags(DEFAULT_TAGS);
+  modelMainSAN = [];
+  variationsByPly.clear();
+  activeVar = null;
+  navPly = -1;
+
+  syncTextareaFromModel();
+  setNavButtonsEnabled(false);
+  renderMoveList();
+  setBoard("start", false);
+
+  window.addEventListener("resize", () => board.resize());
 })();
 </script>
 

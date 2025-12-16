@@ -6,7 +6,7 @@
 
 <title>JekyllChess PGN App</title>
 
-<!-- jQuery (required) -->
+<!-- jQuery -->
 <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
 
 <!-- Chess libraries -->
@@ -261,27 +261,15 @@ textarea {
   const FIG = { K:"♔", Q:"♕", R:"♖", B:"♗", N:"♘" };
 
   const chess = new Chess();
+  const movesDiv = document.getElementById("moves");
+  const pgnText = document.getElementById("pgnText");
+
   const board = Chessboard("board", {
     position: "start",
     draggable: true,
     pieceTheme: "https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png",
     onDrop
   });
-
-  const movesDiv = document.getElementById("moves");
-  const pgnText = document.getElementById("pgnText");
-
-  const btnFirst = btn("btnFirst");
-  const btnPrev  = btn("btnPrev");
-  const btnPlay  = btn("btnPlay");
-  const btnNext  = btn("btnNext");
-  const btnLast  = btn("btnLast");
-  const btnFlip  = btn("btnFlip");
-
-  let index = -1;
-  let autoplay = null;
-
-  function btn(id){ return document.getElementById(id); }
 
   function figSAN(s) {
     return s.replace(/^[KQRBN]/, p => FIG[p])
@@ -292,22 +280,28 @@ textarea {
     const vars = [];
     let out = "", buf = "", depth = 0;
     for (const ch of pgn) {
-      if (ch === "(") { if (++depth === 1) buf=""; else buf+=ch; }
-      else if (ch === ")") { if (--depth === 0) vars.push(buf.trim()); else buf+=ch; }
-      else depth ? buf+=ch : out+=ch;
+      if (ch === "(") {
+        if (++depth === 1) buf = "";
+        else buf += ch;
+      } else if (ch === ")") {
+        if (--depth === 0) vars.push(buf.trim());
+        else buf += ch;
+      } else {
+        depth ? buf += ch : out += ch;
+      }
     }
     return { main: out, variations: vars };
   }
 
   function render() {
     movesDiv.innerHTML = "";
+
     const { main, variations } = splitMainAndVariations(pgnText.value);
 
     chess.reset();
     if (main.trim()) chess.load_pgn(main, { sloppy:true });
 
     const mainHist = chess.history({ verbose:true });
-    chess.reset();
 
     mainHist.forEach((m,i) => {
       const span = document.createElement("span");
@@ -345,27 +339,20 @@ textarea {
       movesDiv.appendChild(vDiv);
     });
 
-    updateButtons(mainHist.length>0);
-    board.position(chess.fen(),true);
+    board.position(chess.fen(), true);
   }
 
   function gotoMain(hist,i){
     chess.reset();
     hist.slice(0,i+1).forEach(m=>chess.move(m));
     board.position(chess.fen(),true);
-    index=i;
   }
 
   function onDrop(from,to){
-    const m=chess.move({from,to,promotion:"q"});
+    const m = chess.move({from,to,promotion:"q"});
     if(!m) return "snapback";
-    pgnText.value=chess.pgn();
-    index=chess.history().length-1;
+    pgnText.value = chess.pgn();
     render();
-  }
-
-  function updateButtons(on){
-    [btnFirst,btnPrev,btnPlay,btnNext,btnLast].forEach(b=>b.disabled=!on);
   }
 
   $(".tab").on("click",function(){
@@ -374,11 +361,17 @@ textarea {
     $("#"+$(this).data("tab")+"Pane").addClass("active");
   });
 
-  btnFlip.onclick=()=>board.orientation(board.orientation()==="white"?"black":"white");
-  btn("btnCopyPGN").onclick=btn("btnCopyPGN2").onclick=()=>navigator.clipboard.writeText(pgnText.value);
-  btn("btnCopyFEN").onclick=()=>navigator.clipboard.writeText(chess.fen());
+  document.getElementById("btnFlip").onclick =
+    () => board.orientation(board.orientation()==="white"?"black":"white");
 
-  pgnText.onblur=render;
+  document.getElementById("btnCopyPGN").onclick =
+  document.getElementById("btnCopyPGN2").onclick =
+    () => navigator.clipboard.writeText(pgnText.value);
+
+  document.getElementById("btnCopyFEN").onclick =
+    () => navigator.clipboard.writeText(chess.fen());
+
+  pgnText.onblur = render;
 
   render();
   window.addEventListener("resize",()=>board.resize());

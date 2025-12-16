@@ -17,283 +17,255 @@
 
 <style>
 * { box-sizing: border-box; }
-
-html, body {
-  margin: 0;
-  height: 100%;
-  background: #0f1115;
-  color: #e6e6e6;
-  font-family: system-ui, -apple-system, sans-serif;
+body{
+  margin:0;
+  background:#0f1115;
+  color:#e6e6e6;
+  font-family:system-ui,-apple-system,sans-serif;
 }
 
-/* ---------- TOP BAR ---------- */
-.topbar {
-  min-height: 52px;
-  padding: 0 14px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  background: #171a21;
-  border-bottom: 1px solid #222;
+.top{
+  padding:10px 14px;
+  background:#171a21;
+  border-bottom:1px solid #222;
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+.top img{ width:22px; height:22px; filter:invert(1); }
+.top .title{ font-weight:700; }
+
+.wrap{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  padding:12px;
 }
 
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+#board{
+  width:min(92vw,560px);
+  margin:0 auto;
 }
 
-.brand img {
-  width: 22px;
-  height: 22px;
-  filter: invert(1);
+.controls{
+  width:min(92vw,560px);
+  margin:0 auto;
+  display:flex;
+  gap:6px;
+}
+.controls button{
+  flex:1;
+  padding:10px 0;
+  border:none;
+  border-radius:10px;
+  background:#1f2430;
+  color:#ddd;
+  font-size:15px;
+  cursor:pointer;
+}
+.controls button:disabled{ opacity:.4; cursor:default; }
+
+.panels{
+  width:min(92vw,900px);
+  margin:0 auto;
+  display:grid;
+  grid-template-columns:1fr;
+  gap:10px;
+}
+@media (min-width: 900px){
+  .panels{ grid-template-columns: 1fr 1fr; }
 }
 
-.title { font-weight: 700; }
+.card{
+  border:1px solid #222;
+  border-radius:12px;
+  overflow:hidden;
+  background:#0f1115;
+}
+.card .head{
+  padding:10px 12px;
+  background:#141820;
+  border-bottom:1px solid #222;
+  font-weight:600;
+}
+.card .body{ padding:12px; }
 
-/* ---------- LAYOUT ---------- */
-.app {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
+.moves{
+  font-size:18px;
+  line-height:2.1;
 }
 
-.main {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
+.move{
+  display:inline-block;
+  padding:2px 6px;
+  border-radius:7px;
+  cursor:pointer;
+  user-select:none;
+}
+.move:hover{ background:#20263a; }
+.move.active{ background:#3a7afe; color:#fff; }
+
+.variation{
+  margin:6px 0 10px 26px;
+  padding-left:10px;
+  border-left:2px dashed #444;
+  opacity:.95;
 }
 
-/* ---------- BOARD ---------- */
-.board-wrap { padding: 12px; }
-#board { width: min(92vw, 560px); margin: 0 auto; }
-
-/* ---------- CONTROLS ---------- */
-.controls {
-  padding: 0 12px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+.dragHint{
+  display:inline-block;
+  margin-left:6px;
+  font-size:12px;
+  opacity:.7;
+  border:1px solid #222;
+  padding:2px 6px;
+  border-radius:999px;
 }
 
-.controls-row { display: flex; gap: 6px; }
-
-.controls button {
-  flex: 1;
-  padding: 10px 0;
-  border: none;
-  border-radius: 10px;
-  background: #1f2430;
-  color: #ddd;
-  font-size: 15px;
+.dropTarget{
+  outline:2px dashed transparent;
+  outline-offset:2px;
+}
+.dropTarget.dragover{
+  outline-color:#3a7afe;
 }
 
-.controls button:disabled { opacity: .4; }
-
-/* ---------- RIGHT PANE ---------- */
-.pane { display: none; }
-.pane.active { display: block; }
-
-/* ---------- TABS ---------- */
-.tabs {
-  display: flex;
-  border-bottom: 1px solid #222;
+.commentRow{
+  margin:4px 0 10px 18px;
+  padding:6px 8px;
+  border-left:3px solid #3a7afe;
+  border-radius:8px;
+  background:#121724;
+  color:#cfd6ff;
+  font-size:14px;
 }
 
-.tab {
-  flex: 1;
-  text-align: center;
-  padding: 10px;
-  cursor: pointer;
-  background: #141820;
+.inlineEditor{
+  margin:6px 0 10px 18px;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
 }
-
-.tab.active {
-  background: #1f2430;
-  font-weight: 600;
-}
-
-/* ---------- MOVES ---------- */
-.moves {
-  padding: 16px;
-  overflow-y: auto;
-  line-height: 2.2;
-  font-size: 18px;
-}
-
-.move {
-  cursor: pointer;
-  padding: 2px 6px;
-  border-radius: 6px;
-  display: inline-block;
-}
-
-.move.active { background: #3a7afe; color: #fff; }
-
-.comment {
-  margin: 4px 0 10px 20px;
-  padding-left: 8px;
-  border-left: 3px solid #3a7afe;
-  font-size: 15px;
-  color: #cfd6ff;
-}
-
-.add-comment-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  margin-left: 6px;
-  border-radius: 999px;
-  border: none;
-  cursor: pointer;
-  background: #1f2430;
-  color: #ddd;
-  font-size: 18px;
-  line-height: 0;
-}
-.add-comment-btn:hover { background: #2a3150; }
-
-/* ---------- VARIATIONS ---------- */
-.variation {
-  margin: 6px 0 12px 28px;
-  padding-left: 10px;
-  border-left: 2px dashed #444;
-  font-size: 16px;
-  opacity: .92;
-}
-
-.variation .move {
-  background: #1a1f2b;
-  margin-right: 4px;
-}
-
-/* ---------- PGN ---------- */
-.pgn-wrap { padding: 12px; }
-
-textarea {
-  width: 100%;
-  height: 320px;
-  background: #0f1115;
-  color: #e6e6e6;
-  border: 1px solid #222;
-  border-radius: 8px;
-  padding: 10px;
+.inlineEditor textarea{
+  width:100%;
+  min-height:70px;
+  resize:vertical;
+  border-radius:10px;
+  border:1px solid #222;
+  background:#0f1115;
+  color:#e6e6e6;
+  padding:10px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 14px;
-  resize: vertical;
+  font-size:14px;
+}
+.inlineEditor .row{
+  display:flex;
+  gap:8px;
+}
+.inlineEditor .row button{
+  flex:1;
+  padding:10px 0;
+  border:none;
+  border-radius:10px;
+  background:#1f2430;
+  color:#ddd;
+  cursor:pointer;
 }
 
-.pgn-actions {
-  margin-top: 10px;
-  display: flex;
-  gap: 8px;
+.iconBtn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:28px;
+  height:28px;
+  border-radius:999px;
+  border:none;
+  background:#1f2430;
+  color:#ddd;
+  cursor:pointer;
+  margin-left:6px;
+}
+.iconBtn:hover{ background:#2a3150; }
+
+.pgnBox{
+  width:100%;
+  height:320px;
+  resize:vertical;
+  border-radius:12px;
+  border:1px solid #222;
+  background:#0f1115;
+  color:#e6e6e6;
+  padding:12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size:14px;
 }
 
-.pgn-actions button, .pgn-actions select {
-  flex: 1;
-  padding: 10px 10px;
-  border: 1px solid #222;
-  border-radius: 10px;
-  background: #1f2430;
-  color: #ddd;
-  font-size: 14px;
+.pgnActions{
+  display:flex;
+  gap:8px;
+  margin-top:10px;
 }
-
-.pgn-actions select { appearance: none; }
-
-.pgn-actions .btn {
-  border: none;
-  cursor: pointer;
-}
-
-/* ---------- DESKTOP ---------- */
-@media (min-width: 900px) {
-  .main { display: grid; grid-template-columns: 560px 1fr; }
+.pgnActions button{
+  flex:1;
+  padding:10px 0;
+  border:none;
+  border-radius:10px;
+  background:#1f2430;
+  color:#ddd;
+  cursor:pointer;
 }
 </style>
 </head>
 
 <body>
 
-<div class="app">
-  <div class="topbar">
-    <div class="brand">
-      <img src="https://jekyllchess.github.io/assets/favicon.png" alt="">
-      <div class="title">JekyllChess PGN App</div>
-    </div>
+<div class="top">
+  <img src="https://jekyllchess.github.io/assets/favicon.png" alt="">
+  <div class="title">JekyllChess PGN App</div>
+</div>
+
+<div class="wrap">
+  <div id="board"></div>
+
+  <!-- Navigation (mainline only) -->
+  <div class="controls">
+    <button id="btnStart" title="Start">⏮</button>
+    <button id="btnPrev" title="Previous">◀</button>
+    <button id="btnNext" title="Next">▶</button>
+    <button id="btnEnd" title="End">⏭</button>
   </div>
 
-  <div class="main">
-    <!-- LEFT -->
-    <div>
-      <div class="board-wrap">
-        <div id="board"></div>
-      </div>
+  <div class="panels">
 
-      <!-- 4 navigation buttons -->
-      <div class="controls">
-        <div class="controls-row">
-          <button id="btnStart" title="Go to start (Home)">⏮</button>
-          <button id="btnPrev"  title="Previous move (←)">◀</button>
-          <button id="btnNext"  title="Next move (→)">▶</button>
-          <button id="btnEnd"   title="Go to end (End)">⏭</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- RIGHT -->
-    <div>
-      <div class="tabs">
-        <div class="tab active" data-tab="moves">Moves</div>
-        <div class="tab" data-tab="pgn">PGN text editor</div>
-      </div>
-
-      <div id="movesPane" class="pane active">
+    <div class="card">
+      <div class="head">Moves</div>
+      <div class="body">
         <div class="moves" id="moves"></div>
       </div>
+    </div>
 
-      <div id="pgnPane" class="pane">
-        <div class="pgn-wrap">
-          <div class="pgn-actions">
-            <select id="tagSelect" title="Add a PGN tag"></select>
-            <button class="btn" id="btnAddTag">Add header</button>
-          </div>
-
-          <textarea id="pgnText" spellcheck="false"></textarea>
-
-          <div class="pgn-actions">
-            <button class="btn" id="btnCopyPGN">Copy PGN</button>
-            <button class="btn" id="btnCopyFEN">Copy FEN</button>
-          </div>
+    <div class="card">
+      <div class="head">PGN text editor</div>
+      <div class="body">
+        <textarea id="pgnText" class="pgnBox" spellcheck="false"></textarea>
+        <div class="pgnActions">
+          <button id="copyPGN">Copy PGN</button>
+          <button id="copyFEN">Copy FEN</button>
         </div>
       </div>
     </div>
+
   </div>
 </div>
 
 <script>
 (() => {
   const FIG = { K:"♔", Q:"♕", R:"♖", B:"♗", N:"♘" };
+  const figSAN = (s) => s.replace(/^[KQRBN]/, p => FIG[p] || p).replace(/=([QRBN])/g, (_,p)=>"="+(FIG[p]||p));
 
-  // --- "All valid PGN headers" dropdown (PGN tag names are extensible; this list includes
-  // STR + commonly used supplemental tags from the PGN ecosystem/spec supplements.) ---
-  const TAG_NAME_OPTIONS = [
-    // Seven Tag Roster (STR)
-    "Event","Site","Date","Round","White","Black","Result",
-    // Setup / position
-    "SetUp","FEN",
-    // Identification / metadata
-    "EventDate","UTCDate","UTCTime","Time","TimeControl","Termination","Mode","PlyCount","Annotator",
-    "ECO","Opening","Variation",
-    // Ratings / titles / IDs / teams
-    "WhiteElo","BlackElo","WhiteTitle","BlackTitle","WhiteFideId","BlackFideId",
-    "WhiteTeam","BlackTeam","Board","Section","Stage",
-    // Misc commonly seen
-    "WhiteUSCF","BlackUSCF","WhiteNA","BlackNA","WhiteType","BlackType","Source","SourceDate"
-  ];
-
+  // ---------------------------
+  // PGN headers (basic valid STR)
+  // ---------------------------
   function todayYYYYMMDD() {
     const d = new Date();
     const y = d.getFullYear();
@@ -301,99 +273,58 @@ textarea {
     const day = String(d.getDate()).padStart(2,"0");
     return `${y}.${m}.${day}`;
   }
-
-  const DEFAULT_TAGS = {
+  let TAGS = {
     Event: "Casual Game",
-    Site: "Online",
+    Site: "Local",
     Date: todayYYYYMMDD(),
     Round: "-",
     White: "White",
     Black: "Black",
     Result: "*"
   };
-
-  function normalizeTags(tagObj) {
-    const t = { ...DEFAULT_TAGS, ...tagObj };
-    if (!/^\d{4}\.\d{2}\.\d{2}$/.test(t.Date) && t.Date !== "????.??.??") t.Date = DEFAULT_TAGS.Date;
-    if (!/^(1-0|0-1|1\/2-1\/2|\*)$/.test(t.Result)) t.Result = "*";
-    return t;
-  }
-
-  function parseTagsFromPGN(pgn) {
-    const tags = {};
-    const tagRe = /^\s*\[([A-Za-z0-9_]+)\s+"([^"]*)"\]\s*$/gm;
-    let m;
-    while ((m = tagRe.exec(pgn)) !== null) tags[m[1]] = m[2];
-    return tags;
-  }
-
-  function stripTagSection(pgn) {
-    return pgn.replace(/^\s*\[[^\]]+\]\s*$/gm, "").trim();
-  }
-
-  function buildTagSection(tags) {
-    const t = normalizeTags(tags);
+  function tagSection() {
     const order = ["Event","Site","Date","Round","White","Black","Result"];
-    const lines = [];
-
-    // STR first (in order)
-    order.forEach(k => lines.push(`[${k} "${t[k] ?? ""}"]`));
-
-    // Non-STR tags (ASCII order)
-    const extras = Object.keys(t)
-      .filter(k => !order.includes(k))
-      .sort((a,b)=>a.localeCompare(b));
-
-    extras.forEach(k => lines.push(`[${k} "${t[k] ?? ""}"]`));
-    return lines.join("\n");
+    return order.map(k => `[${k} "${(TAGS[k] ?? "")}"]`).join("\n");
   }
 
-  // --- Internal model (mainline + simple variations + comments) ---
-  // modelMainSAN: SAN array for main line
-  // variationsByPly: plyIndex -> [{id, san:[]}, ...] (branch occurs AFTER plyIndex)
-  // commentsByPly: plyIndex -> string (comment AFTER that move)
-  const variationsByPly = new Map();
-  const commentsByPly = new Map();
-  let varSeq = 1;
+  // ---------------------------
+  // Move tree
+  // Each node is a move (SAN), with:
+  // - next: main continuation
+  // - variations: alternative continuations (each is also a node)
+  // - parent: previous move in that line (root is special)
+  // ---------------------------
+  let NODE_SEQ = 1;
+  const byId = new Map();
 
-  let tags = normalizeTags({});
+  class Node {
+    constructor(san=null, parent=null) {
+      this.id = "n" + (NODE_SEQ++);
+      this.san = san;               // null for root
+      this.comment = "";            // comment AFTER this move
+      this.parent = parent;         // previous move in this line (or root)
+      this.next = null;             // main continuation
+      this.variations = [];         // array of Node (variation roots)
+      byId.set(this.id, this);
+    }
+  }
 
-  // Navigation state on MAINLINE (plies)
-  let navPly = -1;      // -1 = initial position
-  let activeVar = null; // { fromPly, varId, plyInVar } or null
+  const root = new Node(null, null);
 
-  let modelMainSAN = [];
-  const chessMain = new Chess(); // maintained at END of mainline for convenience
+  // Cursor = last move of the line we are currently on (for board-entry continuation/branching)
+  let cursor = root;
 
-  // Track current board position FEN for Copy FEN
-  let currentBoardFEN = "start";
+  // Mainline navigation pointer (node along root.next chain, or null at start)
+  let navNode = null; // a Node on mainline, or null
 
-  // --- DOM ---
-  const movesDiv = document.getElementById("moves");
-  const pgnText = document.getElementById("pgnText");
-  const tagSelect = document.getElementById("tagSelect");
+  // Current board position FEN (for Copy FEN)
+  let currentFEN = "start";
 
-  const btnStart = document.getElementById("btnStart");
-  const btnPrev  = document.getElementById("btnPrev");
-  const btnNext  = document.getElementById("btnNext");
-  const btnEnd   = document.getElementById("btnEnd");
+  // ---------------------------
+  // Chess instances
+  // ---------------------------
+  const chess = new Chess(); // represents CURRENT cursor line position on board
 
-  const btnCopyPGN = document.getElementById("btnCopyPGN");
-  const btnCopyFEN = document.getElementById("btnCopyFEN");
-  const btnAddTag  = document.getElementById("btnAddTag");
-
-  // Populate dropdown
-  (function initTagDropdown(){
-    const uniq = Array.from(new Set(TAG_NAME_OPTIONS));
-    uniq.forEach(name => {
-      const opt = document.createElement("option");
-      opt.value = name;
-      opt.textContent = name;
-      tagSelect.appendChild(opt);
-    });
-  })();
-
-  // --- Board init ---
   const board = Chessboard("board", {
     position: "start",
     draggable: true,
@@ -402,21 +333,478 @@ textarea {
   });
 
   function setBoard(fen, animate) {
-    // Animate only for navigation (buttons/keyboard/move-list clicks), NOT for user move entry.
-    currentBoardFEN = fen;
+    currentFEN = fen;
     board.position(fen, !!animate);
   }
 
-  // --- Helpers ---
-  function figSAN(s) {
-    return s.replace(/^[KQRBN]/, p => FIG[p])
-            .replace(/=([QRBN])/g, (_,p)=>"="+FIG[p]);
+  function rebuildChessToNode(target) {
+    // Rebuild chess position by walking from node -> root via parent pointers
+    chess.reset();
+    if (!target) { setBoard("start", true); return; }
+    const chain = [];
+    let n = target;
+    while (n && n !== root) { chain.push(n); n = n.parent; }
+    chain.reverse();
+    for (const mv of chain) chess.move(mv.san);
+    setBoard(chess.fen(), true);
   }
 
-  function setNavButtonsEnabled(hasMoves) {
-    [btnStart, btnPrev, btnNext, btnEnd].forEach(b => b.disabled = !hasMoves);
+  function rebuildChessToCursorNoAnim() {
+    chess.reset();
+    const chain = [];
+    let n = cursor;
+    while (n && n !== root) { chain.push(n); n = n.parent; }
+    chain.reverse();
+    for (const mv of chain) chess.move(mv.san);
+    setBoard(chess.fen(), false); // user move entry should not animate
   }
 
+  // ---------------------------
+  // Variation promotion: drag a variation root onto the mainline move at same branch point
+  // Rule: only allow promoting a *variation root* that is a direct child of the branch parent.
+  // ---------------------------
+  function promoteVariation(branchParentId, variationRootId) {
+    const parent = byId.get(branchParentId);
+    const vNode = byId.get(variationRootId);
+    if (!parent || !vNode) return;
+
+    const idx = parent.variations.findIndex(x => x.id === vNode.id);
+    if (idx < 0) return; // not a direct variation of that parent
+
+    const currentMain = parent.next;
+    if (currentMain && currentMain.id === vNode.id) return; // already mainline
+
+    // Remove vNode from variations
+    parent.variations.splice(idx, 1);
+
+    // Old main becomes a variation (if it exists)
+    if (currentMain) {
+      parent.variations.unshift(currentMain);
+      currentMain.parent = parent;
+    }
+
+    // New mainline continuation
+    parent.next = vNode;
+    vNode.parent = parent;
+
+    // If navigation node was the old main, keep it stable by id (it may now be a variation)
+    // Cursor stays on same node id; we'll rebuild chess to cursor
+    renderAll();
+    rebuildChessToCursorNoAnim();
+  }
+
+  // ---------------------------
+  // Inline comment editor
+  // ---------------------------
+  let openEditorForNodeId = null;
+
+  function openCommentEditor(nodeId) {
+    openEditorForNodeId = nodeId;
+    renderAll();
+  }
+
+  function closeCommentEditor() {
+    openEditorForNodeId = null;
+    renderAll();
+  }
+
+  function saveComment(nodeId, text) {
+    const n = byId.get(nodeId);
+    if (!n || n === root) return;
+    n.comment = (text || "").replace(/\}/g, "").trim();
+    openEditorForNodeId = null;
+    renderAll();
+    syncPGN();
+  }
+
+  // ---------------------------
+  // Rendering
+  // ---------------------------
+  const movesDiv = document.getElementById("moves");
+  const pgnText = document.getElementById("pgnText");
+
+  function renderLine(startNode, container, ply, isMainline) {
+    // Traverse along .next
+    let prev = startNode;           // branch parent for the first node in this line
+    let node = startNode.next;      // first move node
+    let localPly = ply;
+
+    while (node) {
+      const span = document.createElement("span");
+      span.className = "move dropTarget";
+      span.textContent = ((localPly % 2 === 0) ? `${Math.floor(localPly/2)+1}. ` : "") + figSAN(node.san) + " ";
+      span.dataset.nodeId = node.id;
+      span.dataset.branchParentId = prev.id; // important: branch point is the previous node in that line
+
+      // Click = navigate to that node (animate)
+      span.onclick = () => {
+        navNode = isOnMainline(node) ? node : navNode;
+        cursor = node;
+        rebuildChessToNode(node);
+        highlightActive(node.id);
+      };
+
+      // Drop target for promotion (drop variation root here to promote at prev)
+      span.ondragover = (e) => { e.preventDefault(); span.classList.add("dragover"); };
+      span.ondragleave = () => span.classList.remove("dragover");
+      span.ondrop = (e) => {
+        e.preventDefault();
+        span.classList.remove("dragover");
+        const draggedId = e.dataTransfer.getData("text/nodeId");
+        const branchParentId = span.dataset.branchParentId;
+        promoteVariation(branchParentId, draggedId);
+      };
+
+      container.appendChild(span);
+
+      // Inline comment button (for any node)
+      const cbtn = document.createElement("button");
+      cbtn.className = "iconBtn";
+      cbtn.type = "button";
+      cbtn.title = "Edit comment";
+      cbtn.textContent = "💬";
+      cbtn.onclick = () => openCommentEditor(node.id);
+      container.appendChild(cbtn);
+
+      // Comment display
+      if (node.comment && node.comment.trim()) {
+        const c = document.createElement("div");
+        c.className = "commentRow";
+        c.textContent = node.comment;
+        container.appendChild(c);
+      }
+
+      // Inline editor under this move if open
+      if (openEditorForNodeId === node.id) {
+        const ed = document.createElement("div");
+        ed.className = "inlineEditor";
+
+        const ta = document.createElement("textarea");
+        ta.value = node.comment || "";
+        ed.appendChild(ta);
+
+        const row = document.createElement("div");
+        row.className = "row";
+
+        const save = document.createElement("button");
+        save.type = "button";
+        save.textContent = "Save comment";
+        save.onclick = () => saveComment(node.id, ta.value);
+
+        const cancel = document.createElement("button");
+        cancel.type = "button";
+        cancel.textContent = "Cancel";
+        cancel.onclick = () => closeCommentEditor();
+
+        row.appendChild(save);
+        row.appendChild(cancel);
+        ed.appendChild(row);
+
+        container.appendChild(ed);
+      }
+
+      // Render variations branching AFTER this move (nested variations supported)
+      if (node.variations.length) {
+        node.variations.forEach(vRoot => {
+          const vDiv = document.createElement("div");
+          vDiv.className = "variation";
+
+          // Variation root move shown (draggable)
+          const vSpan = document.createElement("span");
+          vSpan.className = "move";
+          vSpan.textContent = figSAN(vRoot.san) + " ";
+          vSpan.dataset.nodeId = vRoot.id;
+
+          // Make the variation root draggable for promotion
+          vSpan.draggable = true;
+          vSpan.ondragstart = (e) => {
+            e.dataTransfer.setData("text/nodeId", vRoot.id);
+            e.dataTransfer.effectAllowed = "move";
+          };
+
+          vSpan.onclick = () => {
+            cursor = vRoot;
+            rebuildChessToNode(vRoot);
+            highlightActive(vRoot.id);
+          };
+
+          vDiv.appendChild(vSpan);
+
+          const hint = document.createElement("span");
+          hint.className = "dragHint";
+          hint.textContent = "drag to promote";
+          vDiv.appendChild(hint);
+
+          // comment button for variation root
+          const vCbtn = document.createElement("button");
+          vCbtn.className = "iconBtn";
+          vCbtn.type = "button";
+          vCbtn.title = "Edit comment";
+          vCbtn.textContent = "💬";
+          vCbtn.onclick = () => openCommentEditor(vRoot.id);
+          vDiv.appendChild(vCbtn);
+
+          if (vRoot.comment && vRoot.comment.trim()) {
+            const cc = document.createElement("div");
+            cc.className = "commentRow";
+            cc.textContent = vRoot.comment;
+            vDiv.appendChild(cc);
+          }
+          if (openEditorForNodeId === vRoot.id) {
+            const ed = document.createElement("div");
+            ed.className = "inlineEditor";
+
+            const ta = document.createElement("textarea");
+            ta.value = vRoot.comment || "";
+            ed.appendChild(ta);
+
+            const row = document.createElement("div");
+            row.className = "row";
+
+            const save = document.createElement("button");
+            save.type = "button";
+            save.textContent = "Save comment";
+            save.onclick = () => saveComment(vRoot.id, ta.value);
+
+            const cancel = document.createElement("button");
+            cancel.type = "button";
+            cancel.textContent = "Cancel";
+            cancel.onclick = () => closeCommentEditor();
+
+            row.appendChild(save);
+            row.appendChild(cancel);
+            ed.appendChild(row);
+
+            vDiv.appendChild(ed);
+          }
+
+          // Then render the remainder of that variation line using vRoot as "start"
+          // (vRoot is itself the first move, so we render its .next continuation beneath)
+          renderLine(vRoot, vDiv, localPly + 1, false);
+
+          container.appendChild(vDiv);
+        });
+      }
+
+      prev = node;
+      node = node.next;
+      localPly++;
+    }
+  }
+
+  function isOnMainline(node) {
+    // node is on mainline if reachable by following root.next chain
+    let n = root.next;
+    while (n) { if (n.id === node.id) return true; n = n.next; }
+    return false;
+  }
+
+  function highlightActive(nodeId) {
+    document.querySelectorAll(".move").forEach(el => el.classList.remove("active"));
+    const el = document.querySelector(`.move[data-node-id="${nodeId}"]`);
+    if (el) el.classList.add("active");
+  }
+
+  function renderAll() {
+    movesDiv.innerHTML = "";
+    renderLine(root, movesDiv, 0, true);
+
+    // Add a "+" at end of current cursor move to add comment quickly (inline, not prompt)
+    // (kept as a convenience; comment editing is inline now anyway)
+    // Not necessary, but harmless: users can click 💬 too.
+  }
+
+  // ---------------------------
+  // PGN serialization (with nested variations + comments)
+  // ---------------------------
+  function serializeFrom(node, startPly, variationStart) {
+    // node is the "previous" node; we serialize its .next chain
+    let out = [];
+    let ply = startPly;
+
+    let cur = node.next;
+    let first = true;
+
+    while (cur) {
+      const moveNo = Math.floor(ply/2) + 1;
+      const isWhite = (ply % 2 === 0);
+
+      if (first) {
+        if (variationStart) {
+          out.push(isWhite ? `${moveNo}.` : `${moveNo}...`);
+        } else {
+          if (isWhite) out.push(`${moveNo}.`);
+        }
+      } else {
+        if (isWhite) out.push(`${moveNo}.`);
+      }
+
+      out.push(cur.san);
+
+      if (cur.comment && cur.comment.trim()) {
+        out.push(`{${cur.comment.replace(/\}/g,"")}}`);
+      }
+
+      // Variations after this move
+      if (cur.variations.length) {
+        cur.variations.forEach(v => {
+          const vText = serializeVariation(v, ply + 1);
+          out.push(vText);
+        });
+      }
+
+      first = false;
+      ply += 1;
+      cur = cur.next;
+    }
+
+    return out.join(" ").trim();
+  }
+
+  function serializeVariation(variationRoot, startPly) {
+    // variationRoot is the first move of that variation line
+    // We need to serialize it as: (moveNo... SAN ... )
+    const pseudoParent = { next: variationRoot }; // to reuse serializeFrom
+    const text = serializeFrom(pseudoParent, startPly, true);
+    return "(" + text + ")";
+  }
+
+  function syncPGN() {
+    const movetext = serializeFrom(root, 0, false);
+    const result = TAGS.Result || "*";
+    const full = tagSection() + "\n\n" + (movetext ? (movetext + " " + result) : result);
+    pgnText.value = full.trim() + "\n";
+  }
+
+  // ---------------------------
+  // Move entry logic (no duplicates; nested variations supported)
+  // ---------------------------
+  function onDrop(from, to) {
+    // DO NOT animate for user-entered moves
+    const test = new Chess(chess.fen());
+    const m = test.move({ from, to, promotion:"q" });
+    if (!m) return "snapback";
+
+    // Decide where to go from cursor:
+    // - if cursor.next SAN matches => continue main continuation
+    // - else if a variation root at cursor has same first SAN => enter/continue that variation
+    // - else if cursor.next is empty => set cursor.next
+    // - else create a NEW variation root (only if no existing with same first SAN)
+    if (cursor.next && cursor.next.san === m.san) {
+      cursor = cursor.next;
+    } else {
+      const existingVar = cursor.variations.find(v => v.san === m.san);
+      if (existingVar) {
+        cursor = existingVar;
+      } else {
+        const newNode = new Node(m.san, cursor);
+        if (!cursor.next) {
+          cursor.next = newNode;
+        } else {
+          cursor.variations.push(newNode);
+        }
+        cursor = newNode;
+      }
+    }
+
+    // Apply move to chess (current line)
+    chess.move(m.san);
+    setBoard(chess.fen(), false);
+
+    // Keep navNode sensible if we're on mainline
+    if (isOnMainline(cursor)) navNode = cursor;
+
+    renderAll();
+    syncPGN();
+    highlightActive(cursor.id);
+    updateNavButtons();
+  }
+
+  // ---------------------------
+  // Navigation (mainline) with animation
+  // ---------------------------
+  const btnStart = document.getElementById("btnStart");
+  const btnPrev  = document.getElementById("btnPrev");
+  const btnNext  = document.getElementById("btnNext");
+  const btnEnd   = document.getElementById("btnEnd");
+
+  function mainlineNodes() {
+    const arr = [];
+    let n = root.next;
+    while (n) { arr.push(n); n = n.next; }
+    return arr;
+  }
+
+  function updateNavButtons() {
+    const arr = mainlineNodes();
+    const hasMoves = arr.length > 0;
+    [btnStart,btnPrev,btnNext,btnEnd].forEach(b => b.disabled = !hasMoves);
+  }
+
+  function goStart() {
+    navNode = null;
+    cursor = root;
+    chess.reset();
+    setBoard("start", true);
+    highlightActive(""); // none
+  }
+
+  function goEnd() {
+    const arr = mainlineNodes();
+    if (!arr.length) return goStart();
+    navNode = arr[arr.length - 1];
+    cursor = navNode;
+    rebuildChessToNode(navNode);
+    highlightActive(navNode.id);
+  }
+
+  function goPrev() {
+    const arr = mainlineNodes();
+    if (!arr.length) return;
+    if (!navNode) return;
+    const idx = arr.findIndex(x => x.id === navNode.id);
+    if (idx <= 0) {
+      goStart();
+      return;
+    }
+    navNode = arr[idx - 1];
+    cursor = navNode;
+    rebuildChessToNode(navNode);
+    highlightActive(navNode.id);
+  }
+
+  function goNext() {
+    const arr = mainlineNodes();
+    if (!arr.length) return;
+    if (!navNode) {
+      navNode = arr[0];
+    } else {
+      const idx = arr.findIndex(x => x.id === navNode.id);
+      navNode = arr[Math.min(arr.length - 1, idx + 1)];
+    }
+    cursor = navNode;
+    rebuildChessToNode(navNode);
+    highlightActive(navNode.id);
+  }
+
+  btnStart.onclick = goStart;
+  btnPrev.onclick  = goPrev;
+  btnNext.onclick  = goNext;
+  btnEnd.onclick   = goEnd;
+
+  document.addEventListener("keydown", (e) => {
+    const active = document.activeElement;
+    const typing = active && (active.tagName === "TEXTAREA" || active.tagName === "INPUT");
+    if (typing) return;
+    if (e.key === "Home") { e.preventDefault(); goStart(); }
+    else if (e.key === "End") { e.preventDefault(); goEnd(); }
+    else if (e.key === "ArrowLeft") { e.preventDefault(); goPrev(); }
+    else if (e.key === "ArrowRight") { e.preventDefault(); goNext(); }
+  });
+
+  // ---------------------------
+  // Copy buttons
+  // ---------------------------
   function writeClipboard(text) {
     if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(text);
     const ta = document.createElement("textarea");
@@ -430,380 +818,16 @@ textarea {
     return Promise.resolve();
   }
 
-  // Compute FEN at main ply
-  function fenAtMainPly(ply) {
-    const c = new Chess();
-    for (let i = 0; i <= ply; i++) c.move(modelMainSAN[i]);
-    return c.fen();
-  }
+  document.getElementById("copyPGN").onclick = () => writeClipboard(pgnText.value);
+  document.getElementById("copyFEN").onclick = () => writeClipboard(currentFEN);
 
-  // --- Movetext building (includes comments + variations) ---
-  function buildMovetextFromModel() {
-    let out = [];
-    for (let i = 0; i < modelMainSAN.length; i++) {
-      const isWhite = (i % 2 === 0);
-      if (isWhite) out.push(`${Math.floor(i/2)+1}.`);
-
-      out.push(modelMainSAN[i]);
-
-      const cm = commentsByPly.get(i);
-      if (cm && cm.trim()) out.push(`{${cm.replace(/\}/g, "")}}`);
-
-      const vars = variationsByPly.get(i);
-      if (vars && vars.length) {
-        vars.forEach(v => {
-          const plyNo = i + 1;
-          const moveNo = Math.floor(plyNo/2) + 1;
-          const startsBlack = (plyNo % 2 === 1);
-          const prefix = startsBlack ? `${moveNo}...` : `${moveNo}.`;
-          out.push("(" + prefix + " " + v.san.join(" ") + ")");
-        });
-      }
-    }
-
-    const res = normalizeTags(tags).Result;
-    if (out.length === 0) return res;
-    return out.join(" ").trim() + " " + res;
-  }
-
-  function syncTextareaFromModel() {
-    const tagSection = buildTagSection(tags);
-    const movetext = buildMovetextFromModel();
-    pgnText.value = tagSection + "\n\n" + movetext;
-  }
-
-  // --- Load from textarea (best-effort variations; comments via chess.js) ---
-  function extractVariationsBestEffort(movetext) {
-    let depth = 0, main = "", buf = "";
-    const blocks = [];
-    for (const ch of movetext) {
-      if (ch === "(") {
-        if (++depth === 1) buf = "";
-        else buf += ch;
-      } else if (ch === ")") {
-        if (--depth === 0) blocks.push(buf.trim());
-        else buf += ch;
-      } else {
-        depth ? (buf += ch) : (main += ch);
-      }
-    }
-
-    const c = new Chess();
-    c.load_pgn(main, { sloppy:true });
-    const mainHist = c.history(); // SAN
-    const attachTo = Math.max(-1, mainHist.length - 1);
-
-    const attached = new Map();
-    blocks.forEach(raw => {
-      const cleaned = raw.replace(/\b\d+\.(\.\.)?\s*/g, "").trim();
-      if (!cleaned) return;
-      const sanTokens = cleaned.split(/\s+/).filter(Boolean);
-      const ply = attachTo;
-      if (!attached.has(ply)) attached.set(ply, []);
-      attached.get(ply).push(sanTokens);
-    });
-
-    return { mainText: main, attached };
-  }
-
-  function loadFromTextarea() {
-    const full = pgnText.value || "";
-    tags = normalizeTags(parseTagsFromPGN(full));
-    const movetextRaw = stripTagSection(full);
-
-    const { mainText, attached } = extractVariationsBestEffort(movetextRaw);
-
-    // Parse mainline + comments with chess.js (it supports {...} comments)
-    const c = new Chess();
-    c.load_pgn(buildTagSection(tags) + "\n\n" + mainText.trim(), { sloppy:true });
-
-    modelMainSAN = c.history(); // SAN only
-    commentsByPly.clear();
-    const verbose = c.history({ verbose:true });
-    verbose.forEach((m, i) => {
-      if (m.comment) commentsByPly.set(i, m.comment);
-    });
-
-    // keep chessMain at end
-    chessMain.reset();
-    modelMainSAN.forEach(s => chessMain.move(s));
-
-    variationsByPly.clear();
-    for (const [ply, list] of attached.entries()) {
-      if (ply < 0) continue;
-      list.forEach(sanTokens => {
-        const v = { id: "v" + (varSeq++), san: sanTokens.slice() };
-        if (!variationsByPly.has(ply)) variationsByPly.set(ply, []);
-        variationsByPly.get(ply).push(v);
-      });
-    }
-
-    activeVar = null;
-    navPly = modelMainSAN.length - 1;
-
-    setNavButtonsEnabled(modelMainSAN.length > 0);
-    setBoard(navPly >= 0 ? fenAtMainPly(navPly) : "start", false);
-
-    renderMoveList();
-    // normalize textarea (ensures valid STR headers and ordering)
-    syncTextareaFromModel();
-  }
-
-  // --- Move list rendering + "+ comment" button on last move ---
-  function clearHighlights() {
-    document.querySelectorAll(".move").forEach(el => el.classList.remove("active"));
-  }
-
-  function highlightMainPly(ply) {
-    clearHighlights();
-    const el = document.querySelector(`.move[data-main-ply="${ply}"]`);
-    if (el) el.classList.add("active");
-  }
-
-  function renderMoveList() {
-    movesDiv.innerHTML = "";
-
-    // Use chess.js to derive SAN (and move numbers) cleanly for display
-    const c = new Chess();
-    const verbose = [];
-    for (const san of modelMainSAN) {
-      const mv = c.move(san);
-      if (mv) verbose.push(mv);
-    }
-
-    verbose.forEach((m, i) => {
-      const span = document.createElement("span");
-      span.className = "move";
-      span.dataset.mainPly = String(i);
-      span.textContent = (m.color === "w" ? `${Math.floor(i/2)+1}. ` : "") + figSAN(m.san) + " ";
-      span.onclick = () => {
-        activeVar = null;
-        navPly = i;
-        setBoard(fenAtMainPly(navPly), true); // animate on navigation
-        highlightMainPly(navPly);
-      };
-      movesDiv.appendChild(span);
-
-      const cm = commentsByPly.get(i);
-      if (cm && cm.trim()) {
-        const cd = document.createElement("div");
-        cd.className = "comment";
-        cd.textContent = cm;
-        movesDiv.appendChild(cd);
-      }
-
-      const vars = variationsByPly.get(i);
-      if (vars && vars.length) {
-        vars.forEach(v => {
-          const vDiv = document.createElement("div");
-          vDiv.className = "variation";
-
-          const vc = new Chess();
-          for (let k = 0; k <= i; k++) vc.move(modelMainSAN[k]);
-
-          v.san.forEach((san, j) => {
-            const moveObj = vc.move(san);
-            if (!moveObj) return;
-
-            const s = document.createElement("span");
-            s.className = "move";
-            s.textContent = figSAN(moveObj.san);
-            s.onclick = () => {
-              activeVar = { fromPly: i, varId: v.id, plyInVar: j };
-              navPly = i;
-              setBoard(vc.fen(), true);
-              clearHighlights();
-            };
-
-            vDiv.appendChild(s);
-            vDiv.appendChild(document.createTextNode(" "));
-          });
-
-          movesDiv.appendChild(vDiv);
-        });
-      }
-    });
-
-    // Plus button at end of the last move (mainline last ply)
-    if (modelMainSAN.length > 0) {
-      const plus = document.createElement("button");
-      plus.className = "add-comment-btn";
-      plus.title = "Add comment to last move";
-      plus.type = "button";
-      plus.textContent = "+";
-      plus.onclick = () => {
-        const lastPly = modelMainSAN.length - 1;
-        const existing = commentsByPly.get(lastPly) || "";
-        const txt = prompt("Comment for the last move (PGN {...}):", existing);
-        if (txt === null) return; // cancelled
-        const clean = String(txt).trim();
-        if (!clean) commentsByPly.delete(lastPly);
-        else commentsByPly.set(lastPly, clean);
-        syncTextareaFromModel();
-        renderMoveList();
-      };
-      movesDiv.appendChild(plus);
-    }
-
-    if (!activeVar) highlightMainPly(navPly);
-  }
-
-  // --- Move entry: append or create variation ---
-  function onDrop(from, to) {
-    // DO NOT animate for user-entered moves
-    const base = new Chess();
-
-    if (activeVar) {
-      for (let i = 0; i <= activeVar.fromPly; i++) base.move(modelMainSAN[i]);
-      const vlist = variationsByPly.get(activeVar.fromPly) || [];
-      const v = vlist.find(x => x.id === activeVar.varId);
-      if (v) for (let j = 0; j <= activeVar.plyInVar; j++) base.move(v.san[j]);
-    } else {
-      for (let i = 0; i <= navPly; i++) if (i >= 0) base.move(modelMainSAN[i]);
-    }
-
-    const move = base.move({ from, to, promotion: "q" });
-    if (!move) return "snapback";
-
-    const atMainEnd = (!activeVar && navPly === modelMainSAN.length - 1);
-
-    if (atMainEnd) {
-      modelMainSAN.push(move.san);
-      navPly = modelMainSAN.length - 1;
-      activeVar = null;
-
-      chessMain.reset();
-      modelMainSAN.forEach(s => chessMain.move(s));
-
-      setBoard(chessMain.fen(), false);
-      setNavButtonsEnabled(modelMainSAN.length > 0);
-      syncTextareaFromModel();
-      renderMoveList();
-      return;
-    }
-
-    // not at end => add/continue variation
-    if (activeVar) {
-      const vlist = variationsByPly.get(activeVar.fromPly) || [];
-      const v = vlist.find(x => x.id === activeVar.varId);
-      if (v) {
-        v.san.push(move.san);
-        activeVar.plyInVar = v.san.length - 1;
-      }
-    } else {
-      const branchFromPly = navPly;
-      const v = { id: "v" + (varSeq++), san: [move.san] };
-      if (!variationsByPly.has(branchFromPly)) variationsByPly.set(branchFromPly, []);
-      variationsByPly.get(branchFromPly).push(v);
-      activeVar = { fromPly: branchFromPly, varId: v.id, plyInVar: 0 };
-    }
-
-    setBoard(base.fen(), false);
-    setNavButtonsEnabled(modelMainSAN.length > 0);
-    syncTextareaFromModel();
-    renderMoveList();
-  }
-
-  // --- Navigation (buttons + keyboard) ANIMATE ---
-  function goStart() {
-    activeVar = null;
-    navPly = -1;
-    setBoard("start", true);
-    renderMoveList();
-  }
-
-  function goEnd() {
-    activeVar = null;
-    navPly = modelMainSAN.length - 1;
-    setBoard(navPly >= 0 ? fenAtMainPly(navPly) : "start", true);
-    renderMoveList();
-  }
-
-  function goPrev() {
-    activeVar = null;
-    if (modelMainSAN.length === 0) return;
-    navPly = Math.max(-1, navPly - 1);
-    setBoard(navPly >= 0 ? fenAtMainPly(navPly) : "start", true);
-    renderMoveList();
-  }
-
-  function goNext() {
-    activeVar = null;
-    if (modelMainSAN.length === 0) return;
-    navPly = Math.min(modelMainSAN.length - 1, navPly + 1);
-    setBoard(fenAtMainPly(navPly), true);
-    renderMoveList();
-  }
-
-  btnStart.onclick = goStart;
-  btnPrev.onclick  = goPrev;
-  btnNext.onclick  = goNext;
-  btnEnd.onclick   = goEnd;
-
-  document.addEventListener("keydown", (e) => {
-    const active = document.activeElement;
-    const typing = active && (active.tagName === "TEXTAREA" || active.tagName === "INPUT");
-    if (typing) return;
-
-    if (e.key === "Home") { e.preventDefault(); goStart(); }
-    else if (e.key === "End") { e.preventDefault(); goEnd(); }
-    else if (e.key === "ArrowLeft") { e.preventDefault(); goPrev(); }
-    else if (e.key === "ArrowRight") { e.preventDefault(); goNext(); }
-  });
-
-  // --- Tabs (jQuery) ---
-  $(".tab").on("click", function() {
-    $(".tab,.pane").removeClass("active");
-    $(this).addClass("active");
-    $("#" + $(this).data("tab") + "Pane").addClass("active");
-  });
-
-  // --- COPY buttons (fixed to your exact request) ---
-  // Copy PGN copies ALL text in textarea
-  btnCopyPGN.onclick = () => writeClipboard(pgnText.value);
-
-  // Copy FEN copies the FEN of the position currently on the board
-  btnCopyFEN.onclick = () => writeClipboard(currentBoardFEN);
-
-  // --- Add header dropdown ---
-  btnAddTag.onclick = () => {
-    const name = tagSelect.value;
-    if (!name) return;
-    if (!(name in tags)) {
-      // Fill sensible defaults
-      if (name === "Date") tags[name] = todayYYYYMMDD();
-      else if (name === "Result") tags[name] = "*";
-      else if (["Event","Site","Round","White","Black"].includes(name)) tags[name] = DEFAULT_TAGS[name] ?? "?";
-      else if (name === "SetUp") tags[name] = "0";
-      else tags[name] = "";
-      tags = normalizeTags(tags);
-      syncTextareaFromModel();
-    }
-    // Put cursor on the tag line (nice UX)
-    const needle = `[${name} "`;
-    const idx = pgnText.value.indexOf(needle);
-    if (idx >= 0) {
-      pgnText.focus();
-      pgnText.setSelectionRange(idx + needle.length, idx + needle.length);
-    }
-  };
-
-  // --- PGN editor: on blur, re-parse / normalize ---
-  pgnText.onblur = () => loadFromTextarea();
-
-  // --- Initial state (valid STR headers + empty game) ---
-  tags = normalizeTags(DEFAULT_TAGS);
-  modelMainSAN = [];
-  variationsByPly.clear();
-  commentsByPly.clear();
-  activeVar = null;
-  navPly = -1;
-
-  syncTextareaFromModel();
-  setNavButtonsEnabled(false);
+  // ---------------------------
+  // Initial
+  // ---------------------------
+  renderAll();
+  syncPGN();
+  updateNavButtons();
   setBoard("start", false);
-  renderMoveList();
-
   window.addEventListener("resize", () => board.resize());
 })();
 </script>

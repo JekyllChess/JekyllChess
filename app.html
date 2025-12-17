@@ -6,10 +6,7 @@
 
 <title>JekyllChess PGN App</title>
 
-<!-- jQuery REQUIRED by chessboard.js -->
 <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
-
-<!-- Chess libs -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.12.0/chess.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.js"></script>
 <link rel="stylesheet"
@@ -17,103 +14,28 @@
 
 <style>
 *{box-sizing:border-box}
-body{
-  margin:0;
-  background:#0f1115;
-  color:#e6e6e6;
-  font-family:system-ui,-apple-system,sans-serif;
-}
-.top{
-  padding:10px 14px;
-  background:#171a21;
-  border-bottom:1px solid #222;
-  display:flex;
-  align-items:center;
-  gap:10px;
-}
+body{margin:0;background:#0f1115;color:#e6e6e6;font-family:system-ui}
+.top{padding:10px 14px;background:#171a21;border-bottom:1px solid #222;display:flex;gap:10px;align-items:center}
 .top img{width:22px;height:22px;filter:invert(1)}
-.top .title{font-weight:700}
-
-.wrap{padding:12px;display:flex;flex-direction:column;gap:12px}
+.wrap{padding:12px}
 .main{display:grid;grid-template-columns:1fr;gap:12px}
 @media(min-width:900px){.main{grid-template-columns:560px 1fr}}
 #board{width:min(92vw,560px);margin:0 auto}
 
-.controls{
-  width:min(92vw,560px);
-  margin:0 auto;
-  display:flex;
-  gap:6px;
-}
-.controls button{
-  flex:1;
-  padding:10px 0;
-  border:none;
-  border-radius:10px;
-  background:#1f2430;
-  color:#ddd;
-  cursor:pointer;
-}
-.controls button:disabled{opacity:.4;cursor:default}
+.controls{display:flex;gap:6px;margin-top:8px}
+.controls button{flex:1;padding:8px;border:none;border-radius:10px;background:#1f2430;color:#ddd}
+.controls button:disabled{opacity:.4}
 
-.card{
-  border:1px solid #222;
-  border-radius:12px;
-  overflow:hidden;
-  background:#0f1115;
-}
-.tabsHead{
-  display:flex;
-  gap:6px;
-  padding:10px 12px;
-  background:#141820;
-  border-bottom:1px solid #222;
-  align-items:center;
-  justify-content:space-between;
-}
-.tabs{display:flex;gap:6px}
-.tabBtn{
-  border:none;
-  background:#1f2430;
-  color:#ddd;
-  padding:6px 10px;
-  border-radius:999px;
-  cursor:pointer;
-  font-weight:600;
-  font-size:13px;
-}
-.tabBtn.active{background:#3a7afe;color:#fff}
-.card .body{padding:12px}
+.card{border:1px solid #222;border-radius:12px;overflow:hidden}
+.cardHead{padding:10px 12px;background:#141820;border-bottom:1px solid #222;font-weight:700}
+.cardBody{padding:12px}
 
-.moves{font-size:18px;line-height:2.05}
-.move{
-  display:inline-block;
-  padding:2px 6px;
-  border-radius:7px;
-  cursor:pointer;
-}
+.moves{font-size:18px;line-height:2}
+.move{display:inline-block;padding:2px 6px;border-radius:7px;cursor:pointer}
 .move.active{background:#3a7afe;color:#fff}
 
-.variation{
-  margin:6px 0 10px 26px;
-  padding-left:10px;
-  border-left:2px dashed #444;
-}
+.variation{margin-left:24px;padding-left:10px;border-left:2px dashed #444}
 
-.pgnBox{
-  width:100%;
-  height:320px;
-  resize:vertical;
-  border-radius:12px;
-  border:1px solid #222;
-  background:#0f1115;
-  color:#e6e6e6;
-  padding:12px;
-  font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size:14px;
-}
-
-/* promotion popup */
 #pop{
   position:fixed;
   z-index:9999;
@@ -125,29 +47,25 @@ body{
 }
 #pop .row{display:flex;gap:8px}
 #pop button{
-  width:44px;
-  height:44px;
-  border-radius:10px;
-  border:none;
-  background:#1f2430;
-  color:#e6e6e6;
-  font-size:22px;
-  cursor:pointer;
+  width:36px;height:36px;border-radius:10px;border:none;
+  background:#1f2430;color:#e6e6e6;font-size:18px;cursor:pointer
 }
-#pop button:hover{background:#2a3150}
+#pop input{
+  width:160px;border-radius:10px;border:1px solid #2a3350;
+  background:#0f1115;color:#e6e6e6;padding:8px
+}
 </style>
 </head>
 
 <body>
 
 <div class="top">
-  <img src="https://jekyllchess.github.io/assets/favicon.png" alt="">
-  <div class="title">JekyllChess PGN App</div>
+  <img src="https://jekyllchess.github.io/assets/favicon.png">
+  <div>JekyllChess PGN App</div>
 </div>
 
 <div class="wrap">
   <div class="main">
-
     <div>
       <div id="board"></div>
       <div class="controls">
@@ -159,23 +77,11 @@ body{
     </div>
 
     <div class="card">
-      <div class="tabsHead">
-        <div style="font-weight:700">Move list</div>
-        <div class="tabs">
-          <button id="tabMoves" class="tabBtn active">Move list</button>
-          <button id="tabPGN" class="tabBtn">PGN text</button>
-        </div>
-      </div>
-
-      <div class="body" id="paneMoves">
-        <div class="moves" id="moves"></div>
-      </div>
-
-      <div class="body" id="panePGN" style="display:none">
-        <textarea id="pgnText" class="pgnBox"></textarea>
+      <div class="cardHead">Move list</div>
+      <div class="cardBody">
+        <div id="moves" class="moves"></div>
       </div>
     </div>
-
   </div>
 </div>
 
@@ -183,158 +89,230 @@ body{
 
 <script>
 (() => {
-  const FIG = { K:"♔", Q:"♕", R:"♖", B:"♗", N:"♘" };
-  const figSAN = s =>
-    s.replace(/^[KQRBN]/, p => FIG[p] || p)
-     .replace(/=([QRBN])/g, (_,p)=>"="+FIG[p]);
+const FIG={K:"♔",Q:"♕",R:"♖",B:"♗",N:"♘"};
+const figSAN=s=>s.replace(/^[KQRBN]/,p=>FIG[p]||p).replace(/=([QRBN])/g,(_,p)=>"="+FIG[p]);
 
-  let NODE=1;
-  class Node{
-    constructor(san,parent){
-      this.id="n"+NODE++;
-      this.san=san;
-      this.parent=parent;
-      this.next=null;
-      this.variations=[];
-    }
+let ID=1;
+class Node{
+  constructor(san,parent){
+    this.id="n"+ID++;
+    this.san=san;
+    this.parent=parent;
+    this.next=null;
+    this.vars=[];
+    this.comment="";
   }
+}
+const root=new Node(null,null);
+let cursor=root;
+let navNode=null;
 
-  const root=new Node(null,null);
-  let cursor=root;
-  let navNode=null;
+const chess=new Chess();
+const board=Chessboard("board",{
+  position:"start",
+  draggable:true,
+  pieceTheme:"https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png",
+  onDrop
+});
 
-  const chess=new Chess();
-  const board=Chessboard("board",{
-    position:"start",
-    draggable:true,
-    pieceTheme:"https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png",
-    onDrop
+const movesDiv=document.getElementById("moves");
+const pop=document.getElementById("pop");
+
+/* ---------- PROMOTION (DO NOT TOUCH CORE LOGIC) ---------- */
+let pendingPromotion=null;
+
+function openPromotion(from,to){
+  pop.innerHTML="";
+  const row=document.createElement("div");
+  row.className="row";
+  ["q","r","b","n"].forEach(p=>{
+    const b=document.createElement("button");
+    b.textContent=FIG[p.toUpperCase()];
+    b.onclick=()=>commitPromotion(from,to,p);
+    row.appendChild(b);
   });
+  pop.appendChild(row);
+  placePopCenter();
+}
 
-  const movesDiv=document.getElementById("moves");
-  const pgnText=document.getElementById("pgnText");
-  const pop=document.getElementById("pop");
-
-  function rebuild(n){
-    chess.reset();
-    const a=[];
-    while(n&&n!==root){a.push(n);n=n.parent}
-    a.reverse().forEach(m=>chess.move(m.san));
-    board.position(chess.fen(),false);
-  }
-
-  function render(){
-    movesDiv.innerHTML="";
-    function line(start,ply){
-      let n=start.next;
-      while(n){
-        const s=document.createElement("span");
-        s.className="move";
-        s.textContent=((ply%2===0)?Math.floor(ply/2)+1+". ":"")+figSAN(n.san)+" ";
-        s.onclick=()=>{
-          cursor=n;
-          rebuild(n);
-          render();
-        };
-        movesDiv.appendChild(s);
-
-        if(n.variations.length){
-          n.variations.forEach(v=>{
-            const d=document.createElement("div");
-            d.className="variation";
-            const vs=document.createElement("span");
-            vs.className="move";
-            vs.textContent=figSAN(v.san)+" ";
-            vs.onclick=()=>{
-              cursor=v;
-              rebuild(v);
-              render();
-            };
-            d.appendChild(vs);
-            line(v,ply+1);
-            movesDiv.appendChild(d);
-          });
-        }
-        n=n.next; ply++;
-      }
-    }
-    line(root,0);
-    pgnText.value=serialize()+" *";
-  }
-
-  function serialize(){
-    function s(node,ply){
-      let out=[],n=node.next;
-      while(n){
-        if(ply%2===0) out.push(Math.floor(ply/2)+1+".");
-        out.push(n.san);
-        n.variations.forEach(v=>{
-          out.push("("+s({next:v},ply+1)+")");
-        });
-        n=n.next; ply++;
-      }
-      return out.join(" ");
-    }
-    return s(root,0);
-  }
-
-  let pendingPromotion=null;
-
-  function openPromotion(from,to){
-    pop.innerHTML="";
-    const row=document.createElement("div");
-    row.className="row";
-    ["q","r","b","n"].forEach(p=>{
-      const b=document.createElement("button");
-      b.textContent=FIG[p.toUpperCase()];
-      b.onclick=()=>commitPromotion(from,to,p);
-      row.appendChild(b);
-    });
-    pop.appendChild(row);
-    pop.style.display="block";
-    const r=document.getElementById("board").getBoundingClientRect();
-    pop.style.left=(r.left+r.width/2)+"px";
-    pop.style.top=(r.top+r.height/2)+"px";
-    pop.style.transform="translate(-50%,-50%)";
-  }
-
-  function commitPromotion(from,to,p){
-    chess.load(pendingPromotion);
-    const m=chess.move({from,to,promotion:p});
-    if(!m){ pop.style.display="none"; return; }
-    const nn=new Node(m.san,cursor);
-    if(!cursor.next) cursor.next=nn;
-    else cursor.variations.push(nn);
-    cursor=nn;
-    pop.style.display="none";
-    rebuild(cursor);
-    render();
-  }
-
-  function onDrop(from,to){
-    const test=new Chess(chess.fen());
-    const mQ=test.move({from,to,promotion:"q"});
-    if(!mQ) return "snapback";
-
-    if(mQ.flags.includes("p")){
-      pendingPromotion=chess.fen();
-      openPromotion(from,to);
-      return "snapback";
-    }
-
-    const m=chess.move({from,to,promotion:"q"});
-    if(!m) return "snapback";
-
-    const nn=new Node(m.san,cursor);
-    if(!cursor.next) cursor.next=nn;
-    else cursor.variations.push(nn);
-    cursor=nn;
-
-    rebuild(cursor);
-    render();
-  }
-
+function commitPromotion(from,to,p){
+  chess.load(pendingPromotion);
+  const m=chess.move({from,to,promotion:p});
+  if(!m){hidePop();return}
+  addMove(m.san);
+  hidePop();
+  rebuild(cursor,false);
   render();
+}
+
+/* ---------- TREE ---------- */
+function addMove(san){
+  if(cursor.next && cursor.next.san===san){
+    cursor=cursor.next;
+    return;
+  }
+  const v=cursor.vars.find(x=>x.san===san);
+  if(v){cursor=v;return}
+  const n=new Node(san,cursor);
+  if(cursor.next) cursor.vars.push(n);
+  else cursor.next=n;
+  cursor=n;
+}
+
+/* ---------- BOARD ---------- */
+function rebuild(n,anim){
+  chess.reset();
+  const a=[];
+  while(n&&n!==root){a.push(n);n=n.parent}
+  a.reverse().forEach(x=>chess.move(x.san));
+  board.position(chess.fen(),!!anim);
+}
+
+/* ---------- DROP ---------- */
+function onDrop(from,to){
+  hidePop();
+  const test=new Chess(chess.fen());
+  const mQ=test.move({from,to,promotion:"q"});
+  if(!mQ) return "snapback";
+
+  if(mQ.flags.includes("p")){
+    pendingPromotion=chess.fen();
+    openPromotion(from,to);
+    return "snapback";
+  }
+
+  const m=chess.move({from,to,promotion:"q"});
+  if(!m) return "snapback";
+
+  addMove(m.san);
+  rebuild(cursor,false);
+  render();
+}
+
+/* ---------- RENDER ---------- */
+function render(){
+  movesDiv.innerHTML="";
+  function line(start,ply){
+    let n=start.next;
+    while(n){
+      const s=document.createElement("span");
+      s.className="move"+(n===cursor?" active":"");
+      s.textContent=((ply%2===0)?Math.floor(ply/2)+1+". ":"")+figSAN(n.san)+" ";
+      s.onclick=e=>{
+        e.stopPropagation();
+        cursor=n;
+        navNode=isMainline(n)?n:navNode;
+        rebuild(n,true);
+        render();
+        openMovePop(n,s);
+      };
+      movesDiv.appendChild(s);
+
+      if(n.vars.length){
+        n.vars.forEach(v=>{
+          const d=document.createElement("div");
+          d.className="variation";
+          movesDiv.appendChild(d);
+          line({next:v},ply+1);
+        });
+      }
+      n=n.next;ply++;
+    }
+  }
+  line(root,0);
+  updateNav();
+}
+
+/* ---------- TOOLTIP ---------- */
+function openMovePop(node,el){
+  pop.innerHTML="";
+  const row=document.createElement("div");
+  row.className="row";
+
+  if(node.parent&&node.parent.next!==node){
+    const up=document.createElement("button");
+    up.textContent="⬆";
+    up.onclick=()=>{promote(node);hidePop();render()};
+    row.appendChild(up);
+  }
+
+  const c=document.createElement("button");
+  c.textContent="＋";
+  c.onclick=()=>{
+    pop.innerHTML="";
+    const i=document.createElement("input");
+    i.value=node.comment;
+    i.onkeydown=e=>{
+      if(e.key==="Enter"){node.comment=i.value;hidePop();render()}
+    };
+    pop.appendChild(i);
+  };
+  row.appendChild(c);
+
+  const d=document.createElement("button");
+  d.textContent="🗑";
+  d.onclick=()=>{remove(node);hidePop();render()};
+  row.appendChild(d);
+
+  pop.appendChild(row);
+  placePop(el);
+}
+
+/* ---------- HELPERS ---------- */
+function promote(n){
+  const p=n.parent;
+  p.vars=p.vars.filter(x=>x!==n);
+  const old=p.next;
+  p.next=n;
+  if(old) p.vars.unshift(old);
+}
+function remove(n){
+  const p=n.parent;
+  if(p.next===n) p.next=null;
+  else p.vars=p.vars.filter(x=>x!==n);
+  cursor=p;
+}
+function isMainline(n){
+  let x=root.next;
+  while(x){if(x===n)return true;x=x.next}
+  return false;
+}
+function placePop(el){
+  const r=el.getBoundingClientRect();
+  pop.style.left=r.left+"px";
+  pop.style.top=(r.top-40)+"px";
+  pop.style.display="block";
+}
+function placePopCenter(){
+  const r=document.getElementById("board").getBoundingClientRect();
+  pop.style.left=(r.left+r.width/2)+"px";
+  pop.style.top=(r.top+r.height/2)+"px";
+  pop.style.display="block";
+}
+function hidePop(){pop.style.display="none";}
+
+/* ---------- NAV ---------- */
+const btnStart=btn("btnStart",()=>{cursor=root;navNode=null;rebuild(root,true);render()});
+const btnPrev=btn("btnPrev",()=>{if(navNode){navNode=navNode.parent;cursor=navNode||root;rebuild(cursor,true);render()}});
+const btnNext=btn("btnNext",()=>{if(!navNode)navNode=root.next;else navNode=navNode.next;cursor=navNode||cursor;rebuild(cursor,true);render()});
+const btnEnd =btn("btnEnd", ()=>{let n=root.next;while(n&&n.next)n=n.next;cursor=n||root;navNode=cursor;rebuild(cursor,true);render()});
+
+function updateNav(){
+  btnStart.disabled=cursor===root;
+  btnPrev.disabled=cursor===root;
+  btnNext.disabled=!cursor.next;
+  btnEnd.disabled=!cursor.next;
+}
+function btn(id,fn){const b=document.getElementById(id);b.onclick=fn;return b}
+
+/* ---------- KEYS ---------- */
+document.addEventListener("keydown",e=>{
+  if(pop.style.display==="block")return;
+  if(e.key==="ArrowLeft") btnPrev.click();
+  if(e.key==="ArrowRight") btnNext.click();
+});
+
+render();
 })();
 </script>
 

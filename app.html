@@ -122,7 +122,7 @@ body{
   background:#0f1115;
   color:#e6e6e6;
   padding:12px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size:14px;
 }
 .pgnActions{display:flex;gap:8px;margin-top:10px}
@@ -355,67 +355,6 @@ body{
     pop.style.transform = "translate(-50%, -50%)";
   }
 
-  function openMovePop(nodeId, anchorEl){
-    const node = byId.get(nodeId);
-    if(!node || node === root) return;
-
-    const parent = node.parent;
-    const isVarRoot = !!(parent && parent.variations.some(v => v.id === node.id));
-    const canPromote = isVarRoot;
-
-    popState.mode = "move";
-    popState.nodeId = nodeId;
-
-    pop.innerHTML = `
-      <div class="row">
-        ${canPromote ? `<button class="popBtn" id="popPromote" title="Promote variation">⬆</button>` : ``}
-        <button class="popBtn" id="popComment" title="Add comment">＋</button>
-        <button class="popBtn" id="popDelete" title="Delete">🗑</button>
-      </div>
-      <div class="popLabel">Options</div>
-      <div id="popCommentBox" style="display:none">
-        <div class="popInputRow">
-          <input id="popCommentInput" maxlength="80" placeholder="Short comment…">
-          <button class="popSave" id="popCommentSave" title="Save">✓</button>
-        </div>
-      </div>
-    `;
-    placePopNear(anchorEl);
-    pop.style.display = "";
-
-    const btnPromote = document.getElementById("popPromote");
-    const btnComment = document.getElementById("popComment");
-    const btnDelete  = document.getElementById("popDelete");
-
-    if(btnPromote){
-      btnPromote.onclick = (e)=>{ e.stopPropagation(); promoteVariation(parent.id, node.id); hidePop(); };
-    }
-    btnDelete.onclick = (e)=>{ e.stopPropagation(); deleteNode(node.id); hidePop(); };
-
-    btnComment.onclick = (e)=> {
-      e.stopPropagation();
-      const box = document.getElementById("popCommentBox");
-      const input = document.getElementById("popCommentInput");
-      const save = document.getElementById("popCommentSave");
-      box.style.display = "";
-      input.value = node.comment || "";
-      input.focus();
-
-      const doSave = () => {
-        node.comment = (input.value||"").replace(/\}/g,"").trim();
-        renderAll();
-        syncPGN();
-        hidePop();
-      };
-
-      save.onclick = (ev)=>{ ev.stopPropagation(); doSave(); };
-      input.onkeydown = (ev)=>{
-        if(ev.key === "Enter"){ ev.preventDefault(); doSave(); }
-        if(ev.key === "Escape"){ ev.preventDefault(); hidePop(); }
-      };
-    };
-  }
-
   function openPromotionPop(pending){
     popState.mode = "promo";
     popState.promo = pending;
@@ -447,56 +386,29 @@ body{
     }
   });
 
-  // ---------- Variation promotion / delete ----------
-  function promoteVariation(branchParentId, variationRootId){
-    const parent = byId.get(branchParentId);
-    const vNode = byId.get(variationRootId);
-    if(!parent || !vNode) return;
-
-    const idx = parent.variations.findIndex(x => x.id === vNode.id);
-    if(idx < 0) return;
-
-    const currentMain = parent.next;
-    if(currentMain && currentMain.id === vNode.id) return;
-
-    parent.variations.splice(idx, 1);
-
-    if(currentMain){
-      parent.variations.unshift(currentMain);
-      currentMain.parent = parent;
+  // ---------- Variation-correct insertion ----------
+  function addMoveToTree(san){
+    // follow mainline if matching
+    if(cursor.next && cursor.next.san === san){
+      cursor = cursor.next;
+      return;
     }
-
-    parent.next = vNode;
-    vNode.parent = parent;
-
-    renderAll();
-    rebuildChessToNode(cursor, false);
-    syncPGN();
-    updateNavButtons();
-  }
-
-  function deleteNode(nodeId){
-    const node = byId.get(nodeId);
-    if(!node || node === root) return;
-
-    const parent = node.parent;
-    if(!parent) return;
-
-    if(parent.next && parent.next.id === node.id){
-      parent.next = null;
+    // follow existing variation if matching
+    const existingVar = cursor.variations.find(v => v.san === san);
+    if(existingVar){
+      cursor = existingVar;
+      return;
+    }
+    // create new node
+    const newNode = new Node(san, cursor);
+    if(cursor.next){
+      // mainline exists but differs => this is a variation
+      cursor.variations.push(newNode);
     }else{
-      const idx = parent.variations.findIndex(v => v.id === node.id);
-      if(idx >= 0) parent.variations.splice(idx, 1);
+      // no mainline => becomes mainline
+      cursor.next = newNode;
     }
-
-    cursor = parent;
-    navNode = isOnMainline(cursor) ? cursor : null;
-
-    rebuildChessToNode(cursor, true);
-    renderAll();
-    syncPGN();
-    updateNavButtons();
-    highlightActive(cursor === root ? "" : cursor.id);
+    cursor = newNode;
   }
 
   // ---------- Rendering ----------
@@ -530,7 +442,6 @@ body{
         rebuildChessToNode(node, true);
         highlightActive(node.id);
         updateNavButtons();
-        openMovePop(node.id, span);
       };
       container.appendChild(span);
 
@@ -556,16 +467,8 @@ body{
             rebuildChessToNode(vRoot, true);
             highlightActive(vRoot.id);
             updateNavButtons();
-            openMovePop(vRoot.id, vSpan);
           };
           vDiv.appendChild(vSpan);
-
-          if(vRoot.comment && vRoot.comment.trim()){
-            const cc = document.createElement("div");
-            cc.className = "commentRow";
-            cc.textContent = vRoot.comment;
-            vDiv.appendChild(cc);
-          }
 
           renderLine(vRoot, vDiv, localPly + 1);
           container.appendChild(vDiv);
@@ -640,12 +543,9 @@ body{
   function updateNavButtons(){
     const arr = mainlineNodes();
     const has = arr.length > 0;
-
     btnStart.disabled = !has;
     btnEnd.disabled   = !has;
-
     btnPrev.disabled  = !has || !navNode;
-    // keep Next enabled if there are moves; it will clamp at end
     btnNext.disabled  = !has;
   }
 
@@ -726,31 +626,6 @@ body{
   document.getElementById("copyPGN").addEventListener("click",(e)=>{ e.stopPropagation(); writeClipboard(pgnText.value); });
   document.getElementById("copyFEN").addEventListener("click",(e)=>{ e.stopPropagation(); writeClipboard(currentFEN); });
 
-  // ---------- Variation-correct insertion ----------
-  function addMoveToTree(san){
-    // follow mainline if matching
-    if(cursor.next && cursor.next.san === san){
-      cursor = cursor.next;
-      return;
-    }
-    // follow existing variation if matching
-    const existingVar = cursor.variations.find(v => v.san === san);
-    if(existingVar){
-      cursor = existingVar;
-      return;
-    }
-    // create new node
-    const newNode = new Node(san, cursor);
-    if(cursor.next){
-      // mainline exists but differs => this is a variation
-      cursor.variations.push(newNode);
-    }else{
-      // no mainline => becomes mainline
-      cursor.next = newNode;
-    }
-    cursor = newNode;
-  }
-
   // ---------- Promotion ----------
   let pendingPromotion = null;
 
@@ -785,7 +660,7 @@ body{
     updateNavButtons();
   }
 
-  // ---------- onDrop (promotion + legality) ----------
+  // ---------- onDrop ----------
   function onDrop(from, to){
     hidePop();
 
@@ -798,7 +673,7 @@ body{
     if(isPromotion){
       pendingPromotion = { from, to, fenBefore: chess.fen() };
       openPromotionPop(pendingPromotion);
-      return "snapback"; // required sync return for chessboard.js
+      return "snapback";
     }
 
     const m = chess.move({ from, to, promotion:"q" });
@@ -807,7 +682,6 @@ body{
     addMoveToTree(m.san);
 
     setBoardFen(chess.fen(), false);
-
     if(isOnMainline(cursor)) navNode = cursor;
 
     renderAll();

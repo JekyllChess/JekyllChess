@@ -6,1004 +6,219 @@
 
 <title>JekyllChess PGN App</title>
 
-<!-- jQuery (keep) -->
+<!-- jQuery REQUIRED -->
 <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
 
-<!-- Chess libraries -->
+<!-- Chess libs -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.12.0/chess.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.js"></script>
 <link rel="stylesheet"
   href="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.css">
 
 <style>
-* { box-sizing: border-box; }
-body{
-  margin:0;
-  background:#0f1115;
-  color:#e6e6e6;
-  font-family:system-ui,-apple-system,sans-serif;
-}
-
-.top{
-  padding:10px 14px;
-  background:#171a21;
-  border-bottom:1px solid #222;
-  display:flex;
-  align-items:center;
-  gap:10px;
-}
-.top img{ width:22px; height:22px; filter:invert(1); }
-.top .title{ font-weight:700; }
-
-.wrap{
-  display:flex;
-  flex-direction:column;
-  gap:10px;
-  padding:12px;
-}
-
-#board{
-  width:min(92vw,560px);
-  margin:0 auto;
-}
-
-.controls{
-  width:min(92vw,560px);
-  margin:0 auto;
-  display:flex;
-  gap:6px;
-}
-.controls button{
-  flex:1;
-  padding:10px 0;
-  border:none;
-  border-radius:10px;
-  background:#1f2430;
-  color:#ddd;
-  font-size:15px;
-  cursor:pointer;
-}
-.controls button:disabled{ opacity:.4; cursor:default; }
-
-.panels{
-  width:min(92vw,980px);
-  margin:0 auto;
-  display:grid;
-  grid-template-columns:1fr;
-  gap:10px;
-}
-@media (min-width: 900px){
-  .panels{ grid-template-columns: 560px 1fr; align-items:start; }
-}
-
-.card{
-  border:1px solid #222;
-  border-radius:12px;
-  overflow:hidden;
-  background:#0f1115;
-}
-
-.tabsHead{
-  display:flex;
-  gap:0;
-  background:#141820;
-  border-bottom:1px solid #222;
-}
-.tabBtn{
-  flex:1;
-  padding:10px 12px;
-  border:none;
-  background:transparent;
-  color:#cfd6ff;
-  cursor:pointer;
-  font-weight:600;
-  opacity:.75;
-}
-.tabBtn.active{ opacity:1; background:#111624; }
-.card .body{ padding:12px; }
-
-.moves{
-  font-size:18px;
-  line-height:2.05;
-  word-break:break-word;
-}
-
-.move{
-  display:inline-block;
-  padding:2px 6px;
-  border-radius:7px;
-  cursor:pointer;
-  user-select:none;
-  position:relative;
-}
-.move:hover{ background:#20263a; }
-.move.active{ background:#3a7afe; color:#fff; }
-
-.variation{
-  margin:6px 0 10px 26px;
-  padding-left:10px;
-  border-left:2px dashed #444;
-  opacity:.95;
-}
-
-.commentRow{
-  margin:4px 0 10px 18px;
-  padding:6px 8px;
-  border-left:3px solid #3a7afe;
-  border-radius:8px;
-  background:#121724;
-  color:#cfd6ff;
-  font-size:14px;
-  max-width:100%;
-}
-
-.pgnBox{
-  width:100%;
-  height:320px;
-  resize:vertical;
-  border-radius:12px;
-  border:1px solid #222;
-  background:#0f1115;
-  color:#e6e6e6;
-  padding:12px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size:14px;
-}
-
-.pgnActions{
-  display:flex;
-  gap:8px;
-  margin-top:10px;
-}
-.pgnActions button{
-  flex:1;
-  padding:10px 0;
-  border:none;
-  border-radius:10px;
-  background:#1f2430;
-  color:#ddd;
-  cursor:pointer;
-}
-
-/* --- Tooltip UI (move options + promotion + comment) --- */
-.pop{
-  position:fixed;
-  z-index:9999;
-  background:#0b0f18;
-  border:1px solid #2a3350;
-  border-radius:12px;
-  box-shadow:0 16px 50px rgba(0,0,0,.55);
-  padding:8px;
-  min-width:170px;
-}
-.pop .row{
-  display:flex;
-  gap:8px;
-  align-items:center;
-  justify-content:flex-start;
-}
-.popBtn{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  width:36px;
-  height:36px;
-  border-radius:10px;
-  border:none;
-  background:#1f2430;
-  color:#e6e6e6;
-  cursor:pointer;
-  font-size:18px;
-}
-.popBtn:hover{ background:#2a3150; }
-
-.popLabel{
-  font-size:12px;
-  opacity:.75;
-  margin:6px 2px 0;
-}
-
-.popInputRow{
-  display:flex;
-  gap:8px;
-  margin-top:8px;
-}
-.popInputRow input{
-  flex:1;
-  border-radius:10px;
-  border:1px solid #2a3350;
-  background:#0f1115;
-  color:#e6e6e6;
-  padding:10px;
-  font-size:14px;
-}
-.popSave{
-  width:44px;
-  height:42px;
-  border-radius:10px;
-  border:none;
-  background:#3a7afe;
-  color:#fff;
-  cursor:pointer;
-  font-size:16px;
-}
-.popSave:hover{ filter:brightness(1.05); }
-
-.popPieces{
-  display:flex;
-  gap:8px;
-  margin-top:8px;
-}
-.popPieceBtn{
-  flex:1;
-  height:44px;
-  border-radius:12px;
-  border:1px solid #2a3350;
-  background:#121724;
-  color:#e6e6e6;
-  cursor:pointer;
-  font-size:22px;
-}
-.popPieceBtn:hover{ background:#1b2340; }
+*{box-sizing:border-box}
+body{margin:0;background:#0f1115;color:#e6e6e6;font-family:system-ui}
+.top{padding:10px 14px;background:#171a21;border-bottom:1px solid #222;display:flex;gap:10px}
+.top img{width:22px;filter:invert(1)}
+.wrap{padding:12px}
+.main{display:grid;grid-template-columns:1fr;gap:12px}
+@media(min-width:900px){.main{grid-template-columns:560px 1fr}}
+.controls{display:flex;gap:6px;justify-content:center}
+.controls button{padding:10px;border:none;border-radius:10px;background:#1f2430;color:#ddd}
+.card{border:1px solid #222;border-radius:12px}
+.card .head{padding:10px;background:#141820;border-bottom:1px solid #222;display:flex;justify-content:space-between}
+.tabs{display:flex;gap:6px}
+.tabBtn{border:none;background:#1f2430;color:#ddd;padding:6px 10px;border-radius:999px}
+.tabBtn.active{background:#3a7afe;color:#fff}
+.moves{font-size:18px;line-height:2.1}
+.move{display:inline-block;padding:2px 6px;border-radius:7px;cursor:pointer}
+.move.active{background:#3a7afe;color:#fff}
+.variation{margin-left:26px;border-left:2px dashed #444;padding-left:10px}
+.commentRow{margin:4px 0 10px 18px;padding:6px 8px;border-left:3px solid #3a7afe;background:#121724}
+.pgnBox{width:100%;height:320px;background:#0f1115;color:#e6e6e6;border:1px solid #222;border-radius:12px;padding:12px}
+#pop{position:fixed;display:none;background:#141820;border:1px solid #2a3150;border-radius:10px;padding:8px;z-index:1000}
+#pop .row{display:flex;gap:6px}
+#pop button{background:#1f2430;border:none;border-radius:8px;padding:6px 8px;color:#ddd}
 </style>
 </head>
 
 <body>
 
 <div class="top">
-  <img src="https://jekyllchess.github.io/assets/favicon.png" alt="">
-  <div class="title">JekyllChess PGN App</div>
+  <img src="https://jekyllchess.github.io/assets/favicon.png">
+  <div>JekyllChess PGN App</div>
 </div>
 
 <div class="wrap">
+<div class="main">
 
-  <div class="panels">
-
-    <div>
-      <div id="board"></div>
-
-      <!-- Navigation (mainline only) -->
-      <div class="controls">
-        <button id="btnStart" title="Start">⏮</button>
-        <button id="btnPrev" title="Previous">◀</button>
-        <button id="btnNext" title="Next">▶</button>
-        <button id="btnEnd" title="End">⏭</button>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="tabsHead">
-        <button class="tabBtn active" id="tabMoves">Move list</button>
-        <button class="tabBtn" id="tabPGN">PGN text</button>
-      </div>
-
-      <div class="body" id="paneMoves">
-        <div class="moves" id="moves"></div>
-      </div>
-
-      <div class="body" id="panePGN" style="display:none;">
-        <textarea id="pgnText" class="pgnBox" spellcheck="false"></textarea>
-        <div class="pgnActions">
-          <button id="copyPGN">Copy PGN</button>
-          <button id="copyFEN">Copy FEN</button>
-        </div>
-      </div>
-    </div>
-
+<div>
+  <div id="board"></div>
+  <div class="controls">
+    <button id="btnStart">⏮</button>
+    <button id="btnPrev">◀</button>
+    <button id="btnNext">▶</button>
+    <button id="btnEnd">⏭</button>
   </div>
 </div>
 
-<!-- Floating tooltip -->
-<div id="pop" class="pop" style="display:none;"></div>
+<div class="card">
+  <div class="head">
+    <div>Move list</div>
+    <div class="tabs">
+      <button id="tabMoves" class="tabBtn active">Move list</button>
+      <button id="tabPGN" class="tabBtn">PGN text</button>
+    </div>
+  </div>
+  <div class="body">
+    <div id="panelMoves"><div id="moves" class="moves"></div></div>
+    <div id="panelPGN" style="display:none">
+      <textarea id="pgnText" class="pgnBox"></textarea>
+    </div>
+  </div>
+</div>
+
+</div>
+</div>
+
+<div id="pop"></div>
 
 <script>
 (() => {
-  // --- Figurines ---
-  const FIG = { K:"♔", Q:"♕", R:"♖", B:"♗", N:"♘" };
-  const figSAN = (s) => (s || "")
-    .replace(/^[KQRBN]/, p => FIG[p] || p)
-    .replace(/=([QRBN])/g, (_,p)=>"="+(FIG[p]||p));
+  const FIG={K:"♔",Q:"♕",R:"♖",B:"♗",N:"♘"};
+  const figSAN=s=>s.replace(/^[KQRBN]/,p=>FIG[p]||p).replace(/=([QRBN])/g,(_,p)=>"="+FIG[p]);
 
-  // ---------------------------
-  // PGN headers (basic)
-  // ---------------------------
-  function todayYYYYMMDD() {
-    const d = new Date();
-    const y = d.getFullYear();
-    const m = String(d.getMonth()+1).padStart(2,"0");
-    const day = String(d.getDate()).padStart(2,"0");
-    return `${y}.${m}.${day}`;
-  }
-  let TAGS = {
-    Event: "Casual Game",
-    Site: "Local",
-    Date: todayYYYYMMDD(),
-    Round: "-",
-    White: "White",
-    Black: "Black",
-    Result: "*"
-  };
-  function tagSection() {
-    const order = ["Event","Site","Date","Round","White","Black","Result"];
-    return order.map(k => `[${k} "${(TAGS[k] ?? "")}"]`).join("\n");
-  }
-
-  // ---------------------------
-  // Move tree
-  // Node: move SAN (+ comment after move)
-  // next: main continuation
-  // variations: alternative continuations (each is first move of that variation line)
-  // parent: previous node in that line (root is special)
-  // ---------------------------
-  let NODE_SEQ = 1;
-  const byId = new Map();
-
-  class Node {
-    constructor(san=null, parent=null) {
-      this.id = "n" + (NODE_SEQ++);
-      this.san = san;               // null for root
-      this.comment = "";            // comment AFTER this move
-      this.parent = parent;         // previous move in that line (or root)
-      this.next = null;             // main continuation
-      this.variations = [];         // array of Node (variation roots)
-      byId.set(this.id, this);
+  let NODE=1;
+  class Node{
+    constructor(san,parent){
+      this.id="n"+NODE++;
+      this.san=san;
+      this.parent=parent;
+      this.next=null;
+      this.variations=[];
+      this.comment="";
     }
   }
 
-  const root = new Node(null, null);
+  const root=new Node(null,null);
+  let cursor=root;
+  let navNode=null;
 
-  // Cursor: current node where we are (board position = position after cursor move)
-  let cursor = root;
-
-  // Mainline navigation pointer: null at start, else a node on mainline
-  let navNode = null;
-
-  // Current FEN for Copy FEN
-  let currentFEN = "start";
-
-  // Chess instance that always matches `cursor`
-  const chess = new Chess();
-
-  // ---------------------------
-  // Chessboard.js
-  // ---------------------------
-  const board = Chessboard("board", {
-    position: "start",
-    draggable: true,
-    pieceTheme: "https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png",
-    onDrop: onDrop
+  const chess=new Chess();
+  const board=Chessboard("board",{
+    position:"start",
+    draggable:true,
+    pieceTheme:"https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png",
+    onDrop
   });
 
-  function setBoardFen(fen, animate) {
-    currentFEN = fen;
-    board.position(fen, !!animate);
+  const movesDiv=document.getElementById("moves");
+  const pgnText=document.getElementById("pgnText");
+
+  /* -------- VARIATION-CORRECT MOVE INSERTION -------- */
+  function addMoveToTree(san){
+    // 1. If mainline exists and matches → follow
+    if(cursor.next && cursor.next.san===san){
+      cursor=cursor.next;
+      return;
+    }
+
+    // 2. If a variation with same SAN exists → follow it
+    const existingVar=cursor.variations.find(v=>v.san===san);
+    if(existingVar){
+      cursor=existingVar;
+      return;
+    }
+
+    // 3. If mainline exists but differs → create variation
+    const newNode=new Node(san,cursor);
+
+    if(cursor.next){
+      cursor.variations.push(newNode);
+    }else{
+      cursor.next=newNode;
+    }
+
+    cursor=newNode;
   }
 
-  function chainToRoot(n) {
-    const chain = [];
-    while (n && n !== root) { chain.push(n); n = n.parent; }
-    chain.reverse();
-    return chain;
-  }
-
-  function rebuildChessToNode(target, animate=true) {
+  function rebuild(n){
     chess.reset();
-    if (!target || target === root) {
-      setBoardFen("start", animate);
-      return;
-    }
-    const chain = chainToRoot(target);
-    for (const mv of chain) chess.move(mv.san);
-    setBoardFen(chess.fen(), animate);
+    const a=[];
+    while(n&&n!==root){a.push(n);n=n.parent}
+    a.reverse().forEach(m=>chess.move(m.san));
+    board.position(chess.fen(),false);
   }
 
-  function isOnMainline(node) {
-    let n = root.next;
-    while (n) { if (n.id === node.id) return true; n = n.next; }
-    return false;
-  }
+  function render(){
+    movesDiv.innerHTML="";
+    function line(start,ply){
+      let n=start.next;
+      while(n){
+        const s=document.createElement("span");
+        s.className="move";
+        s.textContent=((ply%2===0)?Math.floor(ply/2)+1+". ":"")+figSAN(n.san)+" ";
+        s.onclick=()=>{
+          cursor=n;
+          rebuild(n);
+          render();
+        };
+        movesDiv.appendChild(s);
 
-  // ---------------------------
-  // Tabs
-  // ---------------------------
-  const tabMoves = document.getElementById("tabMoves");
-  const tabPGN   = document.getElementById("tabPGN");
-  const paneMoves = document.getElementById("paneMoves");
-  const panePGN   = document.getElementById("panePGN");
+        if(n.variations.length){
+          n.variations.forEach(v=>{
+            const d=document.createElement("div");
+            d.className="variation";
+            const vs=document.createElement("span");
+            vs.className="move";
+            vs.textContent=figSAN(v.san)+" ";
+            vs.onclick=()=>{
+              cursor=v;
+              rebuild(v);
+              render();
+            };
+            d.appendChild(vs);
+            line(v,ply+1);
+            movesDiv.appendChild(d);
+          });
+        }
 
-  function showTab(which) {
-    const movesOn = which === "moves";
-    tabMoves.classList.toggle("active", movesOn);
-    tabPGN.classList.toggle("active", !movesOn);
-    paneMoves.style.display = movesOn ? "" : "none";
-    panePGN.style.display = movesOn ? "none" : "";
-  }
-  tabMoves.onclick = () => showTab("moves");
-  tabPGN.onclick   = () => showTab("pgn");
-
-  // ---------------------------
-  // Tooltip (move options + comment + promotion)
-  // ---------------------------
-  const pop = document.getElementById("pop");
-  let popState = {
-    mode: null,           // 'move' | 'promo'
-    nodeId: null,
-    promo: null           // { from, to, fenBefore, parentNodeId, branchType, branchParentId }
-  };
-
-  function hidePop() {
-    pop.style.display = "none";
-    pop.innerHTML = "";
-    popState = { mode:null, nodeId:null, promo:null };
-  }
-
-  // prevent outside-click handler from closing when clicking inside
-  pop.addEventListener("mousedown", (e) => e.stopPropagation());
-  pop.addEventListener("click", (e) => e.stopPropagation());
-
-  document.addEventListener("mousedown", () => {
-    hidePop();
-  });
-
-  function placePopNearElement(el) {
-    const r = el.getBoundingClientRect();
-    const x = Math.min(window.innerWidth - 12, Math.max(12, r.left + r.width/2));
-    const y = Math.min(window.innerHeight - 12, Math.max(12, r.top - 10));
-    pop.style.left = (x) + "px";
-    pop.style.top  = (y) + "px";
-    pop.style.transform = "translate(-50%, -100%)";
-  }
-
-  function placePopCenterBoard() {
-    const el = document.getElementById("board");
-    const r = el.getBoundingClientRect();
-    const x = r.left + r.width/2;
-    const y = r.top + r.height/2;
-    pop.style.left = x + "px";
-    pop.style.top  = y + "px";
-    pop.style.transform = "translate(-50%, -50%)";
-  }
-
-  function openMovePop(nodeId, anchorEl) {
-    const node = byId.get(nodeId);
-    if (!node || node === root) return;
-
-    popState.mode = "move";
-    popState.nodeId = nodeId;
-
-    // determine if node is a variation root under its parent
-    const parent = node.parent;
-    const isVarRoot = !!(parent && parent !== root && parent.variations.some(v => v.id === node.id));
-    // note: a mainline move can also be a branch point for others; promotion button only meaningful for variation roots
-    const canPromote = isVarRoot;
-
-    pop.innerHTML = `
-      <div class="row">
-        ${canPromote ? `<button class="popBtn" id="popPromote" title="Promote variation">⬆</button>` : ``}
-        <button class="popBtn" id="popComment" title="Add / edit comment">＋</button>
-        <button class="popBtn" id="popDelete" title="Delete">${"🗑"}</button>
-      </div>
-      <div class="popLabel">Options</div>
-      <div id="popCommentBox" style="display:none;">
-        <div class="popInputRow">
-          <input id="popCommentInput" maxlength="80" placeholder="Short comment…">
-          <button class="popSave" id="popCommentSave" title="Save">✓</button>
-        </div>
-      </div>
-    `;
-
-    // place + show
-    placePopNearElement(anchorEl);
-    pop.style.display = "";
-
-    // wire buttons
-    const btnPromote = document.getElementById("popPromote");
-    const btnComment = document.getElementById("popComment");
-    const btnDelete  = document.getElementById("popDelete");
-
-    if (btnPromote) {
-      btnPromote.onclick = (e) => {
-        e.stopPropagation();
-        promoteVariation(parent.id, node.id);
-        hidePop();
-      };
-    }
-
-    btnDelete.onclick = (e) => {
-      e.stopPropagation();
-      deleteNode(node.id);
-      hidePop();
-    };
-
-    btnComment.onclick = (e) => {
-      e.stopPropagation();
-      const box = document.getElementById("popCommentBox");
-      const input = document.getElementById("popCommentInput");
-      const save = document.getElementById("popCommentSave");
-      box.style.display = "";
-      input.value = (node.comment || "");
-      input.focus();
-
-      // keep pop open while editing
-      input.addEventListener("mousedown", (ev) => ev.stopPropagation());
-      input.addEventListener("click", (ev) => ev.stopPropagation());
-
-      const doSave = () => {
-        node.comment = (input.value || "").replace(/\}/g, "").trim();
-        renderAll();
-        syncPGN();
-        hidePop();
-      };
-
-      save.onclick = (ev) => { ev.stopPropagation(); doSave(); };
-      input.onkeydown = (ev) => {
-        if (ev.key === "Enter") { ev.preventDefault(); doSave(); }
-        if (ev.key === "Escape") { ev.preventDefault(); hidePop(); }
-      };
-    };
-  }
-
-  function openPromotionPop(pending) {
-    popState.mode = "promo";
-    popState.promo = pending;
-
-    pop.innerHTML = `
-      <div class="popLabel" style="margin:0 2px 6px;">Promote to</div>
-      <div class="popPieces">
-        <button class="popPieceBtn" data-p="q" title="Queen">♕</button>
-        <button class="popPieceBtn" data-p="r" title="Rook">♖</button>
-        <button class="popPieceBtn" data-p="b" title="Bishop">♗</button>
-        <button class="popPieceBtn" data-p="n" title="Knight">♘</button>
-      </div>
-      <div class="popLabel">Esc to cancel</div>
-    `;
-
-    placePopCenterBoard();
-    pop.style.display = "";
-
-    pop.querySelectorAll(".popPieceBtn").forEach(btn => {
-      btn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        const p = btn.getAttribute("data-p");
-        commitPromotion(p);
-      });
-      btn.addEventListener("mousedown", (e) => e.stopPropagation());
-    });
-  }
-
-  document.addEventListener("keydown", (e) => {
-    if (pop.style.display !== "none" && e.key === "Escape") {
-      hidePop();
-    }
-  });
-
-  // ---------------------------
-  // Variation promotion (drag/drop not required now; click-tooltip arrow)
-  // ---------------------------
-  function promoteVariation(branchParentId, variationRootId) {
-    const parent = byId.get(branchParentId);
-    const vNode = byId.get(variationRootId);
-    if (!parent || !vNode) return;
-
-    const idx = parent.variations.findIndex(x => x.id === vNode.id);
-    if (idx < 0) return;
-
-    const currentMain = parent.next;
-    if (currentMain && currentMain.id === vNode.id) return;
-
-    parent.variations.splice(idx, 1);
-
-    if (currentMain) {
-      parent.variations.unshift(currentMain);
-      currentMain.parent = parent;
-    }
-
-    parent.next = vNode;
-    vNode.parent = parent;
-
-    // keep cursor stable by id
-    renderAll();
-    rebuildChessToNode(cursor, false);
-    syncPGN();
-    updateNavButtons();
-  }
-
-  // ---------------------------
-  // Delete node (remove this move + its continuation from that line)
-  // If it's a mainline move: it deletes from that move onward in the mainline (parent.next = null).
-  // If it's a variation root: it removes that variation entirely.
-  // ---------------------------
-  function deleteNode(nodeId) {
-    const node = byId.get(nodeId);
-    if (!node || node === root) return;
-
-    const parent = node.parent;
-    if (!parent) return;
-
-    // remove from parent's next or variations
-    if (parent.next && parent.next.id === node.id) {
-      parent.next = null;
-    } else {
-      const idx = parent.variations.findIndex(v => v.id === node.id);
-      if (idx >= 0) parent.variations.splice(idx, 1);
-    }
-
-    // move cursor back to parent
-    cursor = parent;
-    navNode = isOnMainline(cursor) ? cursor : null;
-
-    rebuildChessToNode(cursor, true);
-    renderAll();
-    syncPGN();
-    updateNavButtons();
-    highlightActive(cursor === root ? "" : cursor.id);
-  }
-
-  // ---------------------------
-  // Rendering
-  // ---------------------------
-  const movesDiv = document.getElementById("moves");
-  const pgnText = document.getElementById("pgnText");
-
-  function highlightActive(nodeId) {
-    document.querySelectorAll(".move").forEach(el => el.classList.remove("active"));
-    if (!nodeId) return;
-    const el = document.querySelector(`.move[data-node-id="${nodeId}"]`);
-    if (el) el.classList.add("active");
-  }
-
-  function renderLine(startNode, container, ply) {
-    let prev = startNode;
-    let node = startNode.next;
-    let localPly = ply;
-
-    while (node) {
-      const span = document.createElement("span");
-      span.className = "move";
-      span.dataset.nodeId = node.id;
-
-      const isWhite = (localPly % 2 === 0);
-      const moveNo = Math.floor(localPly/2) + 1;
-      span.textContent = (isWhite ? `${moveNo}. ` : "") + figSAN(node.san) + " ";
-
-      span.onclick = (e) => {
-        e.stopPropagation();
-        // clicking a move should rebuild board to that node
-        cursor = node;
-        if (isOnMainline(node)) navNode = node;
-        rebuildChessToNode(node, true);
-        highlightActive(node.id);
-        updateNavButtons();
-        openMovePop(node.id, span);
-      };
-
-      container.appendChild(span);
-
-      // comment display (after move)
-      if (node.comment && node.comment.trim()) {
-        const c = document.createElement("div");
-        c.className = "commentRow";
-        c.textContent = node.comment;
-        container.appendChild(c);
+        n=n.next; ply++;
       }
+    }
+    line(root,0);
+    pgnText.value=serialize()+" *";
+  }
 
-      // variations branching after this move
-      if (node.variations.length) {
-        node.variations.forEach(vRoot => {
-          const vDiv = document.createElement("div");
-          vDiv.className = "variation";
-
-          // render first move of variation
-          const vSpan = document.createElement("span");
-          vSpan.className = "move";
-          vSpan.dataset.nodeId = vRoot.id;
-          vSpan.textContent = figSAN(vRoot.san) + " ";
-
-          vSpan.onclick = (e) => {
-            e.stopPropagation();
-            cursor = vRoot;
-            // navNode stays on mainline
-            rebuildChessToNode(vRoot, true);
-            highlightActive(vRoot.id);
-            updateNavButtons();
-            openMovePop(vRoot.id, vSpan);
-          };
-
-          vDiv.appendChild(vSpan);
-
-          if (vRoot.comment && vRoot.comment.trim()) {
-            const cc = document.createElement("div");
-            cc.className = "commentRow";
-            cc.textContent = vRoot.comment;
-            vDiv.appendChild(cc);
-          }
-
-          // render rest of that variation line (vRoot.next...)
-          renderLine(vRoot, vDiv, localPly + 1);
-
-          container.appendChild(vDiv);
+  function serialize(){
+    function s(node,ply){
+      let out=[],n=node.next;
+      while(n){
+        if(ply%2===0) out.push(Math.floor(ply/2)+1+".");
+        out.push(n.san);
+        n.variations.forEach(v=>{
+          out.push("("+s({next:v},ply+1)+")");
         });
+        n=n.next; ply++;
       }
-
-      prev = node;
-      node = node.next;
-      localPly++;
+      return out.join(" ");
     }
+    return s(root,0);
   }
 
-  function renderAll() {
-    movesDiv.innerHTML = "";
-    renderLine(root, movesDiv, 0);
-  }
+  /* -------- DROP -------- */
+  function onDrop(from,to){
+    const test=new Chess(chess.fen());
+    const m=test.move({from,to,promotion:"q"});
+    if(!m) return "snapback";
 
-  // ---------------------------
-  // PGN serialization (nested variations + comments)
-  // ---------------------------
-  function serializeFrom(node, startPly, variationStart) {
-    let out = [];
-    let ply = startPly;
-
-    let cur = node.next;
-    let first = true;
-
-    while (cur) {
-      const moveNo = Math.floor(ply/2) + 1;
-      const isWhite = (ply % 2 === 0);
-
-      if (first) {
-        if (variationStart) out.push(isWhite ? `${moveNo}.` : `${moveNo}...`);
-        else if (isWhite) out.push(`${moveNo}.`);
-      } else {
-        if (isWhite) out.push(`${moveNo}.`);
-      }
-
-      out.push(cur.san);
-
-      if (cur.comment && cur.comment.trim()) {
-        out.push(`{${cur.comment.replace(/\}/g,"")}}`);
-      }
-
-      if (cur.variations.length) {
-        cur.variations.forEach(v => {
-          out.push(serializeVariation(v, ply + 1));
-        });
-      }
-
-      first = false;
-      ply += 1;
-      cur = cur.next;
-    }
-
-    return out.join(" ").trim();
-  }
-
-  function serializeVariation(variationRoot, startPly) {
-    const pseudoParent = { next: variationRoot };
-    const text = serializeFrom(pseudoParent, startPly, true);
-    return "(" + text + ")";
-  }
-
-  function syncPGN() {
-    const movetext = serializeFrom(root, 0, false);
-    const result = TAGS.Result || "*";
-    const full = tagSection() + "\n\n" + (movetext ? (movetext + " " + result) : result);
-    pgnText.value = full.trim() + "\n";
-  }
-
-  // ---------------------------
-  // Mainline navigation
-  // ---------------------------
-  const btnStart = document.getElementById("btnStart");
-  const btnPrev  = document.getElementById("btnPrev");
-  const btnNext  = document.getElementById("btnNext");
-  const btnEnd   = document.getElementById("btnEnd");
-
-  function mainlineNodes() {
-    const arr = [];
-    let n = root.next;
-    while (n) { arr.push(n); n = n.next; }
-    return arr;
-  }
-
-  function updateNavButtons() {
-    const arr = mainlineNodes();
-    const has = arr.length > 0;
-    btnStart.disabled = !has;
-    btnPrev.disabled  = !has || !navNode;
-    btnNext.disabled  = !has;
-    btnEnd.disabled   = !has;
-  }
-
-  function goStart() {
-    navNode = null;
-    cursor = root;
-    rebuildChessToNode(root, true);
-    highlightActive("");
-    updateNavButtons();
-  }
-
-  function goEnd() {
-    const arr = mainlineNodes();
-    if (!arr.length) return goStart();
-    navNode = arr[arr.length - 1];
-    cursor = navNode;
-    rebuildChessToNode(navNode, true);
-    highlightActive(navNode.id);
-    updateNavButtons();
-  }
-
-  function goPrev() {
-    const arr = mainlineNodes();
-    if (!arr.length) return;
-    if (!navNode) return;
-
-    const idx = arr.findIndex(x => x.id === navNode.id);
-    if (idx <= 0) {
-      goStart();
-      return;
-    }
-    navNode = arr[idx - 1];
-    cursor = navNode;
-    rebuildChessToNode(navNode, true);
-    highlightActive(navNode.id);
-    updateNavButtons();
-  }
-
-  function goNext() {
-    const arr = mainlineNodes();
-    if (!arr.length) return;
-
-    if (!navNode) navNode = arr[0];
-    else {
-      const idx = arr.findIndex(x => x.id === navNode.id);
-      navNode = arr[Math.min(arr.length - 1, idx + 1)];
-    }
-
-    cursor = navNode;
-    rebuildChessToNode(navNode, true);
-    highlightActive(navNode.id);
-    updateNavButtons();
-  }
-
-  btnStart.onclick = (e) => { e.stopPropagation(); goStart(); };
-  btnPrev.onclick  = (e) => { e.stopPropagation(); goPrev(); };
-  btnNext.onclick  = (e) => { e.stopPropagation(); goNext(); };
-  btnEnd.onclick   = (e) => { e.stopPropagation(); goEnd(); };
-
-  document.addEventListener("keydown", (e) => {
-    const active = document.activeElement;
-    const typing = active && (active.tagName === "TEXTAREA" || active.tagName === "INPUT");
-    if (typing) return;
-    if (pop.style.display !== "none") return; // don't steal keys while tooltip open
-
-    if (e.key === "Home") { e.preventDefault(); goStart(); }
-    else if (e.key === "End") { e.preventDefault(); goEnd(); }
-    else if (e.key === "ArrowLeft") { e.preventDefault(); goPrev(); }
-    else if (e.key === "ArrowRight") { e.preventDefault(); goNext(); }
-  });
-
-  // ---------------------------
-  // Move entry logic (turn logic enforced by chess.js)
-  // Promotion handled via tooltip (sync onDrop -> snapback, then commit)
-  // ---------------------------
-  let pendingPromotion = null;
-
-  function addMoveToTree(san) {
-    // continue or branch from cursor
-    if (cursor.next && cursor.next.san === san) {
-      cursor = cursor.next;
-      return;
-    }
-    const existingVar = cursor.variations.find(v => v.san === san);
-    if (existingVar) {
-      cursor = existingVar;
-      return;
-    }
-    const newNode = new Node(san, cursor);
-    if (!cursor.next) cursor.next = newNode;
-    else cursor.variations.push(newNode);
-    cursor = newNode;
-  }
-
-  function onDrop(from, to, piece) {
-    hidePop(); // close any open move tooltips
-
-    // guard: must be legal in current position
-    const test = new Chess(chess.fen());
-
-    // attempt queen-promo move; if it's a normal move, this works too
-    const mQ = test.move({ from, to, promotion: "q" });
-    if (!mQ) return "snapback";
-
-    // detect if this is a promotion move
-    const isPromo = (mQ.flags && mQ.flags.indexOf("p") !== -1);
-
-    if (isPromo) {
-      // don't commit anything yet; show promotion chooser
-      pendingPromotion = {
-        from, to,
-        fenBefore: chess.fen()
-      };
-      openPromotionPop(pendingPromotion);
-      return "snapback"; // key: onDrop must return synchronously
-    }
-
-    // normal move: commit to real game
-    const m = chess.move({ from, to, promotion: "q" });
-    if (!m) return "snapback";
-
+    chess.move(m.san);
     addMoveToTree(m.san);
-
-    // board to cursor (no animation for user-entered)
-    setBoardFen(chess.fen(), false);
-
-    // keep nav sensible if on mainline
-    if (isOnMainline(cursor)) navNode = cursor;
-
-    renderAll();
-    syncPGN();
-    highlightActive(cursor.id);
-    updateNavButtons();
+    rebuild(cursor);
+    render();
   }
 
-  function commitPromotion(p) {
-    if (!pendingPromotion) { hidePop(); return; }
-
-    // restore game to fenBefore and make the chosen promotion
-    chess.load(pendingPromotion.fenBefore);
-
-    const m = chess.move({ from: pendingPromotion.from, to: pendingPromotion.to, promotion: p });
-    if (!m) {
-      // should not happen if the original queen-promo test was legal, but safety first
-      pendingPromotion = null;
-      hidePop();
-      setBoardFen(chess.fen(), false);
-      return;
-    }
-
-    addMoveToTree(m.san);
-
-    // update UI
-    pendingPromotion = null;
-    hidePop();
-
-    setBoardFen(chess.fen(), false);
-
-    if (isOnMainline(cursor)) navNode = cursor;
-
-    renderAll();
-    syncPGN();
-    highlightActive(cursor.id);
-    updateNavButtons();
-  }
-
-  // ---------------------------
-  // Copy buttons
-  // ---------------------------
-  function writeClipboard(text) {
-    if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(text);
-    const ta = document.createElement("textarea");
-    ta.value = text;
-    ta.style.position = "fixed";
-    ta.style.left = "-9999px";
-    document.body.appendChild(ta);
-    ta.select();
-    document.execCommand("copy");
-    document.body.removeChild(ta);
-    return Promise.resolve();
-  }
-
-  document.getElementById("copyPGN").onclick = (e) => { e.stopPropagation(); writeClipboard(pgnText.value); };
-  document.getElementById("copyFEN").onclick = (e) => { e.stopPropagation(); writeClipboard(currentFEN); };
-
-  // ---------------------------
-  // Initial
-  // ---------------------------
-  renderAll();
-  syncPGN();
-  updateNavButtons();
-  rebuildChessToNode(root, false);
-  window.addEventListener("resize", () => board.resize());
+  render();
 })();
 </script>
 

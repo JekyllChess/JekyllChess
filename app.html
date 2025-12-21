@@ -35,74 +35,31 @@ body{
 @media(min-width:900px){.main{grid-template-columns:560px 1fr}}
 #board{width:min(92vw,560px);margin:0 auto}
 
-.controls{
-  display:flex;
-  gap:6px;
-  margin-top:8px;
-}
+.controls{display:flex;gap:6px;margin-top:8px}
 .controls button{
-  flex:1;
-  padding:10px;
-  border:none;
-  border-radius:10px;
-  background:#1f2430;
-  color:#ddd;
-  cursor:pointer;
-  font-size:15px;
+  flex:1;padding:10px;border:none;border-radius:10px;
+  background:#1f2430;color:#ddd;cursor:pointer;font-size:15px;
 }
 
-.card{
-  border:1px solid #222;
-  border-radius:12px;
-  overflow:hidden;
-}
-.cardHead{
-  padding:10px 12px;
-  background:#141820;
-  border-bottom:1px solid #222;
-  font-weight:700;
-}
+.card{border:1px solid #222;border-radius:12px;overflow:hidden}
+.cardHead{padding:10px 12px;background:#141820;border-bottom:1px solid #222;font-weight:700}
 .cardBody{padding:12px}
 
 .moves{font-size:18px;line-height:2}
-.move{
-  display:inline-block;
-  padding:2px 6px;
-  border-radius:7px;
-  cursor:pointer;
-}
+.move{display:inline-block;padding:2px 6px;border-radius:7px;cursor:pointer}
 .move.active{background:#3a7afe;color:#fff}
 
-.variation{
-  margin-left:26px;
-  padding-left:10px;
-  border-left:2px dashed #444;
-}
+.variation{margin-left:26px;padding-left:10px;border-left:2px dashed #444}
 
-/* Promotion chooser */
+/* promotion chooser */
 #promo{
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,.6);
-  display:none;
-  align-items:center;
-  justify-content:center;
+  position:fixed;inset:0;background:rgba(0,0,0,.6);
+  display:none;align-items:center;justify-content:center
 }
-#promo .box{
-  background:#161a24;
-  padding:16px;
-  border-radius:12px;
-  display:flex;
-  gap:10px;
-}
+#promo .box{background:#161a24;padding:16px;border-radius:12px;display:flex;gap:10px}
 #promo button{
-  font-size:28px;
-  padding:10px 14px;
-  background:#1f2430;
-  border:none;
-  border-radius:10px;
-  cursor:pointer;
-  color:#fff;
+  font-size:28px;padding:10px 14px;background:#1f2430;
+  border:none;border-radius:10px;color:#fff;cursor:pointer
 }
 </style>
 </head>
@@ -125,7 +82,6 @@ body{
         <button id="btnEnd">⏭</button>
       </div>
     </div>
-
     <div class="card">
       <div class="cardHead">Move list</div>
       <div class="cardBody">
@@ -135,7 +91,6 @@ body{
   </div>
 </div>
 
-<!-- Promotion dialog -->
 <div id="promo">
   <div class="box">
     <button data-p="q">♕</button>
@@ -153,16 +108,17 @@ const figSAN=s=>s.replace(/^[KQRBN]/,p=>FIG[p]||p);
 
 let ID=1;
 class Node{
-  constructor(san,parent){
+  constructor(san,parent,fen){
     this.id="n"+ID++;
     this.san=san;
     this.parent=parent;
+    this.fen=fen;
     this.next=null;
     this.vars=[];
   }
 }
 
-const root=new Node(null,null);
+const root=new Node(null,null,"start");
 let cursor=root;
 let navNode=root;
 
@@ -174,77 +130,64 @@ const board=Chessboard("board",{
   onDrop
 });
 
+/* ───────── Rebuild (FEN-based) ───────── */
+
 function rebuildTo(node,animate){
-  chess.reset();
   if(node===root){
+    chess.reset();
     board.position("start",animate);
     return;
   }
-  const chain=[];
-  while(node!==root){
-    chain.push(node);
-    node=node.parent;
-  }
-  chain.reverse().forEach(n=>chess.move(n.san));
-  board.position(chess.fen(),animate);
+  chess.load(node.fen);
+  board.position(node.fen,animate);
 }
 
-/* ───── Promotion handling ───── */
+/* ───────── Promotion handling ───────── */
 
-let pendingMove=null;
+let pending=null;
 const promo=document.getElementById("promo");
 
 function onDrop(from,to){
   const test=new Chess(chess.fen());
-  const move={
-    from,to,promotion:"q"
-  };
-
-  const isPromo =
-    test.get(from)?.type==="p" &&
-    (to[1]==="8" || to[1]==="1");
+  const piece=test.get(from);
+  const isPromo=piece?.type==="p"&&(to[1]==="8"||to[1]==="1");
 
   if(isPromo){
-    pendingMove={from,to};
+    pending={from,to};
     promo.style.display="flex";
     return;
   }
-
-  const m=test.move(move);
+  const m=test.move({from,to,promotion:"q"});
   if(!m) return "snapback";
-  applyMove(m.san);
+  applyMove(m.san,test.fen());
 }
 
 promo.onclick=e=>{
   if(!e.target.dataset.p) return;
-  const p=e.target.dataset.p;
   promo.style.display="none";
-
   const test=new Chess(chess.fen());
-  const m=test.move({
-    from:pendingMove.from,
-    to:pendingMove.to,
-    promotion:p
-  });
-  pendingMove=null;
-  if(m) applyMove(m.san);
+  const m=test.move({...pending,promotion:e.target.dataset.p});
+  pending=null;
+  if(m) applyMove(m.san,test.fen());
 };
 
-function applyMove(san){
+/* ───────── Apply move (stores FEN!) ───────── */
+
+function applyMove(san,fen){
+  let n;
   if(cursor.next && cursor.next.san===san){
-    cursor=cursor.next;
+    n=cursor.next;
   }else{
-    const n=new Node(san,cursor);
+    n=new Node(san,cursor,fen);
     if(cursor.next) cursor.vars.push(n);
     else cursor.next=n;
-    cursor=n;
   }
-  navNode=cursor;
-  rebuildTo(cursor,false);
+  cursor=navNode=n;
+  rebuildTo(n,false);
   render();
 }
 
-/* ───── Rendering ───── */
+/* ───────── Rendering ───────── */
 
 const movesDiv=document.getElementById("moves");
 
@@ -258,8 +201,7 @@ function render(){
       const num=ply%2===0?Math.floor(ply/2)+1+". ":"";
       span.textContent=num+figSAN(n.san)+" ";
       span.onclick=()=>{
-        cursor=n;
-        navNode=n;           // ← FIX: always sync navNode
+        cursor=navNode=n;
         rebuildTo(n,true);
         render();
       };
@@ -273,22 +215,32 @@ function render(){
           line({next:v},ply+1,d);
         });
       }
-
       n=n.next; ply++;
     }
   }
   line(root,0,movesDiv);
 }
 
-/* ───── Buttons ───── */
+/* ───────── Buttons ───────── */
 
 btnStart.onclick=()=>{cursor=navNode=root;rebuildTo(root,true);render();}
-btnEnd.onclick=()=>{
-  let n=root;while(n.next)n=n.next;
-  cursor=navNode=n;rebuildTo(n,true);render();
-};
+btnEnd.onclick=()=>{let n=root;while(n.next)n=n.next;cursor=navNode=n;rebuildTo(n,true);render();}
 btnPrev.onclick=()=>{if(navNode.parent){cursor=navNode=navNode.parent;rebuildTo(navNode,true);render();}}
 btnNext.onclick=()=>{if(navNode.next){cursor=navNode=navNode.next;rebuildTo(navNode,true);render();}}
+
+/* ───────── Keyboard navigation ───────── */
+
+document.addEventListener("keydown",e=>{
+  if(e.key==="ArrowLeft" && navNode.parent){
+    cursor=navNode=navNode.parent;
+  }else if(e.key==="ArrowRight" && navNode.next){
+    cursor=navNode=navNode.next;
+  }else return;
+  rebuildTo(navNode,true);
+  render();
+});
+
+/* ───────── Init ───────── */
 
 render();
 rebuildTo(root,false);

@@ -25,10 +25,17 @@ body{
   background:#171a21;
   border-bottom:1px solid #222;
   display:flex;
-  gap:10px;
+  gap:12px;
   align-items:center;
 }
 .top img{width:22px;filter:invert(1)}
+.pen{
+  margin-left:auto;
+  cursor:pointer;
+  opacity:.7;
+  font-size:18px;
+}
+.pen:hover{opacity:1}
 
 .wrap{padding:12px}
 .main{display:grid;grid-template-columns:1fr;gap:12px}
@@ -46,10 +53,64 @@ body{
 .cardBody{padding:12px}
 
 .moves{font-size:18px;line-height:2}
-.move{display:inline-block;padding:2px 6px;border-radius:7px;cursor:pointer}
+.move{
+  display:inline-grid;
+  grid-template-columns:4ch auto;
+  gap:6px;
+  padding:2px 6px;
+  border-radius:7px;
+  cursor:pointer;
+  align-items:baseline;
+}
 .move.active{background:#3a7afe;color:#fff}
+.move .num{opacity:.7;text-align:right}
+.move .san{white-space:nowrap}
 
 .variation{margin-left:26px;padding-left:10px;border-left:2px dashed #444}
+
+/* comment display */
+.comment{
+  margin:6px 0 10px 26px;
+  padding:6px 10px;
+  border-left:4px solid #3a7afe;
+  background:#121724;
+  border-radius:8px;
+  font-size:14px;
+  font-style:italic;
+}
+
+/* inline editor */
+.editor{
+  margin:6px 0 10px 26px;
+  padding:10px;
+  background:#101626;
+  border-radius:8px;
+  border-left:4px solid #3a7afe;
+}
+.editor textarea{
+  width:100%;
+  min-height:70px;
+  resize:vertical;
+  padding:8px;
+  background:#0e1322;
+  border:1px solid #2a3350;
+  border-radius:8px;
+  color:#e6e6e6;
+  outline:none;
+}
+.editor .row{
+  margin-top:6px;
+  display:flex;
+  gap:6px;
+}
+.editor button{
+  padding:6px 10px;
+  border:none;
+  border-radius:8px;
+  background:#1f2430;
+  color:#ddd;
+  cursor:pointer;
+}
 
 /* promotion chooser */
 #promo{
@@ -69,6 +130,7 @@ body{
 <div class="top">
   <img src="https://jekyllchess.github.io/assets/favicon.png">
   <div>JekyllChess PGN App</div>
+  <div id="pen" class="pen" title="Add comment">✎</div>
 </div>
 
 <div class="wrap">
@@ -106,23 +168,32 @@ body{
 const FIG={K:"♔",Q:"♕",R:"♖",B:"♗",N:"♘"};
 const figSAN=s=>s.replace(/^[KQRBN]/,p=>FIG[p]||p);
 
+function movePrefix(ply,start){
+  const n=Math.floor(ply/2)+1;
+  if(ply%2===0) return n+".";
+  return start ? n+"..." : "";
+}
+
 let ID=1;
 class Node{
   constructor(san,parent,fen){
     this.id="n"+ID++;
     this.san=san;
     this.parent=parent;
-    this.fen=fen;     // ALWAYS a valid FEN string
+    this.fen=fen;
     this.next=null;
     this.vars=[];
+    this.comment="";
   }
 }
 
-const START_FEN = new Chess().fen();
+const START_FEN=new Chess().fen();
 const root=new Node(null,null,START_FEN);
-
 let cursor=root;
 let navNode=root;
+
+let editing=false;
+let draft="";
 
 const chess=new Chess();
 const board=Chessboard("board",{
@@ -132,105 +203,128 @@ const board=Chessboard("board",{
   onDrop
 });
 
-/* ───────── Rebuild (FEN-based & safe) ───────── */
-
-function rebuildTo(node,animate){
-  const fen = (node && node.fen) ? node.fen : START_FEN;
-  const ok = chess.load(fen);
-
-  if(!ok){
-    chess.reset();
-    board.position("start", !!animate);
-    return;
-  }
-
-  board.position(chess.fen(), !!animate);
+function rebuildTo(node,anim){
+  chess.load(node?.fen||START_FEN);
+  board.position(chess.fen(),!!anim);
 }
 
-/* ───────── Promotion handling ───────── */
-
+/* promotion */
 let pending=null;
-const promo=document.getElementById("promo");
+promo.onclick=e=>{
+  if(!e.target.dataset.p) return;
+  promo.style.display="none";
+  const t=new Chess(chess.fen());
+  const m=t.move({...pending,promotion:e.target.dataset.p});
+  pending=null;
+  if(m) applyMove(m.san,t.fen());
+};
 
 function onDrop(from,to){
-  const test=new Chess(chess.fen());
-  const piece=test.get(from);
-  const isPromo=piece?.type==="p" && (to[1]==="8" || to[1]==="1");
-
-  if(isPromo){
+  const t=new Chess(chess.fen());
+  const p=t.get(from);
+  if(p?.type==="p"&&(to[1]==="8"||to[1]==="1")){
     pending={from,to};
     promo.style.display="flex";
     return;
   }
-
-  const m=test.move({from,to,promotion:"q"});
+  const m=t.move({from,to,promotion:"q"});
   if(!m) return "snapback";
-
-  applyMove(m.san, test.fen());
+  applyMove(m.san,t.fen());
 }
 
-promo.onclick=e=>{
-  if(!e.target.dataset.p) return;
-
-  promo.style.display="none";
-
-  const test=new Chess(chess.fen());
-  const m=test.move({from:pending.from, to:pending.to, promotion:e.target.dataset.p});
-  pending=null;
-
-  if(!m) return;
-  applyMove(m.san, test.fen());
-};
-
-/* ───────── Apply move (ensures FEN even on reuse) ───────── */
-
 function applyMove(san,fen){
-  let n=null;
-
-  if(cursor.next && cursor.next.san===san){
-    n = cursor.next;
-    n.fen = fen || n.fen;
+  let n;
+  if(cursor.next&&cursor.next.san===san){
+    n=cursor.next;n.fen=fen;
   }else{
-    const v = cursor.vars.find(x=>x.san===san);
-    if(v){
-      n = v;
-      n.fen = fen || n.fen;
-    }else{
-      n = new Node(san,cursor,fen);
-      if(cursor.next) cursor.vars.push(n);
-      else cursor.next=n;
-    }
+    n=new Node(san,cursor,fen);
+    if(cursor.next) cursor.vars.push(n);
+    else cursor.next=n;
   }
-
-  cursor = navNode = n;
+  cursor=navNode=n;
+  editing=false;
   rebuildTo(n,false);
   render();
 }
 
-/* ───────── Rendering (FIXED: capture node in closure) ───────── */
+/* pen icon */
+pen.onclick=()=>{
+  if(cursor!==root){
+    editing=true;
+    draft=cursor.comment||"";
+    render();
+  }
+};
 
-const movesDiv=document.getElementById("moves");
-
+/* render */
 function render(){
-  movesDiv.innerHTML="";
+  moves.innerHTML="";
 
   function line(start,ply,wrap){
     let n=start.next;
+    let startLine=true;
+
     while(n){
-      const node = n; // ✅ capture this iteration's node
+      const node=n;
 
       const span=document.createElement("span");
       span.className="move"+(node===cursor?" active":"");
-      const num=ply%2===0 ? (Math.floor(ply/2)+1+". ") : "";
-      span.textContent=num+figSAN(node.san)+" ";
+
+      const num=document.createElement("span");
+      num.className="num";
+      num.textContent=movePrefix(ply,startLine);
+
+      const san=document.createElement("span");
+      san.className="san";
+      san.textContent=figSAN(node.san);
+
+      span.appendChild(num);
+      span.appendChild(san);
 
       span.onclick=()=>{
-        cursor = navNode = node;
+        cursor=navNode=node;
+        editing=false;
         rebuildTo(node,true);
         render();
       };
 
       wrap.appendChild(span);
+
+      if(editing && node===cursor){
+        const ed=document.createElement("div");
+        ed.className="editor";
+        ed.innerHTML=`
+          <textarea>${draft}</textarea>
+          <div class="row">
+            <button>Save</button>
+            <button>Cancel</button>
+          </div>`;
+        const ta=ed.querySelector("textarea");
+        ta.oninput=()=>draft=ta.value;
+        ta.onkeydown=e=>{
+          if(e.key==="Enter"&&(e.ctrlKey||e.metaKey)){
+            cursor.comment=draft.trim();
+            editing=false;
+            render();
+          }
+          if(e.key==="Escape"){editing=false;render();}
+        };
+        ed.querySelectorAll("button")[0].onclick=()=>{
+          cursor.comment=draft.trim();
+          editing=false;
+          render();
+        };
+        ed.querySelectorAll("button")[1].onclick=()=>{
+          editing=false;
+          render();
+        };
+        wrap.appendChild(ed);
+      }else if(node.comment){
+        const c=document.createElement("div");
+        c.className="comment";
+        c.textContent=node.comment;
+        wrap.appendChild(c);
+      }
 
       if(node.vars.length){
         node.vars.forEach(v=>{
@@ -241,40 +335,31 @@ function render(){
         });
       }
 
-      n=node.next; ply++;
+      n=node.next;
+      ply++;
+      startLine=false;
     }
   }
 
-  line(root,0,movesDiv);
+  line(root,0,moves);
 }
 
-/* ───────── Buttons ───────── */
-
-btnStart.onclick=()=>{cursor=navNode=root;rebuildTo(root,true);render();}
-btnEnd.onclick=()=>{let n=root;while(n.next)n=n.next;cursor=navNode=n;rebuildTo(n,true);render();}
-btnPrev.onclick=()=>{if(navNode.parent){cursor=navNode=navNode.parent;rebuildTo(navNode,true);render();}}
-btnNext.onclick=()=>{if(navNode.next){cursor=navNode=navNode.next;rebuildTo(navNode,true);render();}}
-
-/* ───────── Keyboard navigation (← →) ───────── */
+/* navigation */
+btnStart.onclick=()=>{cursor=navNode=root;editing=false;rebuildTo(root,true);render();}
+btnEnd.onclick=()=>{let n=root;while(n.next)n=n.next;cursor=navNode=n;editing=false;rebuildTo(n,true);render();}
+btnPrev.onclick=()=>{if(navNode.parent){cursor=navNode=navNode.parent;editing=false;rebuildTo(navNode,true);render();}}
+btnNext.onclick=()=>{if(navNode.next){cursor=navNode=navNode.next;editing=false;rebuildTo(navNode,true);render();}}
 
 document.addEventListener("keydown",e=>{
-  if(e.key==="ArrowLeft"){
-    if(navNode.parent){
-      cursor=navNode=navNode.parent;
-      rebuildTo(navNode,true);
-      render();
-    }
-  }else if(e.key==="ArrowRight"){
-    if(navNode.next){
-      cursor=navNode=navNode.next;
-      rebuildTo(navNode,true);
-      render();
-    }
-  }
+  if(e.key==="ArrowLeft"&&navNode.parent){cursor=navNode=navNode.parent;}
+  else if(e.key==="ArrowRight"&&navNode.next){cursor=navNode=navNode.next;}
+  else return;
+  editing=false;
+  rebuildTo(navNode,true);
+  render();
 });
 
-/* ───────── Init ───────── */
-
+/* init */
 render();
 rebuildTo(root,false);
 

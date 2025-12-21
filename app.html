@@ -60,13 +60,14 @@ body{
 
 .move{
   display:inline-grid;
-  grid-template-columns:4ch auto;
-  gap:2px;
-  padding:2px;
+  grid-template-columns:3ch auto; /* tighter number column */
+  column-gap:4px;               /* reduce excessive space */
+  padding:2px 4px;              /* less horizontal padding */
   border-radius:7px;
   cursor:pointer;
   align-items:baseline;
 }
+
 .move.active{background:#3a7afe;color:#fff}
 .move .num{opacity:.7;}
 .move .san{white-space:nowrap}

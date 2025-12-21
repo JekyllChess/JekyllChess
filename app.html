@@ -50,7 +50,6 @@ body{
   cursor:pointer;
   font-size:15px;
 }
-.controls button:disabled{opacity:.4;cursor:default}
 
 .card{
   border:1px solid #222;
@@ -71,9 +70,7 @@ body{
   padding:2px 6px;
   border-radius:7px;
   cursor:pointer;
-  user-select:none;
 }
-.move:hover{background:#20263a}
 .move.active{background:#3a7afe;color:#fff}
 
 .variation{
@@ -82,57 +79,30 @@ body{
   border-left:2px dashed #444;
 }
 
-/* comment display */
-.commentRow{
-  margin:6px 0 10px 18px;
-  padding:6px 10px;
-  border-left:4px solid #3a7afe;
-  border-radius:8px;
-  background:#121724;
-  color:#cfd6ff;
-  font-size:14px;
-  font-style:italic;
-  cursor:pointer;
+/* Promotion chooser */
+#promo{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.6);
+  display:none;
+  align-items:center;
+  justify-content:center;
 }
-
-/* inline editor */
-.commentEdit{
-  margin:6px 0 10px 18px;
-  padding:10px;
-  border-left:4px solid #3a7afe;
-  border-radius:8px;
-  background:#101626;
-}
-.commentEdit textarea{
-  width:100%;
-  min-height:70px;
-  resize:vertical;
-  padding:8px 10px;
-  border-radius:10px;
-  border:1px solid #2a3350;
-  background:#0e1322;
-  color:#e6e6e6;
-  font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-  outline:none;
-}
-.commentEdit .row{
+#promo .box{
+  background:#161a24;
+  padding:16px;
+  border-radius:12px;
   display:flex;
-  gap:8px;
-  margin-top:8px;
+  gap:10px;
 }
-.commentEdit button{
-  padding:8px 10px;
+#promo button{
+  font-size:28px;
+  padding:10px 14px;
+  background:#1f2430;
   border:none;
   border-radius:10px;
-  background:#1f2430;
-  color:#ddd;
   cursor:pointer;
-  font-size:14px;
-}
-.commentHint{
-  font-size:12px;
-  opacity:.75;
-  margin-top:6px;
+  color:#fff;
 }
 </style>
 </head>
@@ -165,366 +135,163 @@ body{
   </div>
 </div>
 
+<!-- Promotion dialog -->
+<div id="promo">
+  <div class="box">
+    <button data-p="q">♕</button>
+    <button data-p="r">♖</button>
+    <button data-p="b">♗</button>
+    <button data-p="n">♘</button>
+  </div>
+</div>
+
 <script>
 (() => {
 
-  /* ───────── Figurine SAN ───────── */
+const FIG={K:"♔",Q:"♕",R:"♖",B:"♗",N:"♘"};
+const figSAN=s=>s.replace(/^[KQRBN]/,p=>FIG[p]||p);
 
-  const FIG={K:"♔",Q:"♕",R:"♖",B:"♗",N:"♘"};
-  const figSAN = s =>
-    s.replace(/(^|[^a-z])([KQRBN])(?=[a-h1-8x])/g,
-      (_, pre, p) => pre + (FIG[p] || p)
-    ).replace(/=([QRBN])/g, (_, p) => "=" + FIG[p]);
+let ID=1;
+class Node{
+  constructor(san,parent){
+    this.id="n"+ID++;
+    this.san=san;
+    this.parent=parent;
+    this.next=null;
+    this.vars=[];
+  }
+}
 
-  /* ───────── Move tree ───────── */
+const root=new Node(null,null);
+let cursor=root;
+let navNode=root;
 
-  let ID=1;
-  class Node{
-    constructor(san,parent){
-      this.id="n"+ID++;
-      this.san=san;
-      this.parent=parent;
-      this.next=null;
-      this.vars=[];
-      this.comment="";
-    }
+const chess=new Chess();
+const board=Chessboard("board",{
+  position:"start",
+  draggable:true,
+  pieceTheme:"https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png",
+  onDrop
+});
+
+function rebuildTo(node,animate){
+  chess.reset();
+  if(node===root){
+    board.position("start",animate);
+    return;
+  }
+  const chain=[];
+  while(node!==root){
+    chain.push(node);
+    node=node.parent;
+  }
+  chain.reverse().forEach(n=>chess.move(n.san));
+  board.position(chess.fen(),animate);
+}
+
+/* ───── Promotion handling ───── */
+
+let pendingMove=null;
+const promo=document.getElementById("promo");
+
+function onDrop(from,to){
+  const test=new Chess(chess.fen());
+  const move={
+    from,to,promotion:"q"
+  };
+
+  const isPromo =
+    test.get(from)?.type==="p" &&
+    (to[1]==="8" || to[1]==="1");
+
+  if(isPromo){
+    pendingMove={from,to};
+    promo.style.display="flex";
+    return;
   }
 
-  const root=new Node(null,null);
-  let cursor=root;
-  let navNode=root;
+  const m=test.move(move);
+  if(!m) return "snapback";
+  applyMove(m.san);
+}
 
-  /* inline comment editor state */
-  let editingNode=null;     // Node or null
-  let editingMountId=null;  // string id of mount (for stable render)
-  let draftText="";
+promo.onclick=e=>{
+  if(!e.target.dataset.p) return;
+  const p=e.target.dataset.p;
+  promo.style.display="none";
 
-  /* ───────── Chess setup ───────── */
-
-  const chess=new Chess();
-  const board=Chessboard("board",{
-    position:"start",
-    draggable:true,
-    pieceTheme:"https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png",
-    onDrop
+  const test=new Chess(chess.fen());
+  const m=test.move({
+    from:pendingMove.from,
+    to:pendingMove.to,
+    promotion:p
   });
+  pendingMove=null;
+  if(m) applyMove(m.san);
+};
 
-  function rebuildTo(node,animate){
-    chess.reset();
-    if(node===root){
-      board.position("start",!!animate);
-      return;
-    }
-    const chain=[];
-    let n=node;
-    while(n&&n!==root){chain.push(n);n=n.parent}
-    chain.reverse().forEach(m=>chess.move(m.san));
-    board.position(chess.fen(),!!animate);
-  }
-
-  function isOnMainline(node){
-    while(node && node!==root){
-      if(node.parent.vars.includes(node)) return false;
-      node=node.parent;
-    }
-    return true;
-  }
-
-  function addMove(san){
-    if(cursor.next && cursor.next.san===san){
-      cursor=cursor.next;
-      navNode=cursor;
-      return;
-    }
-    const v=cursor.vars.find(x=>x.san===san);
-    if(v){cursor=v;navNode=cursor;return}
+function applyMove(san){
+  if(cursor.next && cursor.next.san===san){
+    cursor=cursor.next;
+  }else{
     const n=new Node(san,cursor);
     if(cursor.next) cursor.vars.push(n);
     else cursor.next=n;
     cursor=n;
-    navNode=cursor;
   }
-
-  function onDrop(from,to){
-    const test=new Chess(chess.fen());
-    const m=test.move({from,to,promotion:"q"});
-    if(!m) return "snapback";
-    cursor = navNode || cursor;
-    addMove(m.san);
-    rebuildTo(cursor,false);
-    editingNode=null; editingMountId=null; draftText="";
-    render();
-  }
-
-  /* ───────── Helpers: ChessBase-style move numbers ───────── */
-
-  function moveNoPrefix(ply, isFirstInLine){
-    // ply: 0 = white's 1st, 1 = black's 1st, 2 = white's 2nd, ...
-    const mn = Math.floor(ply/2)+1;
-    if(ply % 2 === 0) return mn + ". ";
-    // ChessBase-style: show "1… " ONLY if black move starts a line (common in variations)
-    return isFirstInLine ? (mn + "… ") : "";
-  }
-
-  /* ───────── Inline comment editor ───────── */
-
-  function openCommentEditor(node, mountId){
-    editingNode=node;
-    editingMountId=mountId; // stable placeholder id where editor should appear
-    draftText = (node.comment || "").trim();
-    render();
-    // focus after render
-    requestAnimationFrame(() => {
-      const ta = document.querySelector('textarea[data-comment-editor="1"]');
-      if(ta){
-        ta.focus();
-        ta.setSelectionRange(ta.value.length, ta.value.length);
-      }
-    });
-  }
-
-  function closeCommentEditor(){
-    editingNode=null;
-    editingMountId=null;
-    draftText="";
-    render();
-  }
-
-  function saveComment(){
-    if(!editingNode) return;
-    const t = (draftText || "").trim();
-    editingNode.comment = t;
-    closeCommentEditor();
-  }
-
-  /* ───────── Rendering ───────── */
-
-  const movesDiv=document.getElementById("moves");
-
-  function render(){
-    movesDiv.innerHTML="";
-
-    function line(start,ply,container){
-      let n=start.next;
-      let first=true;
-
-      while(n){
-        const mountId = "cmt_" + n.id; // comment/editor mount point id
-
-        const span=document.createElement("span");
-        span.className="move"+(n===cursor?" active":"");
-
-        const prefix = moveNoPrefix(ply, first);
-        span.textContent = prefix + figSAN(n.san) + " ";
-
-        span.onclick=e=>{
-          e.stopPropagation();
-
-          // Shift+click = edit comment inline (works even if no comment yet)
-          if(e.shiftKey){
-            openCommentEditor(n, mountId);
-            return;
-          }
-
-          cursor=n;
-          if(isOnMainline(n)) navNode=n;
-          rebuildTo(n,true);
-
-          // do not blow away an editor that belongs to another node;
-          // close editor on normal navigation
-          editingNode=null; editingMountId=null; draftText="";
-          render();
-        };
-
-        container.appendChild(span);
-
-        // Comment / Editor area mount
-        if(editingNode === n && editingMountId === mountId){
-          const wrap=document.createElement("div");
-          wrap.className="commentEdit";
-
-          const ta=document.createElement("textarea");
-          ta.value = draftText;
-          ta.setAttribute("data-comment-editor","1");
-          ta.placeholder="Type a comment (stored like { comment })";
-          ta.oninput=()=>{ draftText = ta.value; };
-          ta.onkeydown=(ev)=>{
-            // Ctrl+Enter / Cmd+Enter to save, Esc to cancel
-            if((ev.ctrlKey || ev.metaKey) && ev.key === "Enter"){
-              ev.preventDefault();
-              saveComment();
-            }else if(ev.key === "Escape"){
-              ev.preventDefault();
-              closeCommentEditor();
-            }
-          };
-
-          const row=document.createElement("div");
-          row.className="row";
-
-          const btnSave=document.createElement("button");
-          btnSave.textContent="Save";
-          btnSave.onclick=(ev)=>{ ev.stopPropagation(); saveComment(); };
-
-          const btnCancel=document.createElement("button");
-          btnCancel.textContent="Cancel";
-          btnCancel.onclick=(ev)=>{ ev.stopPropagation(); closeCommentEditor(); };
-
-          const btnClear=document.createElement("button");
-          btnClear.textContent="Clear";
-          btnClear.onclick=(ev)=>{ ev.stopPropagation(); draftText=""; render(); };
-
-          row.appendChild(btnSave);
-          row.appendChild(btnCancel);
-          row.appendChild(btnClear);
-
-          const hint=document.createElement("div");
-          hint.className="commentHint";
-          hint.textContent="Tip: Shift+Click any move to add/edit a comment. Ctrl+Enter saves. Esc cancels.";
-
-          wrap.appendChild(ta);
-          wrap.appendChild(row);
-          wrap.appendChild(hint);
-          container.appendChild(wrap);
-
-        } else if(n.comment){
-          const c=document.createElement("div");
-          c.className="commentRow";
-          c.textContent=n.comment;
-
-          // clicking comment edits it
-          c.onclick=(ev)=>{
-            ev.stopPropagation();
-            openCommentEditor(n, mountId);
-          };
-
-          container.appendChild(c);
-        } else {
-          // no comment and no editor: keep a stable (invisible) mount point if desired
-          // (not necessary, but mountId is still stable for editor placement after the move)
-        }
-
-        if(n.vars.length){
-          n.vars.forEach(v=>{
-            const d=document.createElement("div");
-            d.className="variation";
-            container.appendChild(d);
-            // variation begins at next ply
-            line({next:v},ply+1,d);
-          });
-        }
-
-        n=n.next; ply++; first=false;
-      }
-    }
-
-    line(root,0,movesDiv);
-  }
-
-  /* ───────── Buttons ───────── */
-
-  btnStart.onclick=()=>{
-    navNode=cursor=root;
-    editingNode=null; editingMountId=null; draftText="";
-    rebuildTo(root,true);
-    render();
-  };
-
-  btnEnd.onclick=()=>{
-    let n=root;
-    while(n.next) n=n.next;
-    navNode=cursor=n;
-    editingNode=null; editingMountId=null; draftText="";
-    rebuildTo(n,true);
-    render();
-  };
-
-  btnPrev.onclick=()=>{
-    if(navNode.parent){
-      navNode=cursor=navNode.parent;
-      editingNode=null; editingMountId=null; draftText="";
-      rebuildTo(navNode,true);
-      render();
-    }
-  };
-
-  btnNext.onclick=()=>{
-    if(navNode.next){
-      navNode=cursor=navNode.next;
-      editingNode=null; editingMountId=null; draftText="";
-      rebuildTo(navNode,true);
-      render();
-    }
-  };
-
-  /* ───────── Keyboard navigation ───────── */
-
-  document.addEventListener("keydown",e=>{
-    // If typing in editor, don't hijack arrows (let textarea navigate)
-    const ae = document.activeElement;
-    const inEditor = ae && ae.tagName === "TEXTAREA" && ae.getAttribute("data-comment-editor")==="1";
-    if(inEditor) return;
-    if(["INPUT","TEXTAREA"].includes(ae.tagName)) return;
-
-    switch(e.key){
-      case "ArrowLeft":
-        if(navNode.parent){
-          navNode=cursor=navNode.parent;
-          editingNode=null; editingMountId=null; draftText="";
-          rebuildTo(navNode,true);
-          render();
-        }
-        break;
-
-      case "ArrowRight":
-        if(navNode.next){
-          navNode=cursor=navNode.next;
-          editingNode=null; editingMountId=null; draftText="";
-          rebuildTo(navNode,true);
-          render();
-        }
-        break;
-
-      case "ArrowUp":
-        if(navNode.parent){
-          navNode=cursor=navNode.parent;
-          editingNode=null; editingMountId=null; draftText="";
-          rebuildTo(navNode,true);
-          render();
-        }
-        break;
-
-      case "ArrowDown":
-        if(navNode.vars.length){
-          navNode=cursor=navNode.vars[0];
-          editingNode=null; editingMountId=null; draftText="";
-          rebuildTo(navNode,true);
-          render();
-        }
-        break;
-
-      // quick comment editing from keyboard
-      case "c":
-      case "C":
-        // Press C to edit comment on current cursor (if not root)
-        if(cursor && cursor !== root){
-          openCommentEditor(cursor, "cmt_" + cursor.id);
-        }
-        break;
-
-      case "Escape":
-        // Close editor if open
-        if(editingNode){
-          closeCommentEditor();
-        }
-        break;
-    }
-  });
-
-  /* ───────── Init ───────── */
-
+  navNode=cursor;
+  rebuildTo(cursor,false);
   render();
-  rebuildTo(root,false);
+}
+
+/* ───── Rendering ───── */
+
+const movesDiv=document.getElementById("moves");
+
+function render(){
+  movesDiv.innerHTML="";
+  function line(start,ply,wrap){
+    let n=start.next;
+    while(n){
+      const span=document.createElement("span");
+      span.className="move"+(n===cursor?" active":"");
+      const num=ply%2===0?Math.floor(ply/2)+1+". ":"";
+      span.textContent=num+figSAN(n.san)+" ";
+      span.onclick=()=>{
+        cursor=n;
+        navNode=n;           // ← FIX: always sync navNode
+        rebuildTo(n,true);
+        render();
+      };
+      wrap.appendChild(span);
+
+      if(n.vars.length){
+        n.vars.forEach(v=>{
+          const d=document.createElement("div");
+          d.className="variation";
+          wrap.appendChild(d);
+          line({next:v},ply+1,d);
+        });
+      }
+
+      n=n.next; ply++;
+    }
+  }
+  line(root,0,movesDiv);
+}
+
+/* ───── Buttons ───── */
+
+btnStart.onclick=()=>{cursor=navNode=root;rebuildTo(root,true);render();}
+btnEnd.onclick=()=>{
+  let n=root;while(n.next)n=n.next;
+  cursor=navNode=n;rebuildTo(n,true);render();
+};
+btnPrev.onclick=()=>{if(navNode.parent){cursor=navNode=navNode.parent;rebuildTo(navNode,true);render();}}
+btnNext.onclick=()=>{if(navNode.next){cursor=navNode=navNode.next;rebuildTo(navNode,true);render();}}
+
+render();
+rebuildTo(root,false);
 
 })();
 </script>

@@ -20,6 +20,7 @@ body{
   color:#e6e6e6;
   font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
 }
+
 .top{
   padding:10px 14px;
   background:#171a21;
@@ -29,13 +30,6 @@ body{
   align-items:center;
 }
 .top img{width:22px;filter:invert(1)}
-.pen{
-  margin-left:auto;
-  cursor:pointer;
-  opacity:.7;
-  font-size:18px;
-}
-.pen:hover{opacity:1}
 
 .wrap{padding:12px}
 .main{display:grid;grid-template-columns:1fr;gap:12px}
@@ -48,11 +42,22 @@ body{
   background:#1f2430;color:#ddd;cursor:pointer;font-size:15px;
 }
 
-.card{border:1px solid #222;border-radius:12px;overflow:hidden}
-.cardHead{padding:10px 12px;background:#141820;border-bottom:1px solid #222;font-weight:700}
+.card{
+  border:1px solid #222;
+  border-radius:12px;
+  overflow:hidden;
+  position:relative;
+}
+.cardHead{
+  padding:10px 12px;
+  background:#141820;
+  border-bottom:1px solid #222;
+  font-weight:700;
+}
 .cardBody{padding:12px}
 
 .moves{font-size:18px;line-height:2}
+
 .move{
   display:inline-grid;
   grid-template-columns:4ch auto;
@@ -66,9 +71,13 @@ body{
 .move .num{opacity:.7;text-align:right}
 .move .san{white-space:nowrap}
 
-.variation{margin-left:26px;padding-left:10px;border-left:2px dashed #444}
+.variation{
+  margin-left:26px;
+  padding-left:10px;
+  border-left:2px dashed #444;
+}
 
-/* comment display */
+/* comments */
 .comment{
   margin:6px 0 10px 26px;
   padding:6px 10px;
@@ -79,7 +88,7 @@ body{
   font-style:italic;
 }
 
-/* inline editor */
+/* editor */
 .editor{
   margin:6px 0 10px 26px;
   padding:10px;
@@ -96,13 +105,8 @@ body{
   border:1px solid #2a3350;
   border-radius:8px;
   color:#e6e6e6;
-  outline:none;
 }
-.editor .row{
-  margin-top:6px;
-  display:flex;
-  gap:6px;
-}
+.editor .row{margin-top:6px;display:flex;gap:6px}
 .editor button{
   padding:6px 10px;
   border:none;
@@ -112,15 +116,52 @@ body{
   cursor:pointer;
 }
 
+/* bottom-left action buttons */
+.actions{
+  position:absolute;
+  left:10px;
+  bottom:10px;
+  display:flex;
+  gap:8px;
+}
+.actionBtn{
+  width:34px;
+  height:34px;
+  border-radius:50%;
+  background:#1f2430;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  font-size:16px;
+  opacity:.85;
+}
+.actionBtn:hover{opacity:1}
+
 /* promotion chooser */
 #promo{
-  position:fixed;inset:0;background:rgba(0,0,0,.6);
-  display:none;align-items:center;justify-content:center
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.6);
+  display:none;
+  align-items:center;
+  justify-content:center;
 }
-#promo .box{background:#161a24;padding:16px;border-radius:12px;display:flex;gap:10px}
+#promo .box{
+  background:#161a24;
+  padding:16px;
+  border-radius:12px;
+  display:flex;
+  gap:10px;
+}
 #promo button{
-  font-size:28px;padding:10px 14px;background:#1f2430;
-  border:none;border-radius:10px;color:#fff;cursor:pointer
+  font-size:28px;
+  padding:10px 14px;
+  background:#1f2430;
+  border:none;
+  border-radius:10px;
+  color:#fff;
+  cursor:pointer;
 }
 </style>
 </head>
@@ -130,7 +171,6 @@ body{
 <div class="top">
   <img src="https://jekyllchess.github.io/assets/favicon.png">
   <div>JekyllChess PGN App</div>
-  <div id="pen" class="pen" title="Add comment">✎</div>
 </div>
 
 <div class="wrap">
@@ -144,10 +184,17 @@ body{
         <button id="btnEnd">⏭</button>
       </div>
     </div>
+
     <div class="card">
       <div class="cardHead">Move list</div>
       <div class="cardBody">
         <div id="moves" class="moves"></div>
+      </div>
+
+      <!-- bottom-left action buttons -->
+      <div class="actions">
+        <div id="btnComment" class="actionBtn" title="Add/Edit comment">✎</div>
+        <div id="btnDelete" class="actionBtn" title="Delete move">🗑</div>
       </div>
     </div>
   </div>
@@ -247,13 +294,32 @@ function applyMove(san,fen){
   render();
 }
 
-/* pen icon */
-pen.onclick=()=>{
+/* comment button */
+btnComment.onclick=()=>{
   if(cursor!==root){
     editing=true;
     draft=cursor.comment||"";
     render();
   }
+};
+
+/* delete button */
+btnDelete.onclick=()=>{
+  if(cursor===root) return;
+
+  const parent=cursor.parent;
+
+  // remove from mainline or variations
+  if(parent.next===cursor){
+    parent.next=null;
+  }else{
+    parent.vars=parent.vars.filter(v=>v!==cursor);
+  }
+
+  cursor=navNode=parent;
+  editing=false;
+  rebuildTo(parent,true);
+  render();
 };
 
 /* render */

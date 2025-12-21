@@ -56,26 +56,25 @@ body{
 }
 .cardBody{padding:12px}
 
-/* ───────── Move list: full-move rows ───────── */
+/* ───────── Move list (full moves, tight spacing) ───────── */
 
-.moves{font-size:18px}
+.moves{font-size:18px;line-height:1.9}
 
 .fullmove{
   display:grid;
-  grid-template-columns:3ch minmax(0,1fr) minmax(0,1fr);
-  column-gap:10px;
+  grid-template-columns:3ch auto auto;
+  column-gap:6px; /* FIX: tighter spacing */
   align-items:baseline;
-  line-height:1.9;
 }
 
-.fullmove .num{
+.num{
   text-align:right;
   opacity:.65;
 }
 
 .half{
   cursor:pointer;
-  padding:2px 4px;
+  padding:2px 4px;  /* FIX: tighter padding */
   border-radius:6px;
   white-space:nowrap;
 }
@@ -130,7 +129,7 @@ body{
   cursor:pointer;
 }
 
-/* bottom-left action buttons */
+/* action buttons */
 .actions{
   position:absolute;
   left:10px;
@@ -262,8 +261,7 @@ function rebuildTo(node,anim){
   board.position(chess.fen(),!!anim);
 }
 
-/* ───────── Promotion ───────── */
-
+/* promotion */
 let pending=null;
 promo.onclick=e=>{
   if(!e.target.dataset.p) return;
@@ -302,8 +300,7 @@ function applyMove(san,fen){
   render();
 }
 
-/* ───────── Actions ───────── */
-
+/* actions */
 btnComment.onclick=()=>{
   if(cursor!==root){
     editing=true;
@@ -323,163 +320,125 @@ btnDelete.onclick=()=>{
   render();
 };
 
-/* ───────── Render full-move rows ───────── */
+/* ───────── Render (FULL MOVES + VARIATIONS FIXED) ───────── */
 
 function render(){
   moves.innerHTML="";
+  renderLine(root,0,moves);
+}
 
-  function renderLine(start, ply, wrap){
-    let n=start.next;
-    let moveNo=Math.floor(ply/2)+1;
-    let isBlackStart = ply%2===1;
+function renderLine(start,ply,wrap){
+  let n=start.next;
+  while(n){
+    const row=document.createElement("div");
+    row.className="fullmove";
 
-    while(n){
-      const row=document.createElement("div");
-      row.className="fullmove";
+    const moveNo=Math.floor(ply/2)+1;
+    const blackStart = ply%2===1;
 
-      const num=document.createElement("div");
-      num.className="num";
-      num.textContent=isBlackStart?`${moveNo}...`:`${moveNo}.`;
-      row.appendChild(num);
+    const num=document.createElement("div");
+    num.className="num";
+    num.textContent=blackStart?`${moveNo}...`:`${moveNo}.`;
+    row.appendChild(num);
 
-      let whiteCell=document.createElement("div");
-      let blackCell=document.createElement("div");
+    // white cell
+    const wCell=document.createElement("div");
+    if(!blackStart){
+      const w=n;
+      wCell.appendChild(makeHalf(w));
+      n=w.next; ply++;
+    }
+    row.appendChild(wCell);
 
-      if(isBlackStart){
-        whiteCell.textContent="";
-      }else{
-        const w=n;
-        const span=document.createElement("span");
-        span.className="half"+(w===cursor?" active":"");
-        span.textContent=figSAN(w.san);
-        span.onclick=()=>{cursor=navNode=w;editing=false;rebuildTo(w,true);render();};
-        whiteCell.appendChild(span);
+    // black cell
+    const bCell=document.createElement("div");
+    if(n){
+      const b=n;
+      bCell.appendChild(makeHalf(b));
+      n=b.next; ply++;
+    }
+    row.appendChild(bCell);
 
-        if(w.comment){
-          const c=document.createElement("div");
-          c.className="comment";
-          c.textContent=w.comment;
-          whiteCell.appendChild(c);
-        }
+    wrap.appendChild(row);
 
-        if(editing && w===cursor){
-          renderEditor(whiteCell);
-        }
-
-        n=w.next;
-        ply++;
-      }
-
-      if(n){
-        const b=n;
-        const span=document.createElement("span");
-        span.className="half"+(b===cursor?" active":"");
-        span.textContent=figSAN(b.san);
-        span.onclick=()=>{cursor=navNode=b;editing=false;rebuildTo(b,true);render();};
-        blackCell.appendChild(span);
-
-        if(b.comment){
-          const c=document.createElement("div");
-          c.className="comment";
-          c.textContent=b.comment;
-          blackCell.appendChild(c);
-        }
-
-        if(editing && b===cursor){
-          renderEditor(blackCell);
-        }
-
-        n=b.next;
-        ply++;
-      }
-
-      row.appendChild(whiteCell);
-      row.appendChild(blackCell);
-      wrap.appendChild(row);
-
-      // variations from white or black
-      [row, row].forEach((_,i)=>{
-        const node=i===0?row.querySelector(".half")?.__node:null;
-      });
-
-      // render variations
-      [row].forEach(()=>{});
-
-      // variations
-      let vTargets=[];
-      if(!isBlackStart){
-        if(row.querySelector(".half")) vTargets.push(row.querySelector(".half"));
-      }
-      if(row.querySelectorAll(".half").length>1){
-        vTargets.push(row.querySelectorAll(".half")[1]);
-      }
-
-      vTargets.forEach((el,idx)=>{
-        const node = idx===0 ? (isBlackStart?null:row.querySelector(".half")?null:null) : null;
-      });
-
-      // simpler: render variations directly from nodes
-      if(!isBlackStart){
-        const wNode=row.querySelector(".half")?null:null;
-      }
-
-      // variations rendering (simple)
-      if(!isBlackStart){
-        const wNode = row.querySelector(".half")?null:null;
-      }
-
-      // Actual variation logic:
-      const prev = start;
-      if(prev.next && prev.next.vars.length){
-        prev.next.vars.forEach(v=>{
+    // render variations AFTER each half-move
+    [wCell,bCell].forEach(cell=>{
+      const span=cell.querySelector(".half");
+      if(!span) return;
+      const node=span.__node;
+      if(node.vars.length){
+        node.vars.forEach(v=>{
           const d=document.createElement("div");
           d.className="variation";
           wrap.appendChild(d);
           renderLine({next:v}, ply, d);
         });
       }
+    });
+  }
+}
 
-      moveNo++;
-      isBlackStart=false;
-    }
+function makeHalf(node){
+  const span=document.createElement("span");
+  span.className="half"+(node===cursor?" active":"");
+  span.textContent=figSAN(node.san);
+  span.__node=node;
+  span.onclick=()=>{
+    cursor=navNode=node;
+    editing=false;
+    rebuildTo(node,true);
+    render();
+  };
+
+  const frag=document.createDocumentFragment();
+  frag.appendChild(span);
+
+  if(node.comment){
+    const c=document.createElement("div");
+    c.className="comment";
+    c.textContent=node.comment;
+    frag.appendChild(c);
   }
 
-  function renderEditor(container){
-    const ed=document.createElement("div");
-    ed.className="editor";
-    ed.innerHTML=`
-      <textarea>${draft}</textarea>
-      <div class="row">
-        <button>Save</button>
-        <button>Cancel</button>
-      </div>`;
-    const ta=ed.querySelector("textarea");
-    ta.oninput=()=>draft=ta.value;
-    ta.onkeydown=e=>{
-      if(e.key==="Enter"&&(e.ctrlKey||e.metaKey)){
-        cursor.comment=draft.trim();
-        editing=false;
-        render();
-      }
-      if(e.key==="Escape"){editing=false;render();}
-    };
-    ed.querySelectorAll("button")[0].onclick=()=>{
+  if(editing && node===cursor){
+    frag.appendChild(renderEditor());
+  }
+
+  return frag;
+}
+
+function renderEditor(){
+  const ed=document.createElement("div");
+  ed.className="editor";
+  ed.innerHTML=`
+    <textarea>${draft}</textarea>
+    <div class="row">
+      <button>Save</button>
+      <button>Cancel</button>
+    </div>`;
+  const ta=ed.querySelector("textarea");
+  ta.oninput=()=>draft=ta.value;
+  ta.onkeydown=e=>{
+    if(e.key==="Enter"&&(e.ctrlKey||e.metaKey)){
       cursor.comment=draft.trim();
       editing=false;
       render();
-    };
-    ed.querySelectorAll("button")[1].onclick=()=>{
-      editing=false;
-      render();
-    };
-    container.appendChild(ed);
-  }
-
-  renderLine(root,0,moves);
+    }
+    if(e.key==="Escape"){editing=false;render();}
+  };
+  ed.querySelectorAll("button")[0].onclick=()=>{
+    cursor.comment=draft.trim();
+    editing=false;
+    render();
+  };
+  ed.querySelectorAll("button")[1].onclick=()=>{
+    editing=false;
+    render();
+  };
+  return ed;
 }
 
-/* ───────── Navigation ───────── */
-
+/* navigation */
 btnStart.onclick=()=>{cursor=navNode=root;editing=false;rebuildTo(root,true);render();}
 btnEnd.onclick=()=>{let n=root;while(n.next)n=n.next;cursor=navNode=n;editing=false;rebuildTo(n,true);render();}
 btnPrev.onclick=()=>{if(navNode.parent){cursor=navNode=navNode.parent;editing=false;rebuildTo(navNode,true);render();}}

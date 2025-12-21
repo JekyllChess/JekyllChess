@@ -125,8 +125,16 @@ body{
 
 <script>
 (() => {
+
+  /* ───────── Figurine SAN ───────── */
+
   const FIG={K:"♔",Q:"♕",R:"♖",B:"♗",N:"♘"};
-  const figSAN=s=>s.replace(/^[KQRBN]/,p=>FIG[p]||p).replace(/=([QRBN])/g,(_,p)=>"="+FIG[p]);
+  const figSAN = s =>
+    s.replace(/(^|[^a-z])([KQRBN])(?=[a-h1-8x])/g,
+      (_, pre, p) => pre + (FIG[p] || p)
+    ).replace(/=([QRBN])/g, (_, p) => "=" + FIG[p]);
+
+  /* ───────── Move tree ───────── */
 
   let ID=1;
   class Node{
@@ -142,7 +150,9 @@ body{
 
   const root=new Node(null,null);
   let cursor=root;
-  let navNode=null;
+  let navNode=root;
+
+  /* ───────── Chess setup ───────── */
 
   const chess=new Chess();
   const board=Chessboard("board",{
@@ -165,6 +175,14 @@ body{
     board.position(chess.fen(),!!animate);
   }
 
+  function isOnMainline(node){
+    while(node && node!==root){
+      if(node.parent.vars.includes(node)) return false;
+      node=node.parent;
+    }
+    return true;
+  }
+
   function addMove(san){
     if(cursor.next && cursor.next.san===san){
       cursor=cursor.next;
@@ -172,7 +190,7 @@ body{
       return;
     }
     const v=cursor.vars.find(x=>x.san===san);
-    if(v){cursor=v;return}
+    if(v){cursor=v;navNode=cursor;return}
     const n=new Node(san,cursor);
     if(cursor.next) cursor.vars.push(n);
     else cursor.next=n;
@@ -184,10 +202,13 @@ body{
     const test=new Chess(chess.fen());
     const m=test.move({from,to,promotion:"q"});
     if(!m) return "snapback";
+    cursor = navNode || cursor;
     addMove(m.san);
     rebuildTo(cursor,false);
     render();
   }
+
+  /* ───────── Rendering ───────── */
 
   const movesDiv=document.getElementById("moves");
 
@@ -203,8 +224,8 @@ body{
           e.stopPropagation();
           cursor=n;
           if(isOnMainline(n)) navNode=n;
+          rebuildTo(n,true);
           render();
-          requestAnimationFrame(()=>rebuildTo(n,true));
         };
         container.appendChild(span);
 
@@ -230,14 +251,83 @@ body{
     line(root,0,movesDiv);
   }
 
-  function isOnMainline(node){
-    let n=root.next;
-    while(n){ if(n===node) return true; n=n.next; }
-    return false;
-  }
+  /* ───────── Buttons ───────── */
+
+  btnStart.onclick=()=>{
+    navNode=cursor=root;
+    rebuildTo(root,true);
+    render();
+  };
+
+  btnEnd.onclick=()=>{
+    let n=root;
+    while(n.next) n=n.next;
+    navNode=cursor=n;
+    rebuildTo(n,true);
+    render();
+  };
+
+  btnPrev.onclick=()=>{
+    if(navNode.parent){
+      navNode=cursor=navNode.parent;
+      rebuildTo(navNode,true);
+      render();
+    }
+  };
+
+  btnNext.onclick=()=>{
+    if(navNode.next){
+      navNode=cursor=navNode.next;
+      rebuildTo(navNode,true);
+      render();
+    }
+  };
+
+  /* ───────── Keyboard navigation ───────── */
+
+  document.addEventListener("keydown",e=>{
+    if(["INPUT","TEXTAREA"].includes(document.activeElement.tagName)) return;
+
+    switch(e.key){
+      case "ArrowLeft":
+        if(navNode.parent){
+          navNode=cursor=navNode.parent;
+          rebuildTo(navNode,true);
+          render();
+        }
+        break;
+
+      case "ArrowRight":
+        if(navNode.next){
+          navNode=cursor=navNode.next;
+          rebuildTo(navNode,true);
+          render();
+        }
+        break;
+
+      case "ArrowUp":
+        if(navNode.parent){
+          navNode=cursor=navNode.parent;
+          rebuildTo(navNode,true);
+          render();
+        }
+        break;
+
+      case "ArrowDown":
+        if(navNode.vars.length){
+          navNode=cursor=navNode.vars[0];
+          rebuildTo(navNode,true);
+          render();
+        }
+        break;
+    }
+  });
+
+  /* ───────── Init ───────── */
 
   render();
   rebuildTo(root,false);
+
 })();
 </script>
 

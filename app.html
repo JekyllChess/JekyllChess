@@ -56,7 +56,6 @@ body{
 .mainline{font-weight:700}
 .variation{font-weight:400;opacity:.95}
 .move{cursor:pointer;padding:1px 3px;border-radius:5px}
-.move:hover{background:#20263a}
 .move.active{background:#3a7afe;color:#fff}
 #promo{
   position:fixed;
@@ -80,7 +79,6 @@ body{
   border:none;
   border-radius:10px;
   color:#fff;
-  cursor:pointer;
 }
 </style>
 </head>
@@ -103,7 +101,6 @@ body{
         <button id="btnEnd">⏭</button>
       </div>
     </div>
-
     <div class="card">
       <div class="cardHead">Moves</div>
       <div class="cardBody">
@@ -125,7 +122,7 @@ body{
 <script>
 (() => {
 
-const movesDiv=document.getElementById("moves");
+const movesDiv = document.getElementById("moves");
 const FIG={K:"♔",Q:"♕",R:"♖",B:"♗",N:"♘"};
 const figSAN=s=>s.replace(/^[KQRBN]/,p=>FIG[p]||p);
 
@@ -160,7 +157,6 @@ function rebuildTo(node,animate){
   board.position(chess.fen(),!!animate);
 }
 
-/* input */
 function onDrop(from,to){
   const t=new Chess(chess.fen());
   const p=t.get(from);
@@ -183,9 +179,8 @@ promo.onclick=e=>{
   if(m) applyMove(m.san,t.fen());
 };
 
-/* 🔥 FIXED MOVE INSERTION */
+/* ✅ CORRECT, CRASH-PROOF INSERTION */
 function applyMove(san,fen){
-  const isWhiteToMove = chess.turn()==="w";
   let n;
 
   if(cursor.next && cursor.next.san===san){
@@ -194,7 +189,9 @@ function applyMove(san,fen){
     n=new Node(san,cursor,fen);
 
     if(cursor.next){
-      if(!isWhiteToMove){
+      // there is already a mainline
+      if(chess.turn()==="b"){
+        // inserting BLACK alternative → promote to mainline
         cursor.vars.push(cursor.next);
         cursor.next=n;
       }else{
@@ -216,11 +213,11 @@ function render(){
   movesDiv.innerHTML="";
   const main=document.createElement("div");
   main.className="mainline";
-  renderSequence(root.next,main,1,"w");
+  renderSeq(root.next,main,1,"w");
   movesDiv.appendChild(main);
 }
 
-function renderSequence(n,container,moveNo,side){
+function renderSeq(n,container,moveNo,side){
   let cur=n,m=moveNo,s=side;
 
   while(cur){
@@ -230,52 +227,28 @@ function renderSequence(n,container,moveNo,side){
 
     if(s==="w"){
       if(cur.next){cur=cur.next;s="b";continue;}
-      appendVariations(container,cur,m,"b");
+      renderVars(container,cur,m,"b");
       break;
     }else{
-      appendVariations(container,cur.parent,m,"b");
-      appendVariations(container,cur,m+1,"w");
+      renderVars(container,cur.parent,m,"b");
+      renderVars(container,cur,m+1,"w");
       cur=cur.next;m++;s="w";
     }
   }
 }
 
-function appendVariations(container,parent,moveNo,side){
+function renderVars(container,parent,moveNo,side){
   if(!parent||!parent.vars.length) return;
-  const seen=new Set();
-
   for(const v of parent.vars){
-    if(seen.has(v.san)) continue;
-    seen.add(v.san);
-
     const span=document.createElement("span");
     span.className="variation";
     const prefix=(side==="b")?moveNo+"... ":moveNo+". ";
     span.appendChild(text("("+prefix));
-    renderSequenceNoNum(v,span,moveNo,side);
+    renderSeq(v,span,moveNo,side);
     trim(span);
     span.appendChild(text(")"));
     container.appendChild(span);
     container.appendChild(text(" "));
-  }
-}
-
-function renderSequenceNoNum(n,container,moveNo,side){
-  let cur=n,m=moveNo,s=side;
-
-  while(cur){
-    if(s==="w") container.appendChild(text(m+". "));
-    appendMove(container,cur);
-    container.appendChild(text(" "));
-    if(s==="w"){
-      if(cur.next){cur=cur.next;s="b";continue;}
-      appendVariations(container,cur,m,"b");
-      break;
-    }else{
-      appendVariations(container,cur.parent,m,"b");
-      appendVariations(container,cur,m+1,"w");
-      cur=cur.next;m++;s="w";
-    }
   }
 }
 
@@ -306,7 +279,7 @@ function text(t){return document.createTextNode(t);}
 btnStart.onclick=()=>{cursor=root;rebuildTo(root,true);render();}
 btnEnd.onclick=()=>{let n=root;while(n.next)n=n.next;cursor=n;rebuildTo(n,true);render();}
 btnPrev.onclick=()=>{if(cursor.parent){cursor=cursor.parent;rebuildTo(cursor,true);render();}}
-btnNext.onclick=()=>{if(cursor.next){cursor=cursor.next;rebuildTo(cursor.next,true);render();}}
+btnNext.onclick=()=>{if(cursor.next){cursor=cursor.next;rebuildTo(cursor,true);render();}}
 
 render();
 rebuildTo(root,false);

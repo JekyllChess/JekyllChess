@@ -287,6 +287,20 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
   /* ======================================================
+   * 🔑 GLOBAL BRIDGE FOR WIDGETS
+   * ====================================================== */
+
+  window.JC = {
+    getCursor: () => cursor,
+    setCursor: n => { cursor = n; },
+    getRoot:   () => root,
+    getFEN:    () => chess.fen(),
+    render,
+    rebuildTo
+  };
+
+
+  /* ======================================================
    * INIT
    * ====================================================== */
 

@@ -33,8 +33,8 @@
   <div class="wrap">
     <div class="main">
 
-      <!-- LEFT: BOARD -->
-      <div>
+      <!-- LEFT COLUMN -->
+      <div class="col">
         <div id="board"></div>
 
         <div class="controls">
@@ -46,21 +46,22 @@
         </div>
       </div>
 
-      <!-- RIGHT: MOVES -->
-      <div class="card">
-        <div class="cardHead">Moves</div>
-
-        <div class="cardBody">
-          <div id="moves" class="moves"></div>
-
-          <!-- Placeholder controls (aligned with board controls) -->
-          <div class="controls placeholder-controls">
-            <button disabled></button>
-            <button disabled></button>
-            <button disabled></button>
-            <button disabled></button>
-            <button disabled></button>
+      <!-- RIGHT COLUMN -->
+      <div class="col">
+        <div class="card">
+          <div class="cardHead">Moves</div>
+          <div class="cardBody">
+            <div id="moves" class="moves"></div>
           </div>
+        </div>
+
+        <!-- RIGHT controls: OUTSIDE the card -->
+        <div class="controls placeholder-controls">
+          <button disabled></button>
+          <button disabled></button>
+          <button disabled></button>
+          <button disabled></button>
+          <button disabled></button>
         </div>
       </div>
 

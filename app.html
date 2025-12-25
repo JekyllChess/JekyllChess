@@ -104,7 +104,7 @@ function rebuildTo(node,animate){
   board.position(chess.fen(),!!animate);
 }
 
-/* move input */
+/* input */
 function onDrop(from,to){
   const t=new Chess(chess.fen());
   const p=t.get(from);
@@ -139,37 +139,42 @@ function applyMove(san,fen){
   render();
 }
 
-/* INLINE PGN RENDERING — FIXED */
+/* INLINE PGN RENDERER — FINAL, CORRECT */
 function render(){
   movesDiv.innerHTML="";
   const main=document.createElement("div");
   main.className="mainline";
-  renderLine(root.next,main,1,true);
+  renderLine(root.next, main, 1, true);
   movesDiv.appendChild(main);
 }
 
-function renderLine(node,container,moveNo,isWhite){
+function renderLine(node, container, moveNo, whiteToMove){
   let n=node;
   let m=moveNo;
-  let white=isWhite;
+  let white=whiteToMove;
 
   while(n){
-    if(white) container.appendChild(text(m+". "));
+    // print move number for white moves in mainline
+    if(white){
+      container.appendChild(text(m + ". "));
+    }
 
     const span=document.createElement("span");
     span.className="move"+(n===cursor?" active":"");
-    span.textContent=figSAN(n.san)+" ";
+    span.textContent=figSAN(n.san);
     span.onclick=()=>{cursor=n;rebuildTo(n,true);render();};
     container.appendChild(span);
+    container.appendChild(text(" "));
 
-    /* VARIATIONS AFTER THIS MOVE */
+    // print variations AFTER mainline move
     n.vars.forEach(v=>{
       const d=document.createElement("span");
       d.className="variation";
-      const prefix = white ? m+"... " : (m+1)+". ";
+      const prefix = white ? (m + "... ") : ((m+1) + ". ");
       d.appendChild(text("(" + prefix));
-      renderLine(v,d,white?m:m+1,white?false:true);
-      d.appendChild(text(") "));
+      renderLine(v, d, white ? m : m+1, !white);
+      d.appendChild(text(")"));
+      container.appendChild(text(" "));
       container.appendChild(d);
     });
 
@@ -185,7 +190,7 @@ function text(t){return document.createTextNode(t);}
 btnStart.onclick=()=>{cursor=root;rebuildTo(root,true);render();}
 btnEnd.onclick=()=>{let n=root;while(n.next)n=n.next;cursor=n;rebuildTo(n,true);render();}
 btnPrev.onclick=()=>{if(cursor.parent){cursor=cursor.parent;rebuildTo(cursor,true);render();}}
-btnNext.onclick=()=>{if(cursor.next){cursor=cursor.next;rebuildTo(cursor,true);render();}}
+btnNext.onclick=()=>{if(cursor.next){cursor=cursor.next;rebuildTo(cursor.next,true);render();}}
 
 render();
 rebuildTo(root,false);

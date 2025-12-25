@@ -30,7 +30,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
   /* ======================================================
-   *  DATA MODEL (MAINLINE ONLY)
+   *  TREE DATA MODEL (WITH VARIATIONS)
    * ====================================================== */
 
   let ID = 1;
@@ -41,7 +41,8 @@ document.addEventListener("DOMContentLoaded", () => {
       this.san = san;
       this.parent = parent;
       this.fen = fen;
-      this.next = null;
+      this.next = null;   // mainline
+      this.vars = [];     // variations
     }
   }
 
@@ -83,26 +84,26 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
   /* ======================================================
-   *  RESIZE OBSERVER + EXACT HEIGHT SYNC
+   *  RESIZE OBSERVER (BOARD == MOVES)
    * ====================================================== */
 
   function syncMovesPaneHeight() {
     const boardH = boardEl.getBoundingClientRect().height;
     const headH  = cardHead.getBoundingClientRect().height;
+    const bodyH  = boardH - headH;
 
-    if (boardH > 0 && headH >= 0) {
-      const bodyH = boardH - headH;
+    if (bodyH > 0) {
       cardBody.style.height = bodyH + "px";
       movesDiv.style.overflowY = "auto";
     }
   }
 
-  const boardResizeObserver = new ResizeObserver(() => {
+  const ro = new ResizeObserver(() => {
     board.resize();
     syncMovesPaneHeight();
   });
 
-  boardResizeObserver.observe(boardEl);
+  ro.observe(boardEl);
 
 
   /* ======================================================
@@ -122,7 +123,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const m = t.move({ from, to, promotion: "q" });
     if (!m) return "snapback";
 
-    applyMove(m.san, t.fen());
+    applyMove(m.san, t.fen(), t.turn());
   }
 
   promo.onclick = e => {
@@ -138,45 +139,83 @@ document.addEventListener("DOMContentLoaded", () => {
 
     pendingPromotion = null;
 
-    if (m) applyMove(m.san, t.fen());
+    if (m) applyMove(m.san, t.fen(), t.turn());
   };
 
 
   /* ======================================================
-   *  MAINLINE INSERTION (REPLACE MODE)
+   *  INSERTION LOGIC (MAINLINE + VARIATIONS)
    * ====================================================== */
 
-  function applyMove(san, fen) {
-    const n = new Node(san, cursor, fen);
-    cursor.next = n;
-    cursor = n;
+  function applyMove(san, fen, turnAfterMove) {
+    // If identical mainline move exists, follow it
+    if (cursor.next && cursor.next.san === san) {
+      cursor = cursor.next;
+      rebuildTo(cursor, false);
+      render();
+      return;
+    }
 
+    const n = new Node(san, cursor, fen);
+
+    if (!cursor.next) {
+      // No mainline yet
+      cursor.next = n;
+    } else {
+      // Branch → variation
+      cursor.vars.push(n);
+    }
+
+    cursor = n;
     rebuildTo(n, false);
     render();
   }
 
 
   /* ======================================================
-   *  MOVE LIST RENDERING (NBSP SAFE)
+   *  MOVE LIST RENDERING (PGN STYLE)
    * ====================================================== */
 
   function render() {
     movesDiv.innerHTML = "";
+    renderSequence(root.next, movesDiv, 1, "w");
+  }
 
-    let cur = root.next;
-    let moveNo = 1;
-    let side = "w";
+  function renderSequence(node, container, moveNo, side) {
+    let cur = node;
+    let m = moveNo;
+    let s = side;
 
     while (cur) {
-      if (side === "w") {
-        movesDiv.appendChild(text(moveNo + ".\u00A0"));
+      if (s === "w") {
+        container.appendChild(text(m + ".\u00A0"));
       }
 
-      appendMove(movesDiv, cur);
-      movesDiv.appendChild(text(" "));
+      appendMove(container, cur);
+      container.appendChild(text(" "));
 
-      if (side === "b") moveNo++;
-      side = side === "w" ? "b" : "w";
+      // Render variations (after the move they branch from)
+      if (cur.vars.length) {
+        cur.vars.forEach(v => {
+          const span = document.createElement("span");
+          span.className = "variation";
+
+          const prefix =
+            s === "w"
+              ? m + ".\u00A0"
+              : m + "...\u00A0";
+
+          span.appendChild(text("(" + prefix));
+          renderSequence(v, span, m, s);
+          trim(span);
+          span.appendChild(text(") "));
+          container.appendChild(span);
+        });
+      }
+
+      // Advance mainline
+      if (s === "b") m++;
+      s = s === "w" ? "b" : "w";
       cur = cur.next;
     }
   }
@@ -193,6 +232,14 @@ document.addEventListener("DOMContentLoaded", () => {
     };
 
     container.appendChild(span);
+  }
+
+  function trim(el) {
+    const t = el.lastChild;
+    if (t?.nodeType === 3) {
+      t.nodeValue = t.nodeValue.replace(/\s+$/, "");
+      if (!t.nodeValue) el.removeChild(t);
+    }
   }
 
   function text(t) {
@@ -250,7 +297,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
   /* ======================================================
-   *  BOARD ORIENTATION TOGGLE (PERSISTED)
+   *  BOARD ORIENTATION TOGGLE
    * ====================================================== */
 
   btnFlip.onclick = () => {

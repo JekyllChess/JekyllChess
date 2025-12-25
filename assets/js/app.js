@@ -86,7 +86,8 @@ document.addEventListener("DOMContentLoaded", () => {
   function syncMovesHeightToBoard() {
     const h = boardEl.getBoundingClientRect().height;
     if (h > 0) {
-      movesDiv.style.minHeight = h + "px";
+      movesDiv.style.height = h + "px";
+      movesDiv.style.overflowY = "auto";
     }
   }
 
@@ -140,7 +141,6 @@ document.addEventListener("DOMContentLoaded", () => {
    * ====================================================== */
 
   function applyMove(san, fen) {
-    // Always replace continuation from cursor
     const n = new Node(san, cursor, fen);
     cursor.next = n;
     cursor = n;
@@ -195,36 +195,70 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
   /* ======================================================
-   *  NAVIGATION CONTROLS
+   *  NAVIGATION CONTROLS (BUTTONS)
    * ====================================================== */
 
-  btnStart.onclick = () => {
+  function goStart() {
     cursor = root;
     rebuildTo(root, true);
     render();
-  };
+  }
 
-  btnEnd.onclick = () => {
+  function goEnd() {
     let n = root;
     while (n.next) n = n.next;
     cursor = n;
     rebuildTo(n, true);
     render();
-  };
+  }
 
-  btnPrev.onclick = () => {
+  function goPrev() {
     if (!cursor.parent) return;
     cursor = cursor.parent;
     rebuildTo(cursor, true);
     render();
-  };
+  }
 
-  btnNext.onclick = () => {
+  function goNext() {
     if (!cursor.next) return;
     cursor = cursor.next;
     rebuildTo(cursor, true);
     render();
-  };
+  }
+
+  btnStart.onclick = goStart;
+  btnEnd.onclick   = goEnd;
+  btnPrev.onclick  = goPrev;
+  btnNext.onclick  = goNext;
+
+
+  /* ======================================================
+   *  KEYBOARD NAVIGATION
+   * ====================================================== */
+
+  document.addEventListener("keydown", e => {
+    // Don’t hijack keys when typing in inputs (future-proof)
+    if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
+
+    switch (e.key) {
+      case "ArrowLeft":
+        e.preventDefault();
+        goPrev();
+        break;
+      case "ArrowRight":
+        e.preventDefault();
+        goNext();
+        break;
+      case "ArrowUp":
+        e.preventDefault();
+        goStart();
+        break;
+      case "ArrowDown":
+        e.preventDefault();
+        goEnd();
+        break;
+    }
+  });
 
 
   /* ======================================================

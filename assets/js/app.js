@@ -151,7 +151,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
   /* ======================================================
-   *  MOVE LIST RENDERING (LINEAR)
+   *  MOVE LIST RENDERING (LINEAR, NBSP SAFE)
    * ====================================================== */
 
   function render() {
@@ -163,7 +163,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     while (cur) {
       if (side === "w") {
-        movesDiv.appendChild(text(moveNo + ". "));
+        // NOTE: non-breaking space after move number
+        movesDiv.appendChild(text(moveNo + ".\u00A0"));
       }
 
       appendMove(movesDiv, cur);
@@ -237,7 +238,6 @@ document.addEventListener("DOMContentLoaded", () => {
    * ====================================================== */
 
   document.addEventListener("keydown", e => {
-    // Don’t hijack keys when typing in inputs (future-proof)
     if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
 
     switch (e.key) {

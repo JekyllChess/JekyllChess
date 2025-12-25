@@ -69,11 +69,10 @@ body{
 .moves{
   font-size:18px;
   line-height:1.8;
-  white-space:wrap;
 }
 
 .mainline{font-weight:700}
-.variation{margin-left:18px; display:block; opacity:.9}
+.variation{font-weight:400; opacity:.95}
 
 .move{
   cursor:pointer;
@@ -151,7 +150,7 @@ body{
 <script>
 (() => {
 
-const movesDiv=document.getElementById("moves");
+const movesDiv = document.getElementById("moves");
 
 const FIG={K:"♔",Q:"♕",R:"♖",B:"♗",N:"♘"};
 const figSAN=s=>s.replace(/^[KQRBN]/,p=>FIG[p]||p);
@@ -230,13 +229,20 @@ function render(){
   movesDiv.innerHTML="";
   const main=document.createElement("div");
   main.className="mainline";
-  renderLine(root.next,main);
+  renderLine(root.next, main, 1, true);
   movesDiv.appendChild(main);
 }
 
-function renderLine(node,container){
+function renderLine(node, container, moveNo, isWhite){
   let n=node;
+  let m=moveNo;
+  let white=isWhite;
+
   while(n){
+    if(white){
+      container.appendChild(text(m + ". "));
+    }
+
     const span=document.createElement("span");
     span.className="move"+(n===cursor?" active":"");
     span.textContent=figSAN(n.san)+" ";
@@ -248,16 +254,22 @@ function renderLine(node,container){
     container.appendChild(span);
 
     n.vars.forEach(v=>{
-      const d=document.createElement("div");
+      const d=document.createElement("span");
       d.className="variation";
-      d.textContent="(";
-      renderLine(v,d);
-      d.textContent=d.textContent.trim()+" )";
+      d.appendChild(text("(" + (white ? m + "." : m + "...") + " "));
+      renderLine(v, d, m, white);
+      d.appendChild(text(") "));
       container.appendChild(d);
     });
 
+    if(!white) m++;
+    white=!white;
     n=n.next;
   }
+}
+
+function text(t){
+  return document.createTextNode(t);
 }
 
 /* navigation */

@@ -34,7 +34,6 @@ document.addEventListener("DOMContentLoaded", () => {
    * ====================================================== */
 
   let ID = 1;
-
   class Node {
     constructor(san, parent, fen) {
       this.id = "n" + ID++;
@@ -42,7 +41,7 @@ document.addEventListener("DOMContentLoaded", () => {
       this.parent = parent;
       this.fen = fen;
       this.next = null;   // mainline
-      this.vars = [];     // variations
+      this.vars = [];     // variations branching here
     }
   }
 
@@ -58,9 +57,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let cursor = root;
 
   let pendingPromotion = null;
-
-  let boardOrientation =
-    localStorage.getItem("boardOrientation") || "white";
+  let boardOrientation = localStorage.getItem("boardOrientation") || "white";
 
 
   /* ======================================================
@@ -70,8 +67,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const board = Chessboard("board", {
     position: "start",
     draggable: true,
-    pieceTheme:
-      "https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png",
+    pieceTheme: "https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png",
     onDrop
   });
 
@@ -81,29 +77,6 @@ document.addEventListener("DOMContentLoaded", () => {
     chess.load(node?.fen || START_FEN);
     board.position(chess.fen(), !!animate);
   }
-
-
-  /* ======================================================
-   * HEIGHT SYNC
-   * ====================================================== */
-
-  function syncMovesPaneHeight() {
-    const boardH = boardEl.getBoundingClientRect().height;
-    const headH  = cardHead.getBoundingClientRect().height;
-    const bodyH  = boardH - headH;
-
-    if (bodyH > 0) {
-      cardBody.style.height = bodyH + "px";
-      movesDiv.style.overflowY = "auto";
-    }
-  }
-
-  const ro = new ResizeObserver(() => {
-    board.resize();
-    syncMovesPaneHeight();
-  });
-
-  ro.observe(boardEl);
 
 
   /* ======================================================
@@ -129,17 +102,15 @@ document.addEventListener("DOMContentLoaded", () => {
   promo.onclick = e => {
     if (!e.target.dataset.p) return;
     promo.style.display = "none";
-
     const t = new Chess(chess.fen());
     const m = t.move({ ...pendingPromotion, promotion: e.target.dataset.p });
     pendingPromotion = null;
-
     if (m) applyMove(m.san, t.fen());
   };
 
 
   /* ======================================================
-   * INSERTION (CORRECT)
+   * INSERTION (CORRECT & FINAL)
    * ====================================================== */
 
   function applyMove(san, fen) {
@@ -165,7 +136,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
   /* ======================================================
-   * RENDERING (PGN-CORRECT)
+   * RENDERING (PGN-CORRECT, FINAL)
    * ====================================================== */
 
   function render() {
@@ -182,43 +153,46 @@ document.addEventListener("DOMContentLoaded", () => {
       appendMove(container, w);
       container.appendChild(text(" "));
 
-      /* White variations (from parent black) */
-      const parentBlack = w.parent;
-      if (parentBlack && parentBlack.vars.length) {
-        for (const v of parentBlack.vars) {
-          const span = document.createElement("span");
-          span.className = "variation";
-          span.appendChild(text("(" + m + "...\u00A0"));
-          renderVariation(v, span, m, "b");
-          trim(span);
-          span.appendChild(text(") "));
-          container.appendChild(span);
+      /* Black variations after White move */
+      if (w.vars.length) {
+        for (const v of w.vars) {
+          renderVarBlock(container, v, m, "b");
         }
       }
 
       const b = w.next;
       if (!b) return;
 
-      /* Black mainline — NO move number */
+      /* Black mainline */
       appendMove(container, b);
       container.appendChild(text(" "));
 
-      /* Black variations (from white node) */
-      if (w.vars.length) {
-        for (const v of w.vars) {
-          const span = document.createElement("span");
-          span.className = "variation";
-          span.appendChild(text("(" + m + ".\u00A0"));
-          renderVariation(v, span, m, "w");
-          trim(span);
-          span.appendChild(text(") "));
-          container.appendChild(span);
+      /* White variations after Black move */
+      if (b.vars.length) {
+        for (const v of b.vars) {
+          renderVarBlock(container, v, m + 1, "w");
         }
       }
 
       w = b.next;
       m++;
     }
+  }
+
+  function renderVarBlock(container, node, moveNo, startSide) {
+    const span = document.createElement("span");
+    span.className = "variation";
+
+    const prefix =
+      startSide === "w"
+        ? moveNo + ".\u00A0"
+        : (moveNo - 1) + "...\u00A0";
+
+    span.appendChild(text("(" + prefix));
+    renderVariation(node, span, moveNo, startSide);
+    trim(span);
+    span.appendChild(text(") "));
+    container.appendChild(span);
   }
 
   function renderVariation(node, container, moveNo, side) {
@@ -244,13 +218,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const span = document.createElement("span");
     span.className = "move" + (node === cursor ? " active" : "");
     span.textContent = figSAN(node.san);
-
     span.onclick = () => {
       cursor = node;
       rebuildTo(node, true);
       render();
     };
-
     container.appendChild(span);
   }
 
@@ -302,10 +274,5 @@ document.addEventListener("DOMContentLoaded", () => {
 
   render();
   rebuildTo(root, false);
-
-  setTimeout(() => {
-    board.resize();
-    syncMovesPaneHeight();
-  }, 0);
 
 });

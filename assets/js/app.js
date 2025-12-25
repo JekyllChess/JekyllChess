@@ -14,7 +14,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const btnFlip  = document.getElementById("btnFlip");
 
   const boardEl  = document.getElementById("board");
-  const cardBody = movesDiv.closest(".cardBody");
+  const card     = movesDiv.closest(".card");
+  const cardHead = card.querySelector(".cardHead");
+  const cardBody = card.querySelector(".cardBody");
 
 
   /* ======================================================
@@ -81,19 +83,23 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
   /* ======================================================
-   *  RESIZE OBSERVER + HEIGHT SYNC
+   *  RESIZE OBSERVER + EXACT HEIGHT SYNC
    * ====================================================== */
 
-  function syncPanesHeight() {
-    const h = boardEl.getBoundingClientRect().height;
-    if (h > 0 && cardBody) {
-      cardBody.style.height = h + "px";
+  function syncMovesPaneHeight() {
+    const boardH = boardEl.getBoundingClientRect().height;
+    const headH  = cardHead.getBoundingClientRect().height;
+
+    if (boardH > 0 && headH >= 0) {
+      const bodyH = boardH - headH;
+      cardBody.style.height = bodyH + "px";
+      movesDiv.style.overflowY = "auto";
     }
   }
 
   const boardResizeObserver = new ResizeObserver(() => {
     board.resize();
-    syncPanesHeight();
+    syncMovesPaneHeight();
   });
 
   boardResizeObserver.observe(boardEl);
@@ -151,7 +157,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
   /* ======================================================
-   *  MOVE LIST RENDERING (LINEAR, NO BREAKS)
+   *  MOVE LIST RENDERING (NBSP SAFE)
    * ====================================================== */
 
   function render() {
@@ -163,7 +169,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     while (cur) {
       if (side === "w") {
-        // non-breaking space after move number
         movesDiv.appendChild(text(moveNo + ".\u00A0"));
       }
 
@@ -196,7 +201,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
   /* ======================================================
-   *  NAVIGATION CONTROLS (BUTTONS + KEYBOARD)
+   *  NAVIGATION (BUTTONS + KEYBOARD)
    * ====================================================== */
 
   function goStart() {
@@ -266,7 +271,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   setTimeout(() => {
     board.resize();
-    syncPanesHeight();
+    syncMovesPaneHeight();
   }, 0);
 
 });

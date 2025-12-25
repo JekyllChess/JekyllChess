@@ -334,7 +334,3 @@ body{
     transition:none !important;
   }
 }
-/* Placeholder controls under move list */
-.placeholder-controls button{
-  cursor: default;
-}

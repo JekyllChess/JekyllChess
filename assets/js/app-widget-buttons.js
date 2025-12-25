@@ -1,26 +1,31 @@
 document.addEventListener("DOMContentLoaded", () => {
 
-  /* ======================================================
-   * DOM
-   * ====================================================== */
+  if (!window.JC) {
+    console.error("JC bridge not found");
+    return;
+  }
 
   const container = document.querySelector(".placeholder-controls");
-  if (!container || !window.JC) return;
+  if (!container) return;
 
-  container.innerHTML = "";
+  // Clear placeholder buttons safely
+  container.textContent = "";
 
-  function btn(icon, title) {
+  function makeButton(label, title) {
     const b = document.createElement("button");
-    b.textContent = icon;
+    b.type = "button";
+    b.textContent = label;
     b.title = title;
+    b.style.opacity = "1";
+    b.style.cursor = "pointer";
     return b;
   }
 
-  const btnFen     = btn("📋", "Copy FEN");
-  const btnPgn     = btn("📄", "Copy PGN");
-  const btnComment = btn("➕", "Add comment");
-  const btnPromote = btn("⬆️", "Promote variation");
-  const btnDelete  = btn("🗑️", "Delete variation");
+  const btnFen     = makeButton("📋", "Copy FEN");
+  const btnPgn     = makeButton("📄", "Copy PGN");
+  const btnComment = makeButton("➕", "Add comment");
+  const btnPromote = makeButton("⬆️", "Promote variation");
+  const btnDelete  = makeButton("🗑️", "Delete variation");
 
   container.append(btnFen, btnPgn, btnComment, btnPromote, btnDelete);
 
@@ -38,14 +43,15 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function copy(text) {
-    navigator.clipboard.writeText(text);
+    navigator.clipboard.writeText(text).catch(() => {});
   }
 
-  function serializePGN() {
-    return document.getElementById("moves").innerText.trim();
+  function getPGNText() {
+    const el = document.getElementById("moves");
+    return el ? el.innerText.trim() : "";
   }
 
-  function updateButtonStates() {
+  function updateStates() {
     const n = getCursor();
     const isVar = isVariation(n);
 
@@ -59,19 +65,18 @@ document.addEventListener("DOMContentLoaded", () => {
    * BUTTON ACTIONS
    * ====================================================== */
 
-  // 1️⃣ COPY FEN — FIXED
+  // COPY FEN (correct source: cursor.fen)
   btnFen.onclick = () => {
     const n = getCursor();
-    if (!n || !n.fen) return;
-    copy(n.fen);
+    if (n && n.fen) copy(n.fen);
   };
 
-  // 2️⃣ COPY PGN (visual PGN)
+  // COPY PGN (visual)
   btnPgn.onclick = () => {
-    copy(serializePGN());
+    copy(getPGNText());
   };
 
-  // 3️⃣ ADD COMMENT (stored on node)
+  // ADD COMMENT (stored on node)
   btnComment.onclick = () => {
     const n = getCursor();
     if (!n || n === window.JC.getRoot()) return;
@@ -83,20 +88,15 @@ document.addEventListener("DOMContentLoaded", () => {
     window.JC.render();
   };
 
-  // 4️⃣ PROMOTE VARIATION → MAINLINE
+  // PROMOTE VARIATION
   btnPromote.onclick = () => {
     const n = getCursor();
     if (!isVariation(n)) return;
 
     const p = n.parent;
 
-    // remove from variations
     p.vars = p.vars.filter(v => v !== n);
-
-    // demote current mainline
     if (p.next) p.vars.unshift(p.next);
-
-    // promote selected variation
     p.next = n;
 
     window.JC.setCursor(n);
@@ -104,7 +104,7 @@ document.addEventListener("DOMContentLoaded", () => {
     window.JC.render();
   };
 
-  // 5️⃣ DELETE VARIATION SUBTREE
+  // DELETE VARIATION BRANCH
   btnDelete.onclick = () => {
     const n = getCursor();
     if (!isVariation(n)) return;
@@ -119,15 +119,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
   /* ======================================================
-   * SELECTION TRACKING
+   * TRACK SELECTION CHANGES
    * ====================================================== */
 
   document.addEventListener("click", e => {
     if (e.target.classList.contains("move")) {
-      setTimeout(updateButtonStates, 0);
+      setTimeout(updateStates, 0);
     }
   });
 
-  updateButtonStates();
+  updateStates();
 
 });

@@ -127,11 +127,12 @@ body{
   width: min(92vw, 560px);
   margin: 0 auto;
   border-radius: var(--radius-md);
-  overflow: hidden;
   box-shadow: var(--elev-2);
   border: 1px solid var(--md-sys-color-outline-variant);
   background: var(--md-sys-color-surface);
 }
+
+#board div {width: 100% !important;}
 
 /* =========================================================
    Cards

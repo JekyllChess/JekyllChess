@@ -130,6 +130,8 @@
       this.build(src);
       this.initBoard();
       this.parsePGNAsync();
+
+      this.flowBroken = false;
     }
 
     // -------------------- STATUS CONTROLLER --------------------
@@ -379,62 +381,75 @@
     // ------------------------------------------------------------------
 
     appendMove() {
-      const m = this.moves[this.index];
-      if (!m) return;
+  const m = this.moves[this.index];
+  if (!m) return;
 
-      if (!this.mainlineP) {
-        this.mainlineP = document.createElement("p");
-        this.mainlineP.className = "pgn-mainline";
-        this.rightPane.appendChild(this.mainlineP);
-      }
+  if (!this.mainlineP) {
+    this.mainlineP = document.createElement("p");
+    this.mainlineP.className = "pgn-mainline";
+    this.rightPane.appendChild(this.mainlineP);
+  }
 
-      if (m.isWhite) {
-        this.mainlineP.appendChild(
-          document.createTextNode(m.moveNo + ". ")
-        );
-      }
+  // ---- MOVE NUMBER LOGIC ----
+  if (m.isWhite) {
+    this.mainlineP.appendChild(
+      document.createTextNode(m.moveNo + ". ")
+    );
+  } else if (this.flowBroken) {
+    this.mainlineP.appendChild(
+      document.createTextNode(m.moveNo + "... ")
+    );
+  }
 
-      const span = document.createElement("span");
-      span.className = "pgn-move";
-      span.textContent = m.san + " ";
-      this.mainlineP.appendChild(span);
+  // move span
+  const span = document.createElement("span");
+  span.className = "pgn-move";
+  span.textContent = m.san + " ";
+  this.mainlineP.appendChild(span);
 
-      let brokeFlow = false;
+  // reset flowBroken once a move prints
+  this.flowBroken = false;
 
-      m.comments.forEach(txt => {
-        if (/^White resigns\.$/i.test(txt)) return;
+  let brokeFlow = false;
 
-        const p = document.createElement("p");
-        p.className = "pgn-comment";
-        p.textContent = txt;
-        this.rightPane.appendChild(p);
-        brokeFlow = true;
-      });
+  // comments
+  m.comments.forEach(txt => {
+    if (/^White resigns\.$/i.test(txt)) return;
 
-      m.variations.forEach(txt => {
-        const p = document.createElement("p");
-        p.className = "pgn-variation";
-        p.textContent = txt;
-        this.rightPane.appendChild(p);
-        brokeFlow = true;
-      });
+    const p = document.createElement("p");
+    p.className = "pgn-comment";
+    p.textContent = txt;
+    this.rightPane.appendChild(p);
+    brokeFlow = true;
+  });
 
-      if (brokeFlow) {
-        this.mainlineP = null;
-      }
+  // variations
+  m.variations.forEach(txt => {
+    const p = document.createElement("p");
+    p.className = "pgn-variation";
+    p.textContent = txt;
+    this.rightPane.appendChild(p);
+    brokeFlow = true;
+  });
 
-      if (this.index === this.moves.length - 1) {
-        const tail = this.result || "";
-        if (tail) {
-          const p = document.createElement("p");
-          p.className = "pgn-result-line";
-          p.textContent = tail;
-          this.rightPane.appendChild(p);
-        }
-      }
+  if (brokeFlow) {
+    this.mainlineP = null;
+    this.flowBroken = true;   // ⭐ key line
+  }
 
-      this.rightPane.scrollTop = this.rightPane.scrollHeight;
+  // result
+  if (this.index === this.moves.length - 1) {
+    const tail = this.result || "";
+    if (tail) {
+      const p = document.createElement("p");
+      p.className = "pgn-result-line";
+      p.textContent = tail;
+      this.rightPane.appendChild(p);
     }
+  }
+
+  this.rightPane.scrollTop = this.rightPane.scrollHeight;
+}
   }
 
 })();

@@ -5,7 +5,7 @@ permalink: /:title.html
 exclude:
 - README.md
 
-remote_theme: pages-themes/midnight@v0.2.0
+remote_theme: broccolini/swiss
 
 plugins:
   - jekyll-remote-theme

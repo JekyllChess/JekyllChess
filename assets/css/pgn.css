@@ -105,14 +105,16 @@
 ----------------------------------------------- */
 @media (max-width: 767px) {
   .pgn-reader-cols,
-  .pgn-guess-cols {
+  .pgn-guess-cols,
+  .pgn-training-cols {
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
   }
 
   .pgn-reader-left,
-  .pgn-guess-left {
+  .pgn-guess-left,
+  .pgn-training-left {
     position: sticky;
     top: 0;
     z-index: 70;
@@ -128,7 +130,8 @@
   }
 
   .pgn-reader-board,
-  .pgn-guess-board {
+  .pgn-guess-board,
+  .pgn-training-board {
     width: 320px;
     max-width: 100%;
     margin: 0 auto;
@@ -141,14 +144,16 @@
 ----------------------------------------------- */
 @media (min-width: 768px) {
   .pgn-reader-cols,
-  .pgn-guess-cols {
+  .pgn-guess-cols,
+  .pgn-training-cols {
     display: grid;
     grid-template-columns: 340px 1fr;
     gap: 2rem;
   }
 
   .pgn-reader-left,
-  .pgn-guess-left {
+  .pgn-guess-left,
+  .pgn-training-left{
     position: static !important;
     top: auto !important;
     padding: 0;
@@ -158,19 +163,23 @@
   .pgn-reader-board,
   .pgn-reader-buttons,
   .pgn-guess-board,
-  .pgn-guess-buttons {
+  .pgn-guess-buttons,
+  .pgn-training-board,
+  .pgn-training-buttons {
     margin-left: 0;
     margin-right: 0;
   }
 
   .pgn-reader-right,
-  .pgn-guess-right {
+  .pgn-guess-right,
+  .pgn-training-right {
     height: 350px;
     overflow-y: auto;
   }
 
   .pgn-reader-right *,
-  .pgn-guess-right * {
+  .pgn-guess-right *,
+  .pgn-training-right * {
     line-height: 1.55;
     margin-top: 0;
     margin-bottom: 0.35rem;

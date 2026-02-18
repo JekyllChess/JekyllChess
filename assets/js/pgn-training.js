@@ -179,10 +179,6 @@
       this.boardDiv = cols.querySelector(".pgn-training-board");
       this.rightPane = cols.querySelector(".pgn-training-right");
 
-      this.commentBox = document.createElement("div");
-      this.commentBox.className = "pgn-training-commentbox";
-      this.rightPane.appendChild(this.commentBox);
-
       this.turnEl = cols.querySelector(".turn");
       this.feedbackEl = cols.querySelector(".feedback");
       this.solvedEl = cols.querySelector(".solved");
@@ -378,53 +374,63 @@
     }
 
     appendMove() {
-  const m = this.moves[this.index];
-  if (!m) return;
+      const m = this.moves[this.index];
+      if (!m) return;
 
-  // ensure mainline paragraph
-  if (!this.mainlineP) {
-    this.mainlineP = document.createElement("p");
-    this.mainlineP.className = "pgn-mainline";
-    this.rightPane.insertBefore(this.mainlineP, this.commentBox);
+      if (m.isWhite) {
+        const row = document.createElement("div");
+        row.className = "pgn-move-row";
+        row.dataset.hasAnalysis = "false";
+
+        row.innerHTML =
+          `<span class="pgn-move-no">${m.moveNo}. </span>` +
+          `<span class="pgn-move-white">${m.san}</span>`;
+
+        this.rightPane.appendChild(row);
+        this.currentRow = row;
+
+        [...m.comments, ...m.variations].forEach(txt => {
+          if (/^White resigns\.$/i.test(txt)) return;
+          row.dataset.hasAnalysis = "true";
+          const sp = document.createElement("span");
+          sp.className = "pgn-comment";
+          sp.textContent = " " + txt;
+          row.appendChild(sp);
+        });
+
+      } else if (this.currentRow) {
+        const hasAnalysis = this.currentRow.dataset.hasAnalysis === "true";
+
+        const b = document.createElement("span");
+        b.className = "pgn-move-black";
+        b.textContent = hasAnalysis
+          ? ` ${m.moveNo}... ${m.san}`
+          : ` ${m.san}`;
+
+        this.currentRow.appendChild(b);
+
+        [...m.comments, ...m.variations].forEach(txt => {
+          if (/^White resigns\.$/i.test(txt)) return;
+          const sp = document.createElement("span");
+          sp.className = "pgn-comment";
+          sp.textContent = " " + txt;
+          this.currentRow.appendChild(sp);
+        });
+
+        if (this.index === this.moves.length - 1) {
+          const resign = m.comments.find(c => /^White resigns\.$/i.test(c));
+          const tail = [resign ? "White resigns." : "", this.result].filter(Boolean).join(" ");
+          if (tail) {
+            const line = document.createElement("div");
+            line.className = "pgn-result-line";
+            line.textContent = tail;
+            this.rightPane.appendChild(line);
+          }
+        }
+      }
+
+      this.rightPane.scrollTop = this.rightPane.scrollHeight;
+    }
   }
 
-  // move number
-  if (m.isWhite) {
-    this.mainlineP.appendChild(
-      document.createTextNode(m.moveNo + ". ")
-    );
-  }
-
-  // move
-  const span = document.createElement("span");
-  span.className = "pgn-move";
-  span.textContent = m.san + " ";
-  this.mainlineP.appendChild(span);
-
-  // if this move has analysis → next move starts new line
-  if (m.comments.length || m.variations.length) {
-    this.mainlineP = null;
-  }
-
-  this.showActiveComment();
-  this.rightPane.scrollTop = this.rightPane.scrollHeight;
-}
-
-showActiveComment() {
-  this.commentBox.textContent = "";
-
-  const m = this.moves[this.index];
-  if (!m) return;
-
-  const items = [...m.comments, ...m.variations];
-  if (!items.length) return;
-
-  items.forEach(txt => {
-    if (/^White resigns\.$/i.test(txt)) return;
-
-    const p = document.createElement("p");
-    p.className = "pgn-comment";
-    p.textContent = txt;
-    this.commentBox.appendChild(p);
-  });
-}
+})();

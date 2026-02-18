@@ -1,5 +1,6 @@
 // ============================================================================
 // pgn-training.js — strict mutual exclusivity for ❌ / ✅ / 🏆
+// Inline move layout (matches simple-pgn-reader)
 // ============================================================================
 
 (function () {
@@ -124,7 +125,7 @@
       this.game = new Chess();
       this.currentFen = "start";
 
-      this.currentRow = null;
+      this.mainlineP = null;
 
       this.build(src);
       this.initBoard();
@@ -373,59 +374,62 @@
       this.btnNext.disabled = this.index >= this.moves.length - 1;
     }
 
+    // ------------------------------------------------------------------
+    // INLINE MOVE RENDERING (reader-style)
+    // ------------------------------------------------------------------
+
     appendMove() {
       const m = this.moves[this.index];
       if (!m) return;
 
+      if (!this.mainlineP) {
+        this.mainlineP = document.createElement("p");
+        this.mainlineP.className = "pgn-mainline";
+        this.rightPane.appendChild(this.mainlineP);
+      }
+
       if (m.isWhite) {
-        const row = document.createElement("div");
-        row.className = "pgn-move-row";
-        row.dataset.hasAnalysis = "false";
+        this.mainlineP.appendChild(
+          document.createTextNode(m.moveNo + ". ")
+        );
+      }
 
-        row.innerHTML =
-          `<span class="pgn-move-no">${m.moveNo}. </span>` +
-          `<span class="pgn-move-white">${m.san}</span>`;
+      const span = document.createElement("span");
+      span.className = "pgn-move";
+      span.textContent = m.san + " ";
+      this.mainlineP.appendChild(span);
 
-        this.rightPane.appendChild(row);
-        this.currentRow = row;
+      let brokeFlow = false;
 
-        [...m.comments, ...m.variations].forEach(txt => {
-          if (/^White resigns\.$/i.test(txt)) return;
-          row.dataset.hasAnalysis = "true";
-          const sp = document.createElement("span");
-          sp.className = "pgn-comment";
-          sp.textContent = " " + txt;
-          row.appendChild(sp);
-        });
+      m.comments.forEach(txt => {
+        if (/^White resigns\.$/i.test(txt)) return;
 
-      } else if (this.currentRow) {
-        const hasAnalysis = this.currentRow.dataset.hasAnalysis === "true";
+        const p = document.createElement("p");
+        p.className = "pgn-comment";
+        p.textContent = txt;
+        this.rightPane.appendChild(p);
+        brokeFlow = true;
+      });
 
-        const b = document.createElement("span");
-        b.className = "pgn-move-black";
-        b.textContent = hasAnalysis
-          ? ` ${m.moveNo}... ${m.san}`
-          : ` ${m.san}`;
+      m.variations.forEach(txt => {
+        const p = document.createElement("p");
+        p.className = "pgn-variation";
+        p.textContent = txt;
+        this.rightPane.appendChild(p);
+        brokeFlow = true;
+      });
 
-        this.currentRow.appendChild(b);
+      if (brokeFlow) {
+        this.mainlineP = null;
+      }
 
-        [...m.comments, ...m.variations].forEach(txt => {
-          if (/^White resigns\.$/i.test(txt)) return;
-          const sp = document.createElement("span");
-          sp.className = "pgn-comment";
-          sp.textContent = " " + txt;
-          this.currentRow.appendChild(sp);
-        });
-
-        if (this.index === this.moves.length - 1) {
-          const resign = m.comments.find(c => /^White resigns\.$/i.test(c));
-          const tail = [resign ? "White resigns." : "", this.result].filter(Boolean).join(" ");
-          if (tail) {
-            const line = document.createElement("div");
-            line.className = "pgn-result-line";
-            line.textContent = tail;
-            this.rightPane.appendChild(line);
-          }
+      if (this.index === this.moves.length - 1) {
+        const tail = this.result || "";
+        if (tail) {
+          const p = document.createElement("p");
+          p.className = "pgn-result-line";
+          p.textContent = tail;
+          this.rightPane.appendChild(p);
         }
       }
 

@@ -409,9 +409,8 @@
   this.showActiveComment();
   this.rightPane.scrollTop = this.rightPane.scrollHeight;
 }
-  }
 
-      showActiveComment() {
+showActiveComment() {
   this.commentBox.textContent = "";
 
   const m = this.moves[this.index];
@@ -429,6 +428,3 @@
     this.commentBox.appendChild(p);
   });
 }
-
-
-})();

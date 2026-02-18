@@ -374,63 +374,60 @@
     }
 
     appendMove() {
-      const m = this.moves[this.index];
-      if (!m) return;
+  const m = this.moves[this.index];
+  if (!m) return;
 
-      if (m.isWhite) {
-        const row = document.createElement("div");
-        row.className = "pgn-move-row";
-        row.dataset.hasAnalysis = "false";
+  // ensure mainline paragraph exists
+  if (!this.mainlineP) {
+    this.mainlineP = document.createElement("p");
+    this.mainlineP.className = "pgn-mainline";
+    this.rightPane.appendChild(this.mainlineP);
+  }
 
-        row.innerHTML =
-          `<span class="pgn-move-no">${m.moveNo}. </span>` +
-          `<span class="pgn-move-white">${m.san}</span>`;
+  // print move number
+  if (m.isWhite) {
+    this.mainlineP.appendChild(
+      document.createTextNode(m.moveNo + ". ")
+    );
+  }
 
-        this.rightPane.appendChild(row);
-        this.currentRow = row;
+  // move span (clickable styling optional)
+  const span = document.createElement("span");
+  span.className = "pgn-move";
+  span.textContent = m.san + " ";
+  this.mainlineP.appendChild(span);
 
-        [...m.comments, ...m.variations].forEach(txt => {
-          if (/^White resigns\.$/i.test(txt)) return;
-          row.dataset.hasAnalysis = "true";
-          const sp = document.createElement("span");
-          sp.className = "pgn-comment";
-          sp.textContent = " " + txt;
-          row.appendChild(sp);
-        });
+  // comments → new paragraph (like reader)
+  m.comments.forEach(txt => {
+    if (/^White resigns\.$/i.test(txt)) return;
 
-      } else if (this.currentRow) {
-        const hasAnalysis = this.currentRow.dataset.hasAnalysis === "true";
+    const p = document.createElement("p");
+    p.className = "pgn-comment";
+    p.textContent = txt;
+    this.rightPane.appendChild(p);
+  });
 
-        const b = document.createElement("span");
-        b.className = "pgn-move-black";
-        b.textContent = hasAnalysis
-          ? ` ${m.moveNo}... ${m.san}`
-          : ` ${m.san}`;
+  // variations → inline paragraph
+  m.variations.forEach(txt => {
+    const p = document.createElement("p");
+    p.className = "pgn-variation";
+    p.textContent = txt;
+    this.rightPane.appendChild(p);
+  });
 
-        this.currentRow.appendChild(b);
-
-        [...m.comments, ...m.variations].forEach(txt => {
-          if (/^White resigns\.$/i.test(txt)) return;
-          const sp = document.createElement("span");
-          sp.className = "pgn-comment";
-          sp.textContent = " " + txt;
-          this.currentRow.appendChild(sp);
-        });
-
-        if (this.index === this.moves.length - 1) {
-          const resign = m.comments.find(c => /^White resigns\.$/i.test(c));
-          const tail = [resign ? "White resigns." : "", this.result].filter(Boolean).join(" ");
-          if (tail) {
-            const line = document.createElement("div");
-            line.className = "pgn-result-line";
-            line.textContent = tail;
-            this.rightPane.appendChild(line);
-          }
-        }
-      }
-
-      this.rightPane.scrollTop = this.rightPane.scrollHeight;
+  // final result line
+  if (this.index === this.moves.length - 1) {
+    const tail = this.result || "";
+    if (tail) {
+      const p = document.createElement("p");
+      p.className = "pgn-result-line";
+      p.textContent = tail;
+      this.rightPane.appendChild(p);
     }
+  }
+
+  this.rightPane.scrollTop = this.rightPane.scrollHeight;
+}
   }
 
 })();

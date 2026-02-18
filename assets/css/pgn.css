@@ -6,7 +6,8 @@
 /* Container for a single game */
 .pgn-blog-block,
 .pgn-reader-block,
-.pgn-guess-block {
+.pgn-guess-block,
+.pgn-training-block {
   background: #fff;
   margin-bottom: 2rem;
 }
@@ -14,7 +15,8 @@
 /* Game header */
 .pgn-blog-block h4,
 .pgn-reader-header h4,
-.pgn-guess-header h4 {
+.pgn-guess-header h4,
+.pgn-training-header h4 {
   margin: 0 0 0.75rem 0;
   font-weight: 600;
   line-height: 1.4;
@@ -55,7 +57,8 @@
 /* Moves */
 .pgn-move,
 .reader-move,
-.guess-move {
+.guess-move,
+.training-move {
   white-space: nowrap;
 }
 
@@ -68,7 +71,8 @@
 
 /* Active move highlight */
 .reader-move-active,
-.guess-move-active {
+.guess-move-active,
+.training-move-active {
   background: #ffe38a;
   border-radius: 4px;
   padding: 2px 4px;
@@ -76,7 +80,8 @@
 
 /* Buttons */
 .pgn-reader-buttons,
-.pgn-guess-buttons {
+.pgn-guess-buttons,
+.png-training-buttons {
   display: flex;
   justify-content: center;
   gap: 0.5rem;
@@ -84,7 +89,8 @@
 }
 
 .pgn-reader-btn,
-.pgn-guess-btn {
+.pgn-guess-btn,
+.pgn-training-btn {
   font-size: 1.1rem;
   padding: 0.25rem 0.6rem;
   background: #fafafa;
@@ -96,68 +102,57 @@
 }
 
 .pgn-reader-btn:hover,
-.pgn-guess-btn:hover {
+.pgn-guess-btn:hover,
+.pgn-training-btn:hover {
   background: #f0f0f0;
 }
 
-/* -----------------------------------------------
-   MOBILE
------------------------------------------------ */
+/* Mainline vs variation visual weight */
+.sticky-move[data-mainline="1"] {font-weight: 600 !important;}
+.sticky-move[data-mainline="0"] {font-weight: 400 !important;}
+.pgn-training-wrapper { margin-bottom:1.5rem; }
+.pgn-training-header { margin:0 0 .6rem 0; font-weight:600; }
+.pgn-training-cols { display:flex; gap:1rem; align-items:flex-start; }
+.pgn-training-board { width:360px; max-width:100%; }
+.pgn-training-right {flex:1;max-height:360px;overflow-y:auto;}
+.pgn-move-row { font-weight:700; margin-top:.5em; }
+.pgn-move-no { margin-right:.25em; }
+.pgn-move-white { margin-right:.5em; }
+.pgn-move-black { margin-left:.3em; }
+.pgn-comment { font-weight:400; }
+.pgn-result-line { margin-top:.6em; font-weight:400; }
+.pgn-training-status span { margin-right:.35em; font-size:1.1em; vertical-align:middle;}
+.pgn-training-actions button { font-size:0.85em; line-height:1; padding:0 .12em; margin-right:.15em; cursor:pointer; background:none; border:none; color:#333; }
+.pgn-training-actions button:disabled { opacity:.35; cursor:default;}
+
+/* MOBILE */
 @media (max-width: 767px) {
   .pgn-reader-cols,
   .pgn-guess-cols,
-  .pgn-training-cols {
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
-  }
+  .pgn-training-cols { display: flex; flex-direction: column; gap: 1.5rem; }
+
+  .pgn-reader-left,
+  .pgn-guess-left,
+  .pgn-training-left { position: sticky; top: 0; z-index: 70; background: #fff;
+                      padding-top: 1rem; margin-top: -1rem; padding-bottom: 0.25rem;
+                      display: flex; flex-direction: column; align-items: center; }
+
+  .pgn-reader-board,
+  .pgn-guess-board,
+  .pgn-training-board { width: 320px; max-width: 100%; margin: 0 auto; background: #fff; }
+  .pgn-training-board { touch-action: none; }
+}
+
+/* DESKTOP */
+@media (min-width: 768px) {
+  .pgn-reader-cols,
+  .pgn-guess-cols,
+  .pgn-training-cols { display: grid; grid-template-columns: 340px 1fr; gap: 2rem; }
 
   .pgn-reader-left,
   .pgn-guess-left,
   .pgn-training-left {
-    position: sticky;
-    top: 0;
-    z-index: 70;
-    background: #fff;
-
-    padding-top: 1rem;
-    margin-top: -1rem;
-    padding-bottom: 0.25rem;
-
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-  }
-
-  .pgn-reader-board,
-  .pgn-guess-board,
-  .pgn-training-board {
-    width: 320px;
-    max-width: 100%;
-    margin: 0 auto;
-    background: #fff;
-  }
-}
-
-/* -----------------------------------------------
-   DESKTOP
------------------------------------------------ */
-@media (min-width: 768px) {
-  .pgn-reader-cols,
-  .pgn-guess-cols,
-  .pgn-training-cols {
-    display: grid;
-    grid-template-columns: 340px 1fr;
-    gap: 2rem;
-  }
-
-  .pgn-reader-left,
-  .pgn-guess-left,
-  .pgn-training-left{
-    position: static !important;
-    top: auto !important;
-    padding: 0;
-    margin: 0;
+    position: static !important; top: auto !important; padding: 0; margin: 0;
   }
 
   .pgn-reader-board,
@@ -186,54 +181,3 @@
     padding: 0;
   }
 }
-
-/* Mainline vs variation visual weight */
-.sticky-move[data-mainline="1"] {
-  font-weight: 600 !important;
-}
-
-.sticky-move[data-mainline="0"] {
-  font-weight: 400 !important;
-}
-
-.pgn-training-wrapper { margin-bottom:1.5rem; }
-      .pgn-training-header { margin:0 0 .6rem 0; font-weight:600; }
-
-      .pgn-training-cols { display:flex; gap:1rem; align-items:flex-start; }
-      .pgn-training-board { width:360px; max-width:100%; }
-   @media (max-width: 768px) {
-      .pgn-training-board {touch-action: none;}
-   }
-      .pgn-training-right {
-        flex:1;
-        max-height:360px;
-        overflow-y:auto;
-      }
-
-      .pgn-move-row { font-weight:700; margin-top:.5em; }
-      .pgn-move-no { margin-right:.25em; }
-      .pgn-move-white { margin-right:.5em; }
-      .pgn-move-black { margin-left:.3em; }
-      .pgn-comment { font-weight:400; }
-      .pgn-result-line { margin-top:.6em; font-weight:400; }
-
-      .pgn-training-status span {
-        margin-right:.35em;
-        font-size:1.1em;
-        vertical-align:middle;
-      }
-
-      .pgn-training-actions button {
-        font-size:0.85em;
-        line-height:1;
-        padding:0 .12em;
-        margin-right:.15em;
-        cursor:pointer;
-        background:none;
-        border:none;
-        color:#333;
-      }
-      .pgn-training-actions button:disabled {
-        opacity:.35;
-        cursor:default;
-      }

@@ -424,35 +424,40 @@
     }
 
     gotoSpan(span) {
-      if (!span) return;
-      window.__PGNReaderActive = this;
+  if (!span) return;
+  window.__PGNReaderActive = this;
 
-      const fen = span.dataset.fen;
+  const fen = span.dataset.fen;
 
-      const apply = () => {
-        try {
-          if (this.board && typeof this.board.position === "function") {
-            // ✅ requirement #2: animate on navigation
-            this.board.position(fen, true);
-          } else {
-            requestAnimationFrame(apply);
-            return;
-          }
-        } catch {
-          requestAnimationFrame(apply);
-          return;
-        }
-
-        this.moveSpans.forEach((s) => s.classList.remove("reader-move-active"));
-        span.classList.add("reader-move-active");
-        
-        span.scrollIntoView({
-        behavior: "smooth",
-        block: "center" 
-        });
-        
-      apply();
+  const apply = () => {
+    try {
+      if (this.board && typeof this.board.position === "function") {
+        // animate on navigation
+        this.board.position(fen, true);
+      } else {
+        requestAnimationFrame(apply);
+        return;
+      }
+    } catch {
+      requestAnimationFrame(apply);
+      return;
     }
+
+    // highlight move
+    this.moveSpans.forEach((s) =>
+      s.classList.remove("reader-move-active")
+    );
+    span.classList.add("reader-move-active");
+
+    // auto-scroll move into view
+    span.scrollIntoView({
+      behavior: "smooth",
+      block: "center"
+    });
+  };
+
+  apply();
+}
 
     next() {
       if (!this.mainlineMoves.length) return;

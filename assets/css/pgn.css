@@ -32,6 +32,9 @@
   color: grey;
 }
 
+.pgn-training-header {margin-bottom:0;}
+.pgn-training-subheader {margin-top:0;color:grey;}
+
 /* Main line & variation paragraphs */
 .pgn-mainline,
 .pgn-variation {

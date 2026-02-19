@@ -150,24 +150,36 @@
     }
 
     buildHeaderContent(h) {
-      const H = document.createElement("h3");
-      const W =
-        (h.WhiteTitle ? h.WhiteTitle + " " : "") +
-        C.flipName(h.White || "") +
-        (h.WhiteElo ? " (" + h.WhiteElo + ")" : "");
-      const B =
-        (h.BlackTitle ? h.BlackTitle + " " : "") +
-        C.flipName(h.Black || "") +
-        (h.BlackElo ? " (" + h.BlackElo + ")" : "");
-      const Y = C.extractYear(h.Date);
-      const line = (h.Event || "") + (Y ? ", " + Y : "");
 
-      appendText(H, W + " – " + B);
-      H.appendChild(document.createElement("br"));
-      appendText(H, line);
-      return H;
-    }
+  const wrapper = document.createElement("div");
 
+  // ---- Line 1: Players (h3) ----
+  const H3 = document.createElement("h3");
+
+  const W =
+    (h.WhiteTitle ? h.WhiteTitle + " " : "") +
+    C.flipName(h.White || "") +
+    (h.WhiteElo ? " (" + h.WhiteElo + ")" : "");
+
+  const B =
+    (h.BlackTitle ? h.BlackTitle + " " : "") +
+    C.flipName(h.Black || "") +
+    (h.BlackElo ? " (" + h.BlackElo + ")" : "");
+
+  appendText(H3, W + " – " + B);
+  wrapper.appendChild(H3);
+
+  // ---- Line 2: Event + Year (h4) ----
+  const H4 = document.createElement("h4");
+
+  const Y = C.extractYear(h.Date);
+  const line = (h.Event || "") + (Y ? ", " + Y : "");
+
+  appendText(H4, line);
+  wrapper.appendChild(H4);
+
+  return wrapper;
+}
     ensure(ctx, cls) {
       if (!ctx.container) {
         const p = document.createElement("p");

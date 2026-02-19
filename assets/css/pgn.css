@@ -173,8 +173,11 @@
   }
 }
 
-
-
-
-
-
+@media (max-width: 767px) {
+  .pgn-reader-right {
+    height: 240px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+}

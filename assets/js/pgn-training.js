@@ -195,20 +195,34 @@
     }
 
     buildHeader() {
-      if (!this.headers.White || !this.headers.Black) return null;
+  if (!this.headers.White || !this.headers.Black) return null;
 
-      const line1 =
-        `${formatPlayer(this.headers.White, this.headers.WhiteElo, this.headers.WhiteTitle)} – ` +
-        `${formatPlayer(this.headers.Black, this.headers.BlackElo, this.headers.BlackTitle)}`;
+  const wrapper = document.createElement("div");
 
-      const line2 = [this.headers.Event, this.headers.Opening].filter(Boolean).join(", ");
+  // ---- Line 1: Players (h3) ----
+  const h3 = document.createElement("h3");
+  h3.className = "pgn-training-header";
 
-      const h = document.createElement("h3");
-      h.className = "pgn-training-header";
-      h.innerHTML = line1 + (line2 ? `<br>${line2}` : "");
-      return h;
-    }
+  const line1 =
+    `${formatPlayer(this.headers.White, this.headers.WhiteElo, this.headers.WhiteTitle)} – ` +
+    `${formatPlayer(this.headers.Black, this.headers.BlackElo, this.headers.BlackTitle)}`;
 
+  h3.textContent = line1;
+  wrapper.appendChild(h3);
+
+  // ---- Line 2: Event / Opening (h4) ----
+  const line2 = [this.headers.Event, this.headers.Opening]
+    .filter(Boolean)
+    .join(", ");
+
+  if (line2) {
+    const h4 = document.createElement("h4");
+    h4.className = "pgn-training-subheader";
+    h4.textContent = line2;
+    wrapper.appendChild(h4);
+  }
+  return wrapper;
+}
     initBoard() {
       requestAnimationFrame(() => {
         this.board = Chessboard(this.boardDiv, {

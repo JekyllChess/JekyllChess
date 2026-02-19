@@ -128,6 +128,7 @@
     build(src) {
       const wrap = document.createElement("div");
       wrap.className = "pgn-training-wrapper";
+      this.wrapper = wrap;
 
       const header = this.buildHeader();
       if (header) wrap.appendChild(header);

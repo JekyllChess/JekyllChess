@@ -16,29 +16,43 @@ t.RESULT_REGEX = /^(1-0|0-1|1\/2-1\/2|½-½|\*)$/;
 t.MOVE_NUMBER_REGEX = /^(\d+)(\.+)$/;
 t.NBSP = "\u00A0";
 
-// ------------------------------------------------------------
+// ------------------------------------------------------------------
 // Mobile layout helper
-// ------------------------------------------------------------
+// Ensures header + board + movelist + latest move are visible
+// ------------------------------------------------------------------
 
-t.mobileEnsureVisible = function(boardEl, listEl, childEl){
+t.mobileEnsureVisible = function(wrapperEl, listEl, focusEl){
 
-  if (!boardEl || !listEl) return;
+  if (!wrapperEl || !listEl) return;
 
-  const isMobile = window.matchMedia("(max-width: 767px)").matches;
-  if (!isMobile) {
-    // desktop → only scroll list
-    if (childEl) t.scrollContainerToChild(listEl, childEl);
-    return;
-  }
+  // Only act on mobile
+  if (window.innerWidth > 767) return;
 
-  // 1️⃣ Scroll page so board is fully visible
-  const boardRect = boardEl.getBoundingClientRect();
-  const absoluteTop = boardRect.top + window.scrollY;
+  const wrapperRect = wrapperEl.getBoundingClientRect();
+  const viewportH = window.innerHeight;
 
+  // If wrapper already fully visible, do nothing
+  if (wrapperRect.top >= 0 && wrapperRect.bottom <= viewportH) return;
+
+  // Scroll page so wrapper top is near top with small padding
   window.scrollTo({
-    top: absoluteTop - 16,
+    top: window.pageYOffset + wrapperRect.top - 8,
     behavior: "smooth"
   });
+
+  // Then scroll move list internally (if focus element exists)
+  if (focusEl && listEl.contains(focusEl)) {
+    const top =
+      focusEl.offsetTop -
+      listEl.offsetTop -
+      listEl.clientHeight / 2;
+
+    listEl.scrollTo({
+      top,
+      behavior: "smooth"
+    });
+  }
+};
 
   // 2️⃣ After slight delay, scroll move list
   setTimeout(()=>{

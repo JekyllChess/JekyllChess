@@ -17,27 +17,6 @@ const unbreak = C.makeCastlingUnbreakable || (x=>x);
 
 // ------------------------------------------------------------
 
-function safeChessboard(targetEl, options, tries=30, onReady){
-  if(!targetEl){
-    if(tries>0) requestAnimationFrame(()=>safeChessboard(targetEl,options,tries-1,onReady));
-    return;
-  }
-  const r = targetEl.getBoundingClientRect();
-  if((r.width<=0 || r.height<=0) && tries>0){
-    requestAnimationFrame(()=>safeChessboard(targetEl,options,tries-1,onReady));
-    return;
-  }
-  try{
-    const b = Chessboard(targetEl,options);
-    if(onReady) onReady(b);
-    return b;
-  }catch{
-    if(tries>0) requestAnimationFrame(()=>safeChessboard(targetEl,options,tries-1,onReady));
-  }
-}
-
-// ------------------------------------------------------------
-
 function appendText(el,txt){
   if(el && txt) el.appendChild(document.createTextNode(txt));
 }
@@ -175,7 +154,9 @@ parseComment(text,i,ctx){
 
 handleSAN(tok,ctx){
 
-  const core=tok.replace(/[^a-hKQRBN0-9=O0-]+$/g,"").replace(/0/g,"O");
+  const core=C.normalizeSAN
+    ? C.normalizeSAN(tok)
+    : tok.replace(/[^a-hKQRBN0-9=O0-]+$/g,"").replace(/0/g,"O");
 
   if(!ReaderPGNView.isSANCore(core)){
     appendText(ctx.container,tok+" ");
@@ -281,12 +262,12 @@ parseMovetext(t){
     const tok=t.substring(start,i);
     if(!tok) continue;
 
-    // ignore [D] layout marker
-if (tok === "[D]") {
-  ctx.lastWasInterrupt = true;
-  ctx.container = null;
-  continue;
-}   
+    if(tok==="[D]"){
+      ctx.lastWasInterrupt=true;
+      ctx.container=null;
+      continue;
+    }
+
     if(C.RESULT_REGEX.test(tok)){
       if(!this.finalResultPrinted){
         this.finalResultPrinted=true;
@@ -317,7 +298,7 @@ applyFigurines(){
 
 initBoardAndControls(){
 
-  safeChessboard(this.boardDiv,{
+  C.safeChessboard(this.boardDiv,{
     position:"start",
     draggable:false,
     pieceTheme:C.PIECE_THEME_URL,
@@ -349,18 +330,7 @@ gotoSpan(span){
   this.moveSpans.forEach(s=>s.classList.remove("reader-move-active"));
   span.classList.add("reader-move-active");
 
-const container = this.movesCol;
-if (container) {
-  const top =
-    span.offsetTop -
-    container.offsetTop -
-    container.clientHeight / 2;
-
-  container.scrollTo({
-    top,
-    behavior: "smooth"
-  });
-}
+  C.scrollContainerToChild(this.movesCol, span);
 }
 
 // ------------------------------------------------------------

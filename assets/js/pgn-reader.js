@@ -349,7 +349,18 @@ gotoSpan(span){
   this.moveSpans.forEach(s=>s.classList.remove("reader-move-active"));
   span.classList.add("reader-move-active");
 
-  span.scrollIntoView({behavior:"smooth",block:"center"});
+const container = this.movesCol;
+if (container) {
+  const top =
+    span.offsetTop -
+    container.offsetTop -
+    container.clientHeight / 2;
+
+  container.scrollTo({
+    top,
+    behavior: "smooth"
+  });
+}
 }
 
 // ------------------------------------------------------------

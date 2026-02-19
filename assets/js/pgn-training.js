@@ -358,11 +358,14 @@
       this.setStatus(null);
 
 if (!this.suppressAutoScroll) {
-C.mobileEnsureVisible(
-  this.boardDiv,
-  this.rightPane,
-  this.rightPane.lastElementChild
-);
+if (!this.suppressAutoScroll) {
+  C.mobileEnsureVisible(
+    this.boardDiv,
+    this.rightPane,
+    this.rightPane.lastElementChild
+  );
+}
+
   }
     }
 

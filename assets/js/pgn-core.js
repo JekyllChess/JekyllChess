@@ -82,7 +82,35 @@ t.makeCastlingUnbreakable = function(x){
 };
 
 // ------------------------------------------------------------------
-// ✅ NEW: shared player formatter
+// ✅ Shared SAN normalizer
+// ------------------------------------------------------------------
+
+t.normalizeSAN = function(tok){
+  return String(tok||"")
+    .replace(/\[%.*?]/g,"")
+    .replace(/\[D\]/g,"")
+    .replace(/[{}]/g,"")
+    .replace(/[!?]+/g,"")
+    .replace(/[+#]$/,"")
+    .replace(/0/g,"O")
+    .trim();
+};
+
+// ------------------------------------------------------------------
+// ✅ Shared comment sanitizer
+// ------------------------------------------------------------------
+
+t.sanitizeComment = function(txt){
+  return String(txt||"")
+    .replace(/\[%.*?]/g,"")
+    .replace(/\[D\]/g,"")
+    .replace(/[{}]/g,"")
+    .replace(/\s+/g," ")
+    .trim() || null;
+};
+
+// ------------------------------------------------------------------
+// ✅ Shared player formatter
 // ------------------------------------------------------------------
 
 t.formatPlayer = function(name, elo, title){
@@ -93,7 +121,7 @@ t.formatPlayer = function(name, elo, title){
 };
 
 // ------------------------------------------------------------------
-// ✅ NEW: shared header builder
+// ✅ Shared header builder
 // ------------------------------------------------------------------
 
 t.buildGameHeader = function(opts){
@@ -113,6 +141,53 @@ t.buildGameHeader = function(opts){
   }
 
   return wrap;
+};
+
+// ------------------------------------------------------------------
+// ✅ Shared scroll helper
+// ------------------------------------------------------------------
+
+t.scrollContainerToChild = function(container, child){
+  if(!container || !child) return;
+
+  const top =
+    child.offsetTop -
+    container.offsetTop -
+    container.clientHeight / 2;
+
+  container.scrollTo({
+    top,
+    behavior:"smooth"
+  });
+};
+
+// ------------------------------------------------------------------
+// ✅ Shared safe chessboard init
+// ------------------------------------------------------------------
+
+t.safeChessboard = function(targetEl, options, tries=30, onReady){
+
+  if(!targetEl){
+    if(tries>0)
+      requestAnimationFrame(()=>t.safeChessboard(targetEl,options,tries-1,onReady));
+    return;
+  }
+
+  const r = targetEl.getBoundingClientRect();
+
+  if((r.width<=0 || r.height<=0) && tries>0){
+    requestAnimationFrame(()=>t.safeChessboard(targetEl,options,tries-1,onReady));
+    return;
+  }
+
+  try{
+    const b = Chessboard(targetEl, options);
+    if(onReady) onReady(b);
+    return b;
+  }catch{
+    if(tries>0)
+      requestAnimationFrame(()=>t.safeChessboard(targetEl,options,tries-1,onReady));
+  }
 };
 
 // ------------------------------------------------------------------

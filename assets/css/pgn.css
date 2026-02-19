@@ -187,6 +187,17 @@
   transform: translateZ(0);
 }
 
+/* === FINAL MOBILE CHESSBOARD STABILITY PATCH === */
+@media (max-width: 767px) {
+  .pgn-reader-board > div,
+  .pgn-guess-board > div,
+  .pgn-training-board > div {
+    position: relative !important;
+    transform: translateZ(0);
+    will-change: transform;
+  }
+}
+
 
 
 

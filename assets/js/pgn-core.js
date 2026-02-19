@@ -1,1 +1,122 @@
-!function(){"use strict";const e="undefined"!=typeof window?window:globalThis,t=e.PGNCore=e.PGNCore||{};t.PIECE_THEME_URL="https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png",t.SAN_CORE_REGEX=/^([O0]-[O0](-[O0])?[+#]?|[KQRBN]?[a-h]?[1-8]?x?[a-h][1-8](=[QRBN])?[+#]?|[a-h][1-8](=[QRBN])?[+#]?)$/,t.RESULT_REGEX=/^(1-0|0-1|1\/2-1\/2|½-½|\*)$/,t.MOVE_NUMBER_REGEX=/^(\d+)(\.+)$/,t.NBSP="\u00A0",t.NAG_MAP=Object.freeze({1:"!",2:"?",3:"‼",4:"⁇",5:"⁉",6:"⁈",13:"→",14:"↑",15:"⇆",16:"⇄",17:"⟂",18:"∞",19:"⟳",20:"⟲",36:"⩲",37:"⩱",38:"±",39:"∓",40:"+=",41:"=+",42:"±",43:"∓",44:"⨀",45:"⨁"}),t.EVAL_MAP=Object.freeze({"=":"=","+/=":"⩲","=/+":"⩱","+/-":"±","+/−":"±","-/+":"∓","−/+":"∓","+-":"+−","+−":"+−","-+":"−+","−+":"−+","∞":"∞","=/∞":"⯹"}),t.normalizeFigurines=function(e){return e?String(e).replace(/[♔♚]/g,"K").replace(/[♕♛]/g,"Q").replace(/[♖♜]/g,"R").replace(/[♗♝]/g,"B").replace(/[♘♞]/g,"N"):""},t.appendText=function(e,t){e&&t&&"undefined"!=typeof document&&document.createTextNode&&e.appendChild(document.createTextNode(String(t)))},t.normalizeResult=function(e){return e?String(e).replace(/1\/2-1\/2/g,"½-½"):""},t.extractYear=function(e){if(!e)return"";const t=String(e).split(".");return/^\d{4}$/.test(t[0])?t[0]:""},t.flipName=function(e){if(!e)return"";const t=String(e).trim(),n=t.indexOf(",");return-1===n?t:t.slice(n+1).trim()+" "+t.slice(0,n).trim()},t.makeCastlingUnbreakable=function(e){if(!e)return"";const t=String(e);return t.replace(/0-0-0|O-O-O/g,e=>e[0]+"\u2011"+e[2]+"\u2011"+e[4]).replace(/0-0|O-O/g,e=>e[0]+"\u2011"+e[2])};try{Object.freeze(t)}catch(e){}}();
+!function(){"use strict";
+
+const e = "undefined" != typeof window ? window : globalThis;
+const t = e.PGNCore = e.PGNCore || {};
+
+// ------------------------------------------------------------------
+// Constants
+// ------------------------------------------------------------------
+
+t.PIECE_THEME_URL = "https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png";
+
+t.SAN_CORE_REGEX =
+/^([O0]-[O0](-[O0])?[+#]?|[KQRBN]?[a-h]?[1-8]?x?[a-h][1-8](=[QRBN])?[+#]?|[a-h][1-8](=[QRBN])?[+#]?)$/;
+
+t.RESULT_REGEX = /^(1-0|0-1|1\/2-1\/2|½-½|\*)$/;
+t.MOVE_NUMBER_REGEX = /^(\d+)(\.+)$/;
+t.NBSP = "\u00A0";
+
+// ------------------------------------------------------------------
+
+t.NAG_MAP = Object.freeze({
+  1:"!",2:"?",3:"‼",4:"⁇",5:"⁉",6:"⁈",
+  13:"→",14:"↑",15:"⇆",16:"⇄",17:"⟂",
+  18:"∞",19:"⟳",20:"⟲",
+  36:"⩲",37:"⩱",38:"±",39:"∓",
+  40:"+=",41:"=+",42:"±",43:"∓",
+  44:"⨀",45:"⨁"
+});
+
+t.EVAL_MAP = Object.freeze({
+  "=":"=","+/=":"⩲","=/+":"⩱",
+  "+/-":"±","+/−":"±",
+  "-/+":"∓","−/+":"∓",
+  "+-":"+−","+−":"+−",
+  "-+":"−+","−+":"−+",
+  "∞":"∞","=/∞":"⯹"
+});
+
+// ------------------------------------------------------------------
+// Utilities
+// ------------------------------------------------------------------
+
+t.normalizeFigurines = function(x){
+  return x ? String(x)
+    .replace(/[♔♚]/g,"K")
+    .replace(/[♕♛]/g,"Q")
+    .replace(/[♖♜]/g,"R")
+    .replace(/[♗♝]/g,"B")
+    .replace(/[♘♞]/g,"N")
+  : "";
+};
+
+t.appendText = function(el, txt){
+  if (el && txt && typeof document!="undefined") {
+    el.appendChild(document.createTextNode(String(txt)));
+  }
+};
+
+t.normalizeResult = function(x){
+  return x ? String(x).replace(/1\/2-1\/2/g,"½-½") : "";
+};
+
+t.extractYear = function(d){
+  if(!d) return "";
+  const p = String(d).split(".");
+  return /^\d{4}$/.test(p[0]) ? p[0] : "";
+};
+
+t.flipName = function(n){
+  if(!n) return "";
+  const s = String(n).trim();
+  const i = s.indexOf(",");
+  return i===-1 ? s : s.slice(i+1).trim()+" "+s.slice(0,i).trim();
+};
+
+t.makeCastlingUnbreakable = function(x){
+  if(!x) return "";
+  const s = String(x);
+  return s
+    .replace(/0-0-0|O-O-O/g, m => m[0]+"\u2011"+m[2]+"\u2011"+m[4])
+    .replace(/0-0|O-O/g,   m => m[0]+"\u2011"+m[2]);
+};
+
+// ------------------------------------------------------------------
+// ✅ NEW: shared player formatter
+// ------------------------------------------------------------------
+
+t.formatPlayer = function(name, elo, title){
+  const n = t.flipName(name || "");
+  const ti = String(title||"").trim();
+  const e2 = String(elo||"").trim();
+  return `${ti ? ti+" " : ""}${n}${e2 ? " ("+e2+")" : ""}`.trim();
+};
+
+// ------------------------------------------------------------------
+// ✅ NEW: shared header builder
+// ------------------------------------------------------------------
+
+t.buildGameHeader = function(opts){
+
+  const wrap = document.createElement("div");
+
+  const h3 = document.createElement("h3");
+  h3.className = "pgn-game-header";
+  h3.textContent = `${opts.white} – ${opts.black}`;
+  wrap.appendChild(h3);
+
+  if (opts.meta) {
+    const h4 = document.createElement("h4");
+    h4.className = "pgn-game-subheader";
+    h4.textContent = opts.meta;
+    wrap.appendChild(h4);
+  }
+
+  return wrap;
+};
+
+// ------------------------------------------------------------------
+
+try { Object.freeze(t); } catch(e){}
+
+}();

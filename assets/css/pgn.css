@@ -13,6 +13,15 @@
 }
 
 /* Game header */
+.pgn-blog-block h3,
+.pgn-reader-header h3,
+.pgn-guess-header h3,
+.pgn-training-header h3 {
+  margin: 0 0 0.75rem 0;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
 .pgn-blog-block h4,
 .pgn-reader-header h4,
 .pgn-guess-header h4,
@@ -20,6 +29,7 @@
   margin: 0 0 0.75rem 0;
   font-weight: 600;
   line-height: 1.4;
+  color: grey;
 }
 
 /* Main line & variation paragraphs */

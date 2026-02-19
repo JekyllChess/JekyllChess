@@ -281,6 +281,12 @@ parseMovetext(t){
     const tok=t.substring(start,i);
     if(!tok) continue;
 
+    // ignore [D] layout marker
+if (tok === "[D]") {
+  ctx.lastWasInterrupt = true;
+  ctx.container = null;
+  continue;
+}   
     if(C.RESULT_REGEX.test(tok)){
       if(!this.finalResultPrinted){
         this.finalResultPrinted=true;

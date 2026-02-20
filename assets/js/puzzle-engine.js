@@ -85,6 +85,9 @@
 
   function renderLocalPuzzle(container, fen, moves, label, autoFirstMove) {
 
+    // Lock height to prevent scroll jump
+    const prevHeight = container.offsetHeight;
+    container.style.minHeight = prevHeight + "px";
     container.innerHTML = "";
 
     const boardDiv = document.createElement("div");
@@ -99,18 +102,18 @@
     statusBar.style.flexWrap = "wrap";
 
     const statusLabel = document.createElement("span");
-const sep1 = document.createElement("span");
-sep1.textContent = "·";
+    const sep1 = document.createElement("span");
+    sep1.textContent = "·";
 
-const statusMsg = document.createElement("span");
-const sep2 = document.createElement("span");
-sep2.textContent = "·";
+    const statusMsg = document.createElement("span");
+    const sep2 = document.createElement("span");
+    sep2.textContent = "·";
 
-const nextBtn = document.createElement("button");
-nextBtn.textContent = "⤻";
-nextBtn.style.display = "none";
+    const nextBtn = document.createElement("button");
+    nextBtn.textContent = "Next Puzzle →";
+    nextBtn.style.display = "none";
 
-statusBar.append(statusLabel, sep1, statusMsg, sep2, nextBtn);
+    statusBar.append(statusLabel, sep1, statusMsg, sep2, nextBtn);
     container.append(boardDiv, statusBar);
 
     const game = new Chess(fen);
@@ -121,23 +124,30 @@ statusBar.append(statusLabel, sep1, statusMsg, sep2, nextBtn);
     let locked = false;
     let solved = false;
 
+    function updateSeparators() {
+      sep1.style.display = statusMsg.textContent ? "inline" : "none";
+      sep2.style.display =
+        nextBtn.style.display !== "none" ? "inline" : "none";
+    }
+
     function updateStatus(msg = "") {
       statusLabel.textContent = label || "";
       statusMsg.textContent = msg || "";
+      updateSeparators();
     }
 
     function finishSolved() {
-  solved = true;
-  updateStatus("Solved! 🏆");
+      solved = true;
+      updateStatus("Solved! 🏆");
 
-  if (autoFirstMove) {
-    nextBtn.style.display = "inline-block";
-  } else {
-    nextBtn.style.display = "none";
-  }
+      if (autoFirstMove) {
+        nextBtn.style.display = "inline-block";
+      } else {
+        nextBtn.style.display = "none";
+      }
 
-  updateSeparators();
-}
+      updateSeparators();
+    }
 
     function autoReply() {
       if (index >= moves.length) {
@@ -212,6 +222,7 @@ statusBar.append(statusLabel, sep1, statusMsg, sep2, nextBtn);
         };
 
         updateStatus("");
+        container.style.minHeight = ""; // release lock
       }
     );
   }
@@ -251,7 +262,6 @@ statusBar.append(statusLabel, sep1, statusMsg, sep2, nextBtn);
       if (!lastMove) return { error: "Illegal move: " + m };
     }
 
-    // Infer mate orientation
     if (lastMove && lastMove.san.includes("#")) {
       const matingSide = lastMove.color;
       const fenSide = fen.split(" ")[1];
@@ -300,26 +310,16 @@ statusBar.append(statusLabel, sep1, statusMsg, sep2, nextBtn);
     };
 
     function renderCurrent() {
+      const p = puzzles[index];
 
-  // Lock current height to prevent scroll jump
-  const prevHeight = container.offsetHeight;
-  container.style.minHeight = prevHeight + "px";
-
-  const p = puzzles[index];
-
-  renderLocalPuzzle(
-    container,
-    p.fen,
-    p.moves,
-    `Puzzle ${index + 1} / ${puzzles.length}`,
-    true
-  );
-
-  // Release height lock after next frame
-  requestAnimationFrame(() => {
-    container.style.minHeight = "";
-  });
-}
+      renderLocalPuzzle(
+        container,
+        p.fen,
+        p.moves,
+        `Puzzle ${index + 1} / ${puzzles.length}`,
+        true
+      );
+    }
 
     renderCurrent();
   }

@@ -99,13 +99,18 @@
     statusBar.style.flexWrap = "wrap";
 
     const statusLabel = document.createElement("span");
-    const statusMsg = document.createElement("span");
+const sep1 = document.createElement("span");
+sep1.textContent = "·";
 
-    const nextBtn = document.createElement("button");
-    nextBtn.textContent = "Next Puzzle →";
-    nextBtn.style.display = "none";
+const statusMsg = document.createElement("span");
+const sep2 = document.createElement("span");
+sep2.textContent = "·";
 
-    statusBar.append(statusLabel, statusMsg, nextBtn);
+const nextBtn = document.createElement("button");
+nextBtn.textContent = "Next Puzzle →";
+nextBtn.style.display = "none";
+
+statusBar.append(statusLabel, sep1, statusMsg, sep2, nextBtn);
     container.append(boardDiv, statusBar);
 
     const game = new Chess(fen);

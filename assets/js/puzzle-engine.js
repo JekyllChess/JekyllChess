@@ -185,8 +185,10 @@ container.append(status);
           }
         }
 
-        updateStatus(label);
-      }
+updateStatus(label);
+
+// Release height lock after board appears
+container.style.minHeight = "";      }
     );
   }
 
@@ -265,7 +267,10 @@ container.append(status);
     let index = 0;
 
     function renderCurrent() {
-      const p = puzzles[index];
+  const p = puzzles[index];
+
+  // Lock height to prevent jump
+  container.style.minHeight = container.offsetHeight + "px";
 
       renderLocalPuzzle(container, p.fen, p.moves, "", true);
 

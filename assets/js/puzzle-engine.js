@@ -127,10 +127,17 @@ statusBar.append(statusLabel, sep1, statusMsg, sep2, nextBtn);
     }
 
     function finishSolved() {
-      solved = true;
-      updateStatus("Solved! 🏆");
-      nextBtn.style.display = "inline-block";
-    }
+  solved = true;
+  updateStatus("Solved! 🏆");
+
+  if (autoFirstMove) {
+    nextBtn.style.display = "inline-block";
+  } else {
+    nextBtn.style.display = "none";
+  }
+
+  updateSeparators();
+}
 
     function autoReply() {
       if (index >= moves.length) {

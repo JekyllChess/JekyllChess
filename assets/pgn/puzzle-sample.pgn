@@ -1,20 +1,17 @@
 [White "?"]
 [Black "?"]
-[Event "?"]
-[Site "?"]
-[Round "?"]
-[Date "????.??.??"]
-[Result "*"]
-[FEN "r1b3nr/pp2k2p/5q1b/2p1n2Q/3PPp1p/BP6/P1P3P1/RN1R2K1 w - - 0 15"]
+[FEN "r1b3nr/pp1nk2p/5q1b/2p1N2Q/3PPp1p/BP6/P1P3P1/3R2K1 b - - 1 14"
 
-1. Bxc5+ Ke6 2. Qe8+ Ne7 3. d5# 
+1... Nxe5 2. Bxc5+ Ke6 3. Qe8+ Ne7 4. d5# 
 
 [White "?"]
 [Black "?"]
-[FEN "r1b3nr/pp5p/4kq1b/2B1n2Q/3PPp1p/1P6/P1P3P1/RN1R2K1 w - - 1 16"]
+[FEN "r1b3nr/pp2k2p/5q1b/2B1n2Q/3PPp1p/1P6/P1P3P1/RN1R2K1 b - - 0 15"]
 
-1. Qe8+ Ne7 2. d5#
+1... Ke6 2. Qe8+ Ne7 3. d5#
 
+[White "?"]
+[Black "?"]
 [FEN "r1b1Q2r/pp2n2p/4kq1b/2B1n3/3PPp1p/1P6/P1P3P1/RN1R2K1 w - - 3 17"]
 
-1. d5# 1-0
+1... Ne7 2. d5#

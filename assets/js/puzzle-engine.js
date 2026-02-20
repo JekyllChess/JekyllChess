@@ -300,16 +300,26 @@ statusBar.append(statusLabel, sep1, statusMsg, sep2, nextBtn);
     };
 
     function renderCurrent() {
-      const p = puzzles[index];
 
-      renderLocalPuzzle(
-        container,
-        p.fen,
-        p.moves,
-        `Puzzle ${index + 1} / ${puzzles.length}`,
-        true
-      );
-    }
+  // Lock current height to prevent scroll jump
+  const prevHeight = container.offsetHeight;
+  container.style.minHeight = prevHeight + "px";
+
+  const p = puzzles[index];
+
+  renderLocalPuzzle(
+    container,
+    p.fen,
+    p.moves,
+    `Puzzle ${index + 1} / ${puzzles.length}`,
+    true
+  );
+
+  // Release height lock after next frame
+  requestAnimationFrame(() => {
+    container.style.minHeight = "";
+  });
+}
 
     renderCurrent();
   }

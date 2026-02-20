@@ -73,7 +73,109 @@
   }
 
   /* -------------------------------------------------- */
-  /* Remote PGN Renderer (Generalized)                  */
+  /* Local Puzzle Renderer                              */
+  /* -------------------------------------------------- */
+
+  function renderLocalPuzzle(container, fen, moves) {
+    container.innerHTML = "";
+
+    const boardDiv = document.createElement("div");
+    boardDiv.className = "jc-board";
+
+    const status = document.createElement("div");
+    status.style.marginTop = "8px";
+
+    container.append(boardDiv, status);
+
+    const game = new Chess(fen);
+    const solverSide = game.turn();
+    let board;
+    let moveIndex = 0;
+    let locked = false;
+    let solved = false;
+
+    function updateStatus(msg) {
+      status.textContent = msg || "";
+    }
+
+    function finishSolved() {
+      solved = true;
+      updateStatus("Solved! 🏆");
+    }
+
+    function autoReply() {
+      if (moveIndex >= moves.length) {
+        finishSolved();
+        return;
+      }
+
+      const mv = game.move(moves[moveIndex], { sloppy: true });
+      if (!mv) {
+        finishSolved();
+        return;
+      }
+
+      moveIndex++;
+      board.move(mv.from + "-" + mv.to);
+
+      setTimeout(() => {
+        hardSync(board, game);
+        locked = false;
+      }, ANIM_MS);
+    }
+
+    function onDrop(from, to) {
+      if (locked || solved || game.turn() !== solverSide) return "snapback";
+
+      const expected = moves[moveIndex];
+      const mv = game.move({ from, to, promotion: "q" });
+      if (!mv) return "snapback";
+
+      if (normalizeSAN(mv.san) !== normalizeSAN(expected)) {
+        game.undo();
+        hardSync(board, game);
+        return "snapback";
+      }
+
+      moveIndex++;
+      hardSync(board, game);
+
+      if (moveIndex >= moves.length) {
+        finishSolved();
+        return true;
+      }
+
+      locked = true;
+      setTimeout(autoReply, 120);
+      return true;
+    }
+
+    safeChessboard(
+      boardDiv,
+      {
+        draggable: true,
+        position: fen,
+        pieceTheme: PIECE_THEME,
+        onDrop,
+        onSnapEnd: () => hardSync(board, game),
+      },
+      (b) => {
+        board = b;
+
+        // Auto-play first move
+        const mv = game.move(moves[0], { sloppy: true });
+        if (mv) {
+          board.position(game.fen(), true);
+          moveIndex = 1;
+        }
+
+        updateStatus();
+      }
+    );
+  }
+
+  /* -------------------------------------------------- */
+  /* Remote PGN Puzzle Pack Renderer                    */
   /* -------------------------------------------------- */
 
   function splitIntoPgnGames(text) {
@@ -110,6 +212,7 @@
 
     function renderCurrent() {
       const { fen, moves } = puzzles[puzzleIndex];
+
       if (!moves || moves.length < 2) {
         container.textContent = "Invalid puzzle.";
         return;
@@ -212,7 +315,7 @@
         (b) => {
           board = b;
 
-          // Auto-play FIRST move
+          // Auto-play first move
           const mv = game.move(moves[0], { sloppy: true });
           if (mv) {
             board.position(game.fen(), true);
@@ -245,6 +348,18 @@
         renderRemotePGN(
           wrap,
           new URL(pgnMatch[1], window.location.href).href
+        );
+        return;
+      }
+
+      const fenMatch = raw.match(/FEN:\s*([^]*?)\s+Moves:/i);
+      const movesMatch = raw.match(/Moves:\s*([^]*)$/i);
+
+      if (fenMatch && movesMatch) {
+        renderLocalPuzzle(
+          wrap,
+          fenMatch[1].trim(),
+          tokenizeMoves(movesMatch[1])
         );
         return;
       }

@@ -199,7 +199,7 @@
           if (window.__jcNextPuzzle) window.__jcNextPuzzle();
         };
 
-        updateStatus(label);
+        updateStatus("");
       }
     );
   }

@@ -230,28 +230,137 @@
   }
 
   async function renderRemotePGN(container, url) {
-    container.textContent = "Loading...";
+  container.textContent = "Loading...";
 
-    const res = await fetch(url, { cache: "no-store" });
-    const text = await res.text();
+  const res = await fetch(url, { cache: "no-store" });
+  const text = await res.text();
 
-    const puzzles = splitIntoPgnGames(text).map(parseGame);
-    let index = 0;
+  const puzzles = splitIntoPgnGames(text).map(parseGame);
+  let index = 0;
 
-    function renderCurrent() {
-      renderLocalPuzzle(
-        container,
-        puzzles[index].fen,
-        puzzles[index].moves,
-        `${index + 1} / ${puzzles.length}`,
-        (statusRow) => {
-          const prev = document.createElement("button");
-          prev.textContent = "↶";
-          prev.disabled = index === 0;
-          prev.onclick = () => {
-            index--;
-            renderCurrent();
-          };
+  function renderCurrent() {
+
+    const { fen, moves } = puzzles[index];
+    if (!moves || moves.length < 2) {
+      container.textContent = "Invalid puzzle.";
+      return;
+    }
+
+    // Preserve height (no layout jump)
+    const prevHeight = container.offsetHeight;
+    if (prevHeight) container.style.minHeight = prevHeight + "px";
+    container.innerHTML = "";
+
+    const boardDiv = document.createElement("div");
+    boardDiv.className = "jc-board";
+
+    const status = document.createElement("div");
+    status.style.marginTop = "6px";
+
+    container.append(boardDiv, status);
+
+    const game = new Chess(fen);
+    const solverSide = game.turn();
+    let board;
+    let moveIndex = 0;
+    let locked = false;
+    let solved = false;
+
+    function updateStatus(msg = "") {
+      status.textContent = msg || `Puzzle ${index + 1} / ${puzzles.length}`;
+    }
+
+    function finishSolved() {
+      solved = true;
+      updateStatus("Solved! 🏆");
+
+      const nextBtn = document.createElement("button");
+      nextBtn.textContent = "Next Puzzle →";
+      nextBtn.style.display = "block";
+      nextBtn.style.marginTop = "8px";
+      nextBtn.onclick = () => {
+        if (index + 1 < puzzles.length) {
+          index++;
+          renderCurrent();
+        }
+      };
+      container.append(nextBtn);
+    }
+
+    function autoReply() {
+      if (moveIndex >= moves.length) {
+        finishSolved();
+        return;
+      }
+
+      const mv = game.move(moves[moveIndex], { sloppy: true });
+      if (!mv) {
+        finishSolved();
+        return;
+      }
+
+      moveIndex++;
+      board.move(mv.from + "-" + mv.to);
+
+      setTimeout(() => {
+        hardSync(board, game);
+        locked = false;
+      }, ANIM_MS);
+    }
+
+    function onDrop(from, to) {
+      if (locked || solved || game.turn() !== solverSide) return "snapback";
+
+      const expected = moves[moveIndex];
+      const mv = game.move({ from, to, promotion: "q" });
+      if (!mv) return "snapback";
+
+      if (normalizeSAN(mv.san) !== normalizeSAN(expected)) {
+        game.undo();
+        hardSync(board, game);
+        return "snapback";
+      }
+
+      moveIndex++;
+      hardSync(board, game);
+
+      if (moveIndex >= moves.length) {
+        finishSolved();
+        return true;
+      }
+
+      locked = true;
+      setTimeout(autoReply, 120);
+      return true;
+    }
+
+    safeChessboard(
+      boardDiv,
+      {
+        draggable: true,
+        position: fen,
+        pieceTheme: PIECE_THEME,
+        onDrop,
+        onSnapEnd: () => hardSync(board, game),
+      },
+      (b) => {
+        board = b;
+
+        // 🔥 Auto-play FIRST move
+        const mv = game.move(moves[0], { sloppy: true });
+        if (mv) {
+          board.position(game.fen(), true);
+          moveIndex = 1;
+        }
+
+        updateStatus();
+        container.style.minHeight = "";
+      }
+    );
+  }
+
+  renderCurrent();
+}
 
           const next = document.createElement("button");
           next.textContent = "↷";

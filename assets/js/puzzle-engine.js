@@ -85,31 +85,29 @@
 
   function renderLocalPuzzle(container, fen, moves, label, autoFirstMove) {
 
-    // Soft clear + empty board placeholder
-container.textContent = "";
-
-const placeholder = document.createElement("div");
-placeholder.className = "jc-board";
-container.appendChild(placeholder);
-
-// render empty chessboard immediately
-safeChessboard(
-  placeholder,
-  {
-    draggable: false,
-    position: "empty",
-    pieceTheme: PIECE_THEME
-  }
-);
+    container.innerHTML = "";
 
     const boardDiv = document.createElement("div");
     boardDiv.className = "jc-board";
 
-    const status = document.createElement("div");
-    status.style.marginTop = "6px";
+    // ----- STATUS BAR -----
+    const statusBar = document.createElement("div");
+    statusBar.style.marginTop = "6px";
+    statusBar.style.display = "flex";
+    statusBar.style.alignItems = "center";
+    statusBar.style.gap = "10px";
+    statusBar.style.flexWrap = "wrap";
 
-container.replaceChild(boardDiv, placeholder);
-container.append(status);
+    const statusLabel = document.createElement("span");
+    const statusMsg = document.createElement("span");
+
+    const nextBtn = document.createElement("button");
+    nextBtn.textContent = "Next Puzzle →";
+    nextBtn.style.display = "none";
+
+    statusBar.append(statusLabel, statusMsg, nextBtn);
+    container.append(boardDiv, statusBar);
+
     const game = new Chess(fen);
     let solverSide = game.turn();
 
@@ -119,12 +117,14 @@ container.append(status);
     let solved = false;
 
     function updateStatus(msg = "") {
-      status.textContent = msg || label || "";
+      statusLabel.textContent = label || "";
+      statusMsg.textContent = msg || "";
     }
 
     function finishSolved() {
       solved = true;
       updateStatus("Solved! 🏆");
+      nextBtn.style.display = "inline-block";
     }
 
     function autoReply() {
@@ -195,10 +195,12 @@ container.append(status);
           }
         }
 
-updateStatus(label);
+        nextBtn.onclick = () => {
+          if (window.__jcNextPuzzle) window.__jcNextPuzzle();
+        };
 
-// Release height lock after board appears
-container.style.minHeight = "";      }
+        updateStatus(label);
+      }
     );
   }
 
@@ -234,20 +236,22 @@ container.style.minHeight = "";      }
 
     for (const m of moves) {
       lastMove = test.move(m, { sloppy: true });
-      if (!lastMove) {
-        return { error: "Illegal move: " + m };
-      }
+      if (!lastMove) return { error: "Illegal move: " + m };
     }
 
-    // Infer mate side
+    // Infer mate orientation
     if (lastMove && lastMove.san.includes("#")) {
       const matingSide = lastMove.color;
       const fenSide = fen.split(" ")[1];
 
       if (matingSide !== fenSide) {
-        const leadIn = moves[moves.length - 2];
-        const mateMove = normalizeSAN(lastMove.san);
-        return { fen, moves: [leadIn, mateMove] };
+        return {
+          fen: fen,
+          moves: [
+            moves[moves.length - 2],
+            normalizeSAN(lastMove.san)
+          ]
+        };
       }
     }
 
@@ -258,73 +262,41 @@ container.style.minHeight = "";      }
   /* Remote PGN renderer                                */
   /* -------------------------------------------------- */
 
-async function renderRemotePGN(container, url) {
+  async function renderRemotePGN(container, url) {
 
-  // Show empty board immediately using safe init
-  container.textContent = "";
+    container.textContent = "Loading...";
 
-  const emptyDiv = document.createElement("div");
-  emptyDiv.className = "jc-board";
-  container.appendChild(emptyDiv);
+    const res = await fetch(url, { cache: "no-store" });
+    const text = await res.text();
 
-  safeChessboard(
-    emptyDiv,
-    {
-      draggable: false,
-      position: "empty",
-      pieceTheme: PIECE_THEME
+    const puzzles = splitIntoPgnGames(text)
+      .map(parseGame)
+      .filter(p => !p.error);
+
+    if (!puzzles.length) {
+      container.textContent = "No valid puzzles in PGN file.";
+      return;
     }
-  );
 
-  // Lock height to prevent layout shift
-  container.style.minHeight = container.offsetHeight + "px";
+    let index = 0;
 
-  // Load PGN
-  const res = await fetch(url, { cache: "no-store" });
-  const text = await res.text();
-
-  const puzzles = splitIntoPgnGames(text)
-    .map(parseGame)
-    .filter(p => !p.error);
-
-  if (!puzzles.length) {
-    container.textContent = "No valid puzzles in PGN file.";
-    return;
-  }
-
-  let index = 0;
-
-  function renderCurrent() {
-
-    const p = puzzles[index];
-
-    renderLocalPuzzle(container, p.fen, p.moves, "", true);
-
-    const label = document.createElement("span");
-    label.textContent = `Puzzle ${index + 1} / ${puzzles.length} `;
-
-    const next = document.createElement("button");
-    next.textContent = "→";
-    next.style.marginLeft = "6px";
-    next.onclick = () => {
+    window.__jcNextPuzzle = () => {
       if (index + 1 < puzzles.length) {
         index++;
         renderCurrent();
       }
     };
 
-    container.prepend(label);
-    container.append(next);
+    function renderCurrent() {
+      const p = puzzles[index];
 
-    container.style.minHeight = "";
-  }
-
-  renderCurrent();
-}
-      };
-
-      container.prepend(label);
-      container.append(next);
+      renderLocalPuzzle(
+        container,
+        p.fen,
+        p.moves,
+        `Puzzle ${index + 1} / ${puzzles.length}`,
+        true
+      );
     }
 
     renderCurrent();

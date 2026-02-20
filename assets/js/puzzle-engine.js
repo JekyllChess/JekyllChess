@@ -85,12 +85,22 @@
 
   function renderLocalPuzzle(container, fen, moves, label, autoFirstMove) {
 
-    // Soft clear (keeps height to avoid jump)
-    container.textContent = "";
-    const placeholder = document.createElement("div");
-    placeholder.className = "jc-board";
-    placeholder.style.height = "320px";
-    container.appendChild(placeholder);
+    // Soft clear + empty board placeholder
+container.textContent = "";
+
+const placeholder = document.createElement("div");
+placeholder.className = "jc-board";
+container.appendChild(placeholder);
+
+// render empty chessboard immediately
+safeChessboard(
+  placeholder,
+  {
+    draggable: false,
+    position: "empty",
+    pieceTheme: PIECE_THEME
+  }
+);
 
     const boardDiv = document.createElement("div");
     boardDiv.className = "jc-board";

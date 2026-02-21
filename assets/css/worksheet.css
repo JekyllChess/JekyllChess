@@ -9,12 +9,6 @@ worksheet {
   gap: 20px;
 }
 
-.worksheet-item {
-  border: 1px solid #444;
-  padding: 10px;
-  background: #111;
-}
-
 .worksheet-board {
   width: 100%;
   max-width: 320px;

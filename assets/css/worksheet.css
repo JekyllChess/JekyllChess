@@ -20,8 +20,16 @@ worksheet {
 }
 
 .worksheet-item.disabled {
-  opacity: 0.45;
+  position: relative;
   pointer-events: none;
+}
+
+.worksheet-item.disabled::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 5;
 }
 
 .worksheet-next {display:block;margin:auto;margin-top:3rem;padding:1rem;}

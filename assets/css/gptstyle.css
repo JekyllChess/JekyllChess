@@ -26,6 +26,7 @@ header.masthead {
   position: relative;
   background-color: #343a40;
   background-size: cover;
+  background-image: url("<img src="https://startbootstrap.github.io/startbootstrap-clean-blog-jekyll/img/bg-index.jpg"/>");
   padding: 8rem 0;
   color: white;
 }

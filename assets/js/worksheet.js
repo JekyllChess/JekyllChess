@@ -61,6 +61,7 @@ function renderBoards(container, fens) {
 
   const grid = document.createElement("div");
   grid.className = "worksheet-grid";
+  container.appendChild(grid);
 
   fens.forEach((fen, i) => {
     const cell = document.createElement("div");
@@ -77,12 +78,14 @@ function renderBoards(container, fens) {
     cell.appendChild(boardDiv);
     grid.appendChild(cell);
 
-    Chessboard(boardDiv, {
-      position: fen === "start" ? "start" : fen,
-      draggable: false,
-      pieceTheme: "https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png"
+    // Important: create AFTER inserted
+    requestAnimationFrame(() => {
+      Chessboard(boardDiv, {
+        position: fen === "start" ? "start" : fen,
+        draggable: false,
+        pieceTheme:
+          "https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png"
+      });
     });
   });
-
-  container.appendChild(grid);
 }

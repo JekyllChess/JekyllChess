@@ -1,3 +1,24 @@
+const style = document.createElement("style");
+style.textContent = `
+worksheet {
+  display:block;
+  margin:2rem 0;
+}
+
+.worksheet-grid {
+  display:grid;
+  grid-template-columns:repeat(2, 1fr);
+  gap:20px;
+}
+
+.worksheet-board {
+  width:100%;
+  max-width:320px;
+  aspect-ratio:1/1;
+}
+`;
+document.head.appendChild(style);
+
 document.addEventListener("DOMContentLoaded", () => {
 
   document.querySelectorAll("worksheet").forEach(ws => {

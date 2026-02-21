@@ -110,6 +110,9 @@ function renderPage(ws) {
   const end = start + 10;
   const slice = ws._puzzles.slice(start, end);
 
+  // Reset attempt state for this page
+  slice.forEach(p => p.attempted = false);
+
   ws.innerHTML = "";
 
   const grid = document.createElement("div");
@@ -143,7 +146,8 @@ function renderPage(ws) {
         moveSpeed: 0,
         snapSpeed: 0,
 
-        pieceTheme: "https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png",
+        pieceTheme:
+          "https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png",
 
         onDrop: (source, target) => {
 
@@ -156,6 +160,10 @@ function renderPage(ws) {
           if (!move) return "snapback";
 
           const expected = puzzle.solution[0];
+
+          // Mark attempted
+          puzzle.attempted = true;
+          updateNextButtonState(ws);
 
           // WRONG MOVE
           if (!expected || move.san !== expected) {
@@ -191,16 +199,30 @@ function renderPage(ws) {
     const nextBtn = document.createElement("button");
     nextBtn.textContent = "Next";
     nextBtn.className = "worksheet-next";
+    nextBtn.disabled = true; // start disabled
 
     nextBtn.addEventListener("click", () => {
       ws._page++;
       renderPage(ws);
     });
 
+    ws._nextButton = nextBtn;
     ws.appendChild(nextBtn);
 
   }
+}
 
+function updateNextButtonState(ws) {
+
+  if (!ws._nextButton) return;
+
+  const start = ws._page * 10;
+  const end = start + 10;
+  const slice = ws._puzzles.slice(start, end);
+
+  const allAttempted = slice.every(p => p.attempted);
+
+  ws._nextButton.disabled = !allAttempted;
 }
 
 /* ============================= */

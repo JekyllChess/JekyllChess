@@ -47,9 +47,11 @@ function splitPGN(pgnText) {
 
 function renderGames(container, games) {
   container.innerHTML = "";
+
   const wrapper = document.createElement("div");
   wrapper.className = "worksheet-container";
 
+  // FIRST: build DOM
   games.forEach((pgn, index) => {
     const boardId = `worksheet-board-${index}`;
     const puzzleDiv = document.createElement("div");
@@ -61,7 +63,14 @@ function renderGames(container, games) {
     `;
 
     wrapper.appendChild(puzzleDiv);
+  });
 
+  // Attach everything to page
+  container.appendChild(wrapper);
+
+  // SECOND: initialize boards
+  games.forEach((pgn, index) => {
+    const boardId = `worksheet-board-${index}`;
     const fen = extractFEN(pgn);
 
     Chessboard(boardId, {
@@ -70,6 +79,7 @@ function renderGames(container, games) {
       showNotation: false
     });
   });
+}
 
   container.appendChild(wrapper);
 }

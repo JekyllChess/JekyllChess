@@ -5,3 +5,10 @@ layout: default
 {{ site.description | markdownify }}
 {% include post-block.html %}
 {{ content }}
+<hr>
+<section id="readme-section">
+  {% capture readme_content %}
+    {% include_relative _readme.md %}
+  {% endcapture %}
+  {{ readme_content | markdownify }}
+</section>

@@ -23,3 +23,5 @@ worksheet {
   opacity: 0.45;
   pointer-events: none;
 }
+
+.worksheet-next {display:block;margin:auto;margin-top:3rem;font-size:2rem;padding:1rem;}

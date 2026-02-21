@@ -8,7 +8,7 @@ layout: default
 <hr>
 <section id="readme-section">
   {% capture readme_content %}
-    {% include_relative _readme.md %}
+    {% include_relative README.md %}
   {% endcapture %}
   {{ readme_content | markdownify }}
 </section>

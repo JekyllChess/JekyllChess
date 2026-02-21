@@ -10,7 +10,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     fetch(pgnURL)
       .then(r => r.text())
-      .then(pgn => initWorksheet(ws, pgn));
+      .then(pgn => initWorksheet(ws, pgn))
+      .catch(err => console.error("Worksheet PGN load error:", err));
 
   });
 
@@ -31,12 +32,13 @@ function initWorksheet(container, pgnText) {
   const nextBtn = document.createElement("button");
   nextBtn.textContent = "Next Page →";
   nextBtn.style.display = "none";
+
+  container.append(grid, nextBtn);
+
   nextBtn.onclick = () => {
     page++;
     renderPage();
   };
-
-  container.append(grid, nextBtn);
 
   function renderPage() {
 
@@ -55,6 +57,7 @@ function initWorksheet(container, pgnText) {
 
       const boardDiv = document.createElement("div");
       boardDiv.className = "worksheet-board";
+      boardDiv.id = "board_" + page + "_" + i;
 
       const solveBtn = document.createElement("button");
       solveBtn.textContent = "Solved";
@@ -67,12 +70,16 @@ function initWorksheet(container, pgnText) {
 
       const fen = game.fen();
 
-      Chessboard(boardDiv, {
-        position: fen,
-        draggable: false
-      });
+      setTimeout(() => {
+        Chessboard(boardDiv.id, {
+          position: fen,
+          draggable: false,
+          pieceTheme: "/assets/img/chesspieces/wikipedia/{piece}.png"
+        });
+      }, 0);
 
       solveBtn.onclick = () => {
+
         if (solveBtn.classList.contains("done")) return;
 
         solveBtn.classList.add("done");
@@ -84,6 +91,7 @@ function initWorksheet(container, pgnText) {
             nextBtn.style.display = "block";
           }
         }
+
       };
 
     });

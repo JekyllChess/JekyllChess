@@ -50,7 +50,6 @@ function splitPGN(text) {
 
 }
 
-
 /* ============================= */
 /* Extract FEN + solver color    */
 /* ============================= */
@@ -58,29 +57,55 @@ function splitPGN(text) {
 function extractPuzzle(pgn) {
 
   const fenMatch = pgn.match(/\[FEN\s+"([^"]+)"\]/);
-  const fen = fenMatch ? fenMatch[1] : "start";
+  const startFEN = fenMatch ? fenMatch[1] : "start";
 
+  // Find first move line
   const moveLine = pgn
     .split("\n")
     .find(l => /^[0-9]/.test(l));
 
   let solver = "white";
+  let firstMoveSAN = null;
 
-  if (moveLine && /^[0-9]+\.\s/.test(moveLine)) {
-    solver = "black";
+  if (moveLine) {
+
+    // White solver:
+    if (/^[0-9]+\.\.\./.test(moveLine)) {
+      solver = "white";
+      firstMoveSAN = moveLine
+        .replace(/^[0-9]+\.\.\.\s*/, "")
+        .split(/\s+/)[0];
+    }
+
+    // Black solver:
+    else if (/^[0-9]+\.\s/.test(moveLine)) {
+      solver = "black";
+      firstMoveSAN = moveLine
+        .replace(/^[0-9]+\.\s*/, "")
+        .split(/\s+/)[0];
+    }
+
   }
 
-  if (moveLine && /^[0-9]+\.\.\./.test(moveLine)) {
-    solver = "white";
+  let finalFEN = startFEN;
+
+  try {
+    const game = new Chess(startFEN === "start" ? undefined : startFEN);
+
+    if (firstMoveSAN) {
+      game.move(firstMoveSAN, { sloppy: true });
+      finalFEN = game.fen();
+    }
+  } catch (e) {
+    console.warn("Could not apply move:", firstMoveSAN);
   }
 
   return {
-    fen: fen,
+    fen: finalFEN,
     orientation: solver === "black" ? "black" : "white"
   };
 
 }
-
 
 /* ============================= */
 /* Render Current Page           */

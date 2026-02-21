@@ -1,182 +1,204 @@
-/* ===========================
-   CLEAN BLOG JEKYLL CORE CSS
-   =========================== */
-
-/* — FONTS */
+/* =========================================================
+   GOOGLE FONTS (Exact Clean Blog Fonts)
+========================================================= */
 @import url("https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,700;1,400;1,700&family=Open+Sans:wght@300;400;600;700&display=swap");
 
-/* — GLOBAL STYLES */
+/* =========================================================
+   RESET
+========================================================= */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
 
+/* =========================================================
+   BASE
+========================================================= */
 body {
   font-family: "Open Sans", sans-serif;
-  color: #333;
-  background-color: #fff;
+  color: #212529;
+  background: #fff;
   line-height: 1.6;
 }
 
 a {
-  color: #007bff;
+  color: #212529;
   text-decoration: none;
-  transition: 0.2s ease-in-out;
 }
 
 a:hover {
-  color: #0056b3;
-  text-decoration: none;
+  color: #0085a1;
 }
 
-/* — HEADER (Masthead) */
+/* =========================================================
+   CENTERED CONTENT WIDTH (Bootstrap .container clone)
+========================================================= */
+body > * {
+  max-width: 760px;
+  margin-left: auto;
+  margin-right: auto;
+}
 
-header.masthead {
+/* =========================================================
+   MASTHEAD HERO (Created using your existing H1)
+========================================================= */
+.header {
   position: relative;
   background-image: url("https://startbootstrap.github.io/startbootstrap-clean-blog-jekyll/img/bg-index.jpg");
   background-size: cover;
   background-position: center;
-  padding: 10rem 0;
-  color: white;
+  padding: 120px 20px;
+  margin-bottom: 60px;
   text-align: center;
 }
 
-header.masthead .overlay {
+.header::before {
+  content: "";
   position: absolute;
-  top: 0;
-  right: 0;
-  left: 0;
-  bottom: 0;
-  background: rgba(0,0,0,0.5);
+  inset: 0;
+  background: rgba(0,0,0,.5);
 }
 
-header.masthead .site-heading {
+.header a {
   position: relative;
+  font-family: "Lora", serif;
+  font-size: 3.5rem;
+  font-weight: 700;
+  color: white;
   z-index: 2;
 }
 
-header.masthead .site-heading h1 {
-  font-family: "Lora", serif;
-  font-weight: 700;
-  font-size: 3.5rem;
-  margin-top: 0;
-  margin-bottom: 0.25rem;
-  line-height: 1.2;
+.header img {
+  display: none;
 }
 
-header.masthead .site-heading .subheading {
+/* =========================================================
+   SITE DESCRIPTION (SUBHEADING)
+========================================================= */
+.header + p {
+  text-align: center;
   font-family: "Lora", serif;
   font-size: 1.5rem;
-  margin-bottom: 0;
-  font-weight: 400;
   font-style: italic;
-}
-
-/* — NAVIGATION */
-
-nav {
-  padding: 0.8rem 1rem;
-  font-weight: 600;
-}
-
-.navbar-light .navbar-nav .nav-link {
-  color: rgba(255, 255, 255, 0.85);
-}
-
-.navbar-light .navbar-nav .nav-link:hover {
-  color: white;
-}
-
-.navbar-light .navbar-brand {
-  color: white;
-  font-family: "Lora", serif;
-  font-size: 1.6rem;
-}
-
-/* — POST PREVIEWS */
-
-.post-preview {
-  margin-bottom: 3rem;
-  padding-bottom: 2rem;
-  border-bottom: 1px solid #e9ecef;
-}
-
-.post-preview a {
-  text-decoration: none;
-  color: #343a40;
-}
-
-.post-preview a:hover .post-title {
-  color: #007bff;
-}
-
-.post-preview .post-title {
-  font-family: "Lora", serif;
-  font-size: 1.8rem;
-  font-weight: 700;
-  margin: 0;
-}
-
-.post-preview .post-subtitle {
-  font-family: "Lora", serif;
-  font-size: 1.25rem;
   color: #6c757d;
-  margin-top: 0.5rem;
+  margin-top: -30px;
+  margin-bottom: 80px;
 }
 
-/* — POST META */
-
-.post-meta {
-  font-size: 0.9rem;
-  color: #6c757d;
-  margin-top: 0.25rem;
+/* =========================================================
+   POST LIST
+========================================================= */
+.post-block {
+  margin-bottom: 60px;
 }
 
-/* — PAGE HEADING */
-
-.page-heading {
+.post-item h2 {
   font-family: "Lora", serif;
-  font-size: 2.4rem;
+  font-size: 2rem;
   font-weight: 700;
-  margin: 2.5rem 0 1rem;
-  text-align: center;
 }
 
-/* — BUTTON BARS */
+.post-item h2 a {
+  color: #212529;
+}
 
-.btn-primary {
-  background-color: #007bff;
-  border-color: #007bff;
-  padding: 0.75rem 1.5rem;
-  font-size: 1rem;
-  font-weight: 600;
-  border-radius: 0.375rem;
+.post-item h2 a:hover {
+  color: #0085a1;
+}
+
+.post-item p {
+  margin-top: 10px;
+  font-size: 1.05rem;
+}
+
+/* =========================================================
+   READ MORE LINK
+========================================================= */
+.post-item span {
+  display: block;
+  margin-top: 15px;
+}
+
+.post-item span a {
+  font-size: .9rem;
+  letter-spacing: .08em;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
-  transition: 0.2s ease-in-out;
+  color: #0085a1;
 }
 
-.btn-primary:hover {
-  background-color: #0056b3;
-  border-color: #0056b3;
+.post-item span a:hover {
+  text-decoration: underline;
 }
 
-/* — FOOTER */
-
-footer {
-  text-align: center;
-  padding: 3rem 0;
-  border-top: 1px solid #e9ecef;
-  font-size: 0.9rem;
-  color: #6c757d;
+/* =========================================================
+   DIVIDER BETWEEN POSTS
+========================================================= */
+.post-block::after {
+  content: "";
+  display: block;
+  margin-top: 60px;
+  border-bottom: 1px solid #dee2e6;
 }
 
-/* — RESPONSIVE */
+/* =========================================================
+   COMPONENTS SECTION
+========================================================= */
+h3 {
+  font-family: "Lora", serif;
+  font-size: 2.2rem;
+  margin: 80px 0 20px;
+}
 
+p {
+  margin-bottom: 20px;
+}
+
+/* =========================================================
+   CODE
+========================================================= */
+code {
+  background: #f8f9fa;
+  padding: 2px 5px;
+  border-radius: 4px;
+  font-size: .9rem;
+}
+
+/* =========================================================
+   CHESS DIAGRAM SPACING
+========================================================= */
+fen {
+  display: block;
+  margin: 25px 0;
+}
+
+/* =========================================================
+   FOOTER LINE
+========================================================= */
+div[style] {
+  max-width: 760px;
+  margin: 80px auto;
+}
+
+/* =========================================================
+   MOBILE
+========================================================= */
 @media (max-width: 768px) {
-  header.masthead {
-    padding: 8rem 0;
+
+  .header {
+    padding: 90px 15px;
   }
-  header.masthead .site-heading h1 {
-    font-size: 2.8rem;
+
+  .header a {
+    font-size: 2.5rem;
   }
-  header.masthead .site-heading .subheading {
+
+  .header + p {
     font-size: 1.2rem;
+    margin-bottom: 60px;
+  }
+
+  .post-item h2 {
+    font-size: 1.7rem;
   }
 }

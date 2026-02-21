@@ -134,14 +134,20 @@ grid.appendChild(cell);
 
     requestAnimationFrame(() => {
 
-      const game = new Chess(puzzle.fen);
+const game = new Chess(puzzle.fen);
+
+const feedback = document.createElement("div");
+feedback.className = "move-feedback";
+cell.appendChild(feedback);
 
 const board = Chessboard(boardDiv, {
   position: puzzle.fen,
   orientation: puzzle.orientation,
   draggable: true,
+
   moveSpeed: 0,
   snapSpeed: 0,
+
   pieceTheme: "https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png",
 
   onDrop: (source, target) => {
@@ -156,18 +162,25 @@ const board = Chessboard(boardDiv, {
 
     const expected = puzzle.solution[0];
 
+    // WRONG MOVE
     if (!expected || move.san !== expected) {
       game.undo();
+      feedback.textContent = move.san + " ❌";
+      cell.classList.add("disabled");
+      board.draggable = false;
       return "snapback";
     }
 
+    // CORRECT MOVE
     puzzle.solution.shift();
-    board.position(game.fen());
+    feedback.textContent = move.san + " ✅";
+    board.position(game.fen(), false);
 
+    // Puzzle completed
     if (puzzle.solution.length === 0) {
-  board.draggable = false;
-  cell.classList.add("solved");
-}
+      cell.classList.add("disabled");
+      board.draggable = false;
+    }
 
   }
 });

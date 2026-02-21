@@ -1,48 +1,71 @@
+/* ===========================
+   WORKSHEET STYLE (INJECTED)
+=========================== */
+
 const style = document.createElement("style");
 style.textContent = `
-worksheet {
+worksheet{
   display:block;
   margin:2rem 0;
 }
 
-.worksheet-grid {
+.worksheet-grid{
   display:grid;
-  grid-template-columns:repeat(2, 1fr);
+  grid-template-columns:repeat(2,1fr);
   gap:20px;
 }
 
-.worksheet-board {
+.worksheet-item{
+  border:1px solid #444;
+  padding:10px;
+  background:#111;
+}
+
+.worksheet-board{
   width:100%;
   max-width:320px;
   aspect-ratio:1/1;
 }
+
+.worksheet-item.solved{
+  border:2px solid #00aa77;
+}
+
+worksheet button{
+  margin-top:25px;
+  padding:10px 18px;
+  font-size:16px;
+}
 `;
 document.head.appendChild(style);
+
+/* ===========================
+   MAIN
+=========================== */
 
 document.addEventListener("DOMContentLoaded", () => {
 
   document.querySelectorAll("worksheet").forEach(ws => {
 
-    const pgnLine = ws.innerHTML.match(/PGN:\s*(.*)/);
-    if (!pgnLine) return;
+    const m = ws.innerHTML.match(/PGN:\s*(.*)/);
+    if(!m) return;
 
-    const pgnURL = pgnLine[1].trim();
+    const pgnURL = m[1].trim();
     ws.innerHTML = "";
 
     fetch(pgnURL)
-      .then(r => r.text())
-      .then(pgn => initWorksheet(ws, pgn))
-      .catch(err => console.error("Worksheet PGN load error:", err));
+      .then(r=>r.text())
+      .then(pgn => initWorksheet(ws, pgn));
 
   });
 
 });
 
-function initWorksheet(container, pgnText) {
+function initWorksheet(container, pgnText){
 
   const games = pgnText
-    .split(/\n\n(?=\[Event)/)
-    .filter(g => g.trim().length);
+    .split(/\n\n(?=\[Event|\[FEN)/)
+    .filter(g=>g.trim().length);
 
   let page = 0;
   const pageSize = 10;
@@ -54,80 +77,82 @@ function initWorksheet(container, pgnText) {
   nextBtn.textContent = "Next Page →";
   nextBtn.style.display = "none";
 
-  container.append(grid, nextBtn);
+  container.append(grid,nextBtn);
 
-  nextBtn.onclick = () => {
+  nextBtn.onclick = ()=>{
     page++;
     renderPage();
   };
 
-  function renderPage() {
+  function renderPage(){
 
-    grid.innerHTML = "";
-    nextBtn.style.display = "none";
+    grid.innerHTML="";
+    nextBtn.style.display="none";
 
-    const start = page * pageSize;
-    const slice = games.slice(start, start + pageSize);
+    const slice = games.slice(page*pageSize, page*pageSize+pageSize);
 
-    let solvedCount = 0;
+    let solved = 0;
 
-    slice.forEach((pgn, i) => {
+    slice.forEach((pgn,i)=>{
 
-      const wrapper = document.createElement("div");
-      wrapper.className = "worksheet-item";
+      const wrapper=document.createElement("div");
+      wrapper.className="worksheet-item";
 
-      const boardDiv = document.createElement("div");
-      boardDiv.className = "worksheet-board";
-      boardDiv.id = "board_" + page + "_" + i;
+      const boardDiv=document.createElement("div");
+      boardDiv.className="worksheet-board";
+      boardDiv.id=`board_${page}_${i}`;
 
       wrapper.append(boardDiv);
       grid.append(wrapper);
 
-      // Load puzzle
-      const puzzleGame = new Chess();
-puzzleGame.load_pgn(pgn);
+      /* ---------- PARSE FEN ---------- */
 
-const startFen = puzzleGame.fen();
-const solutionMoves = puzzleGame.history({ verbose: true });
-const correctMove = solutionMoves[0];
+      let fenMatch = pgn.match(/\[FEN\s+"([^"]+)"\]/);
+      if(!fenMatch){
+        boardDiv.innerHTML="PGN missing FEN";
+        return;
+      }
+      const startFen = fenMatch[1];
 
-const playGame = new Chess(startFen);
+      /* ---------- PARSE SOLUTION MOVE ---------- */
 
-      const board = Chessboard(boardDiv.id, {
-        position: startFen,
-        draggable: true,
-        pieceTheme: "https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png",
+      const temp = new Chess(startFen);
+      temp.load_pgn(pgn);
+      const solution = temp.history({verbose:true})[0];
 
-        onDrop: (source, target) => {
+      /* ---------- PLAYABLE GAME ---------- */
 
-          const move = playGame.move({
-            from: source,
-            to: target,
-            promotion: "q"
+      const game = new Chess(startFen);
+
+      const board = Chessboard(boardDiv.id,{
+        position:startFen,
+        draggable:true,
+        pieceTheme:"/assets/img/chesspieces/wikipedia/{piece}.png",
+
+        onDrop:(from,to)=>{
+
+          const move = game.move({
+            from,
+            to,
+            promotion:"q"
           });
 
-          if (!move) return "snapback";
+          if(!move) return "snapback";
 
-          // Wrong move
-          if (
-            move.from !== correctMove.from ||
-            move.to !== correctMove.to
-          ) {
-            playGame.undo();
+          if(move.from!==solution.from || move.to!==solution.to){
+            game.undo();
             return "snapback";
           }
 
-          // Correct move
-          board.position(playGame.fen());
+          board.position(game.fen());
           wrapper.classList.add("solved");
-          solvedCount++;
+          solved++;
 
-          if (solvedCount === slice.length) {
-            if ((page + 1) * pageSize < games.length) {
-              nextBtn.style.display = "block";
+          if(solved===slice.length){
+            if((page+1)*pageSize < games.length){
+              nextBtn.style.display="block";
             }
           }
-
         }
 
       });

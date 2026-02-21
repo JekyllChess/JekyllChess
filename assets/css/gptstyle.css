@@ -1,243 +1,77 @@
-/* ============================
-   FONTS
-============================ */
-@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap");
+/* START — Clean Blog Theme Style */
 
-/* ============================
-   ROOT VARIABLES
-============================ */
-:root {
-  --bg-main: #0b0f1a;
-  --bg-glass: rgba(255,255,255,0.06);
-  --border-glass: rgba(255,255,255,0.18);
+/*!
+ * Start Bootstrap - Clean Blog Jekyll v1.0.0 (https://startbootstrap.com/theme/clean-blog-jekyll)
+ * Copyright 2013-2025 Start Bootstrap
+ * Licensed under MIT (https://github.com/StartBootstrap/startbootstrap-clean-blog-jekyll/blob/master/LICENSE)
+ */
 
-  --accent1: #8b5cf6;
-  --accent2: #22d3ee;
-  --accent3: #ec4899;
-
-  --text-main: #f1f5f9;
-  --text-soft: #b6c2d1;
-
-  --radius: 18px;
-  --blur: 18px;
+/* BOOTSTRAP BASIC RESET
+   (Make sure Bootstrap is included before this CSS)
+*/
+body {
+  font-family: "Lora", "Times New Roman", serif;
+  color: #333;
 }
 
-/* ============================
-   GLOBAL RESET
-============================ */
-* {
-  box-sizing: border-box;
+a {
+  color: #007bff;
+}
+a:hover, a:focus {
+  color: #0056b3;
+  text-decoration: none;
+}
+
+header.masthead {
+  position: relative;
+  background-color: #343a40;
+  background-size: cover;
+  padding: 8rem 0;
+  color: white;
+}
+
+header.masthead .overlay {
+  position: absolute;
+  background-color: rgba(0,0,0,0.5);
+  top:0; left:0; right:0; bottom:0;
+}
+
+header.masthead h1, header.masthead .subheading {
+  font-family: "Lora", serif;
+  text-align: center;
   margin: 0;
-  padding: 0;
 }
 
-html,body {
-  min-height: 100%;
-  font-family: "Inter", sans-serif;
-  color: var(--text-main);
-  background:
-    radial-gradient(circle at top, #1a1f3c, transparent 60%),
-    linear-gradient(160deg, #050812, #0b0f1a);
+.post-preview {
+  margin-bottom: 3rem;
+  border-bottom: 1px solid #e9ecef;
+  padding-bottom: 2rem;
 }
 
-/* ============================
-   BACKGROUND ANIMATION
-============================ */
-body::before {
-  content:"";
-  position: fixed;
-  inset:0;
-  background:
-    linear-gradient(120deg,
-      rgba(139,92,246,.12),
-      rgba(34,211,238,.12),
-      rgba(236,72,153,.12)
-    );
-  animation: shift 14s ease-in-out infinite alternate;
-  z-index:-1;
+.post-preview a {
+  text-decoration: none;
+  color: #343a40;
 }
 
-@keyframes shift {
-  from { filter:hue-rotate(0deg); }
-  to   { filter:hue-rotate(120deg); }
+.post-preview a:hover {
+  color: #007bff;
 }
 
-/* ============================
-   HEADER
-============================ */
-header {
-  padding: 60px 20px 30px;
-  text-align:center;
+.post-preview .post-title {
+  font-size: 1.75rem;
+  font-weight: 700;
 }
 
-header h1 {
-  font-family:"Playfair Display",serif;
-  font-size: clamp(2.4rem, 5vw, 3.6rem);
-  background: linear-gradient(90deg,var(--accent2),var(--accent1),var(--accent3));
-  -webkit-background-clip:text;
-  background-clip:text;
-  color:transparent;
-  letter-spacing:1px;
+.post-preview .post-subtitle {
+  font-size: 1.25rem;
+  color: #6c757d;
 }
 
-/* ============================
-   MAIN LAYOUT
-============================ */
-main {
-  max-width:1100px;
-  margin:0 auto;
-  padding:40px 20px 80px;
-}
-
-/* ============================
-   GLASS CARD
-============================ */
-.card {
-  background: var(--bg-glass);
-  backdrop-filter: blur(var(--blur));
-  border-radius: var(--radius);
-  border:1px solid var(--border-glass);
-  padding:32px;
-  margin-bottom:40px;
-  box-shadow:0 30px 60px rgba(0,0,0,.45);
-  transition:.4s ease;
-}
-
-.card:hover {
-  transform: translateY(-6px) scale(1.01);
-  box-shadow:0 40px 80px rgba(0,0,0,.6);
-}
-
-.card h2 {
-  font-family:"Playfair Display",serif;
-  font-size:1.9rem;
-  margin-bottom:18px;
-}
-
-/* ============================
-   BUTTONS
-============================ */
-button,.btn {
-  background: linear-gradient(135deg,var(--accent1),var(--accent2));
-  color:white;
-  border:none;
-  padding:14px 34px;
-  border-radius:999px;
-  font-size:1rem;
-  font-weight:600;
-  cursor:pointer;
-  transition:.35s ease;
-  box-shadow:0 0 0 rgba(0,0,0,0);
-}
-
-button:hover,.btn:hover {
-  transform: translateY(-2px) scale(1.05);
-  box-shadow:
-    0 10px 30px rgba(139,92,246,.6),
-    0 0 25px rgba(34,211,238,.6);
-}
-
-/* ============================
-   INPUTS
-============================ */
-input,textarea,select {
-  width:100%;
-  background:rgba(255,255,255,.05);
-  border:1px solid var(--border-glass);
-  border-radius:12px;
-  padding:14px;
-  color:white;
-  margin-bottom:16px;
-  font-size:1rem;
-}
-
-input:focus,textarea:focus {
-  outline:none;
-  border-color:var(--accent2);
-  box-shadow:0 0 0 2px rgba(34,211,238,.4);
-}
-
-/* ============================
-   CHESSBOARD
-============================ */
-.chessboard {
-  width:min(90vw,520px);
-  aspect-ratio:1/1;
-  display:grid;
-  grid-template-columns:repeat(8,1fr);
-  border-radius:20px;
-  overflow:hidden;
-  margin:40px auto;
-  box-shadow:
-    0 0 40px rgba(139,92,246,.35),
-    0 0 80px rgba(34,211,238,.25);
-  background:#000;
-}
-
-.square {
-  position:relative;
-}
-
-.square.light { background:#f2e6d2; }
-.square.dark  { background:#7a4f2a; }
-
-.square::after {
-  content:"";
-  position:absolute;
-  inset:0;
-  background: radial-gradient(circle at top left,
-    rgba(255,255,255,.35),
-    transparent 60%);
-  opacity:.3;
-}
-
-.square:hover::after {
-  opacity:.6;
-}
-
-/* ============================
-   PIECES
-============================ */
-.piece {
-  position:absolute;
-  inset:0;
-  background-size:contain;
-  background-repeat:no-repeat;
-  background-position:center;
-  filter: drop-shadow(0 6px 8px rgba(0,0,0,.6));
-  transition:.25s ease;
-}
-
-.piece:hover {
-  transform: scale(1.12);
-}
-
-/* ============================
-   TEXT
-============================ */
-p {
-  color:var(--text-soft);
-  line-height:1.7;
-}
-
-/* ============================
-   FOOTER
-============================ */
 footer {
-  text-align:center;
-  padding:40px 20px;
-  color:var(--text-soft);
-  font-size:.9rem;
+  padding: 4rem 0;
+  background-color: #f8f9fa;
+  text-align: center;
+  font-size: 0.9rem;
 }
 
-/* ============================
-   FADE-IN ANIMATION
-============================ */
-.fade-in {
-  animation: fade .8s ease forwards;
-  opacity:0;
-}
-
-@keyframes fade {
-  to { opacity:1; transform:none; }
-}
+/* END — Clean Blog Theme Style */

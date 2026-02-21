@@ -1,6 +1,6 @@
 worksheet {
   display: block;
-  margin: 2rem 0;
+  margin: 2rem auto;
 }
 
 .worksheet-grid {
@@ -24,4 +24,4 @@ worksheet {
   pointer-events: none;
 }
 
-.worksheet-next {display:block;margin:auto;margin-top:3rem;font-size:2rem;padding:1rem;}
+.worksheet-next {display:block;margin:auto;margin-top:3rem;padding:1rem;}

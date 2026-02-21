@@ -1,5 +1,5 @@
 /* ============================= */
-/* STORAGE KEY                   */
+/* STORAGE  KEY                  */
 /* ============================= */
 
 const STORAGE_KEY = "worksheet_progress_v2";

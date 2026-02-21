@@ -18,7 +18,7 @@ worksheet {
 .worksheet-board {
   width: 100%;
   max-width: 320px;
-  margin: auto;
+  aspect-ratio: 1 / 1;
 }
 
 .worksheet-item button {

@@ -23,7 +23,6 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 });
 
-
 /* ----------------------------- */
 /* Split PGN into individual games */
 /* ----------------------------- */
@@ -38,7 +37,6 @@ function splitPGN(text) {
   return games.map(extractFEN);
 }
 
-
 /* ----------------------------- */
 /* Extract starting FEN */
 /* ----------------------------- */
@@ -51,7 +49,6 @@ function extractFEN(pgn) {
   // If no FEN tag, assume standard start
   return "start";
 }
-
 
 /* ----------------------------- */
 /* Render Boards */
@@ -78,8 +75,7 @@ function renderBoards(container, fens) {
       Chessboard(boardDiv, {
         position: fen === "start" ? "start" : fen,
         draggable: false,
-        pieceTheme:
-          "https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png"
+        pieceTheme: "https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png"
       });
     });
   });

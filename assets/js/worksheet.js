@@ -129,12 +129,40 @@ function renderPage(ws) {
 
     requestAnimationFrame(() => {
 
-      Chessboard(boardDiv, {
-        position: puzzle.fen === "start" ? "start" : puzzle.fen,
-        orientation: puzzle.orientation,
-        draggable: false,
-        pieceTheme: "https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png"
-      });
+      const game = new Chess(puzzle.fen);
+
+const board = Chessboard(boardDiv, {
+  position: puzzle.fen,
+  orientation: puzzle.orientation,
+  draggable: true,
+  pieceTheme: "https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png",
+
+  onDrop: (source, target) => {
+
+    const move = game.move({
+      from: source,
+      to: target,
+      promotion: "q"
+    });
+
+    if (!move) return "snapback";
+
+    const expected = puzzle.solution[0];
+
+    if (!expected || move.san !== expected) {
+      game.undo();
+      return "snapback";
+    }
+
+    puzzle.solution.shift();
+    board.position(game.fen());
+
+    if (puzzle.solution.length === 0) {
+      board.draggable = false;
+    }
+
+  }
+});
 
     });
 

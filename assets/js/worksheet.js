@@ -74,7 +74,7 @@ function initWorksheet(container, pgnText) {
       const board = Chessboard(boardDiv.id, {
         position: puzzleGame.fen(),
         draggable: true,
-        pieceTheme: "/assets/img/chesspieces/wikipedia/{piece}.png",
+        pieceTheme: "https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png",
 
         onDrop: (source, target) => {
 

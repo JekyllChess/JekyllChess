@@ -59,50 +59,43 @@ function extractPuzzle(pgn) {
   const fenMatch = pgn.match(/\[FEN\s+"([^"]+)"\]/);
   const startFEN = fenMatch ? fenMatch[1] : "start";
 
-  // Find first move line
   const moveLine = pgn
     .split("\n")
     .find(l => /^[0-9]/.test(l));
 
   let solver = "white";
-  let firstMoveSAN = null;
+  let solutionMoves = [];
 
   if (moveLine) {
 
-    // White solver:
+    // Remove move numbers
+    const cleaned = moveLine
+      .replace(/[0-9]+\.(\.\.)?/g, "")
+      .trim();
+
+    solutionMoves = cleaned.split(/\s+/);
+
     if (/^[0-9]+\.\.\./.test(moveLine)) {
       solver = "white";
-      firstMoveSAN = moveLine
-        .replace(/^[0-9]+\.\.\.\s*/, "")
-        .split(/\s+/)[0];
     }
-
-    // Black solver:
     else if (/^[0-9]+\.\s/.test(moveLine)) {
       solver = "black";
-      firstMoveSAN = moveLine
-        .replace(/^[0-9]+\.\s*/, "")
-        .split(/\s+/)[0];
     }
 
   }
 
-  let finalFEN = startFEN;
+  const game = new Chess(startFEN === "start" ? undefined : startFEN);
 
-  try {
-    const game = new Chess(startFEN === "start" ? undefined : startFEN);
-
-    if (firstMoveSAN) {
-      game.move(firstMoveSAN, { sloppy: true });
-      finalFEN = game.fen();
-    }
-  } catch (e) {
-    console.warn("Could not apply move:", firstMoveSAN);
+  // Apply first solution move (already shown)
+  if (solutionMoves.length) {
+    game.move(solutionMoves[0], { sloppy: true });
+    solutionMoves.shift();
   }
 
   return {
-    fen: finalFEN,
-    orientation: solver === "black" ? "black" : "white"
+    fen: game.fen(),
+    orientation: solver === "black" ? "black" : "white",
+    solution: solutionMoves
   };
 
 }

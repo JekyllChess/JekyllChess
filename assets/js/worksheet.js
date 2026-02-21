@@ -50,8 +50,9 @@ function splitPGN(text) {
 
 }
 
+
 /* ============================= */
-/* Extract FEN + solver color    */
+/* Extract FEN + solver + moves  */
 /* ============================= */
 
 function extractPuzzle(pgn) {
@@ -68,25 +69,23 @@ function extractPuzzle(pgn) {
 
   if (moveLine) {
 
-    // Remove move numbers
-    const cleaned = moveLine
-      .replace(/[0-9]+\.(\.\.)?/g, "")
-      .trim();
-
-    solutionMoves = cleaned.split(/\s+/);
-
     if (/^[0-9]+\.\.\./.test(moveLine)) {
       solver = "white";
-    }
-    else if (/^[0-9]+\.\s/.test(moveLine)) {
+    } else if (/^[0-9]+\.\s/.test(moveLine)) {
       solver = "black";
     }
 
+    const cleaned = moveLine
+      .replace(/[0-9]+\.(\.\.)?/g, "")
+      .replace(/\*/g, "")
+      .trim();
+
+    solutionMoves = cleaned.split(/\s+/);
   }
 
   const game = new Chess(startFEN === "start" ? undefined : startFEN);
 
-  // Apply first solution move (already shown)
+  // Apply first half-move (already shown)
   if (solutionMoves.length) {
     game.move(solutionMoves[0], { sloppy: true });
     solutionMoves.shift();
@@ -99,6 +98,7 @@ function extractPuzzle(pgn) {
   };
 
 }
+
 
 /* ============================= */
 /* Render Current Page           */
@@ -119,76 +119,71 @@ function renderPage(ws) {
   slice.forEach(puzzle => {
 
     const cell = document.createElement("div");
-cell.className = "worksheet-item";
+    cell.className = "worksheet-item";
 
-const boardDiv = document.createElement("div");
-boardDiv.className = "worksheet-board";
+    const boardDiv = document.createElement("div");
+    boardDiv.className = "worksheet-board";
 
-const solvedOverlay = document.createElement("div");
-solvedOverlay.className = "worksheet-solved";
-solvedOverlay.textContent = "SOLVED!";
+    const feedback = document.createElement("div");
+    feedback.className = "move-feedback";
 
-cell.appendChild(boardDiv);
-cell.appendChild(solvedOverlay);
-grid.appendChild(cell);
+    cell.appendChild(boardDiv);
+    cell.appendChild(feedback);
+    grid.appendChild(cell);
 
     requestAnimationFrame(() => {
 
-const game = new Chess(puzzle.fen);
+      const game = new Chess(puzzle.fen);
 
-const feedback = document.createElement("div");
-feedback.className = "move-feedback";
-cell.appendChild(feedback);
+      const board = Chessboard(boardDiv, {
+        position: puzzle.fen,
+        orientation: puzzle.orientation,
+        draggable: true,
 
-const board = Chessboard(boardDiv, {
-  position: puzzle.fen,
-  orientation: puzzle.orientation,
-  draggable: true,
+        moveSpeed: 0,
+        snapSpeed: 0,
 
-  moveSpeed: 0,
-  snapSpeed: 0,
+        pieceTheme: "https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png",
 
-  pieceTheme: "https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png",
+        onDrop: (source, target) => {
 
-  onDrop: (source, target) => {
+          const move = game.move({
+            from: source,
+            to: target,
+            promotion: "q"
+          });
 
-    const move = game.move({
-      from: source,
-      to: target,
-      promotion: "q"
-    });
+          if (!move) return "snapback";
 
-    if (!move) return "snapback";
+          const expected = puzzle.solution[0];
 
-    const expected = puzzle.solution[0];
+          // WRONG MOVE
+          if (!expected || move.san !== expected) {
+            game.undo();
+            feedback.textContent = move.san + " ❌";
+            cell.classList.add("disabled");
+            board.draggable = false;
+            return "snapback";
+          }
 
-    // WRONG MOVE
-    if (!expected || move.san !== expected) {
-      game.undo();
-      feedback.textContent = move.san + " ❌";
-      cell.classList.add("disabled");
-      board.draggable = false;
-      return "snapback";
-    }
+          // CORRECT MOVE
+          puzzle.solution.shift();
+          feedback.textContent = move.san + " ✅";
+          board.position(game.fen(), false);
 
-    // CORRECT MOVE
-    puzzle.solution.shift();
-    feedback.textContent = move.san + " ✅";
-    board.position(game.fen(), false);
+          if (puzzle.solution.length === 0) {
+            cell.classList.add("disabled");
+            board.draggable = false;
+          }
 
-    // Puzzle completed
-    if (puzzle.solution.length === 0) {
-      cell.classList.add("disabled");
-      board.draggable = false;
-    }
-
-  }
-});
+        }
+      });
 
     });
 
   });
 
+  // NEXT BUTTON
   if (end < ws._puzzles.length) {
 
     const nextBtn = document.createElement("button");

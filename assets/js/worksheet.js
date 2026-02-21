@@ -59,40 +59,56 @@ function initWorksheet(container, pgnText) {
       boardDiv.className = "worksheet-board";
       boardDiv.id = "board_" + page + "_" + i;
 
-      const solveBtn = document.createElement("button");
-      solveBtn.textContent = "Solved";
-
-      wrapper.append(boardDiv, solveBtn);
+      wrapper.append(boardDiv);
       grid.append(wrapper);
 
-      const game = new Chess();
-      game.load_pgn(pgn);
+      // Load puzzle
+      const puzzleGame = new Chess();
+      puzzleGame.load_pgn(pgn);
 
-      const fen = game.fen();
+      const solutionMoves = puzzleGame.history({ verbose: true });
+      const correctMove = solutionMoves[0];
 
-      setTimeout(() => {
-        Chessboard(boardDiv.id, {
-          position: fen,
-          draggable: false,
-          pieceTheme: "https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png"
-        });
-      }, 0);
+      puzzleGame.reset();
 
-      solveBtn.onclick = () => {
+      const board = Chessboard(boardDiv.id, {
+        position: puzzleGame.fen(),
+        draggable: true,
+        pieceTheme: "/assets/img/chesspieces/wikipedia/{piece}.png",
 
-        if (solveBtn.classList.contains("done")) return;
+        onDrop: (source, target) => {
 
-        solveBtn.classList.add("done");
-        solveBtn.textContent = "✓ Solved";
-        solvedCount++;
+          const move = puzzleGame.move({
+            from: source,
+            to: target,
+            promotion: "q"
+          });
 
-        if (solvedCount === slice.length) {
-          if ((page + 1) * pageSize < games.length) {
-            nextBtn.style.display = "block";
+          if (!move) return "snapback";
+
+          // Wrong move
+          if (
+            move.from !== correctMove.from ||
+            move.to !== correctMove.to
+          ) {
+            puzzleGame.undo();
+            return "snapback";
           }
+
+          // Correct move
+          board.position(puzzleGame.fen());
+          wrapper.classList.add("solved");
+          solvedCount++;
+
+          if (solvedCount === slice.length) {
+            if ((page + 1) * pageSize < games.length) {
+              nextBtn.style.display = "block";
+            }
+          }
+
         }
 
-      };
+      });
 
     });
 

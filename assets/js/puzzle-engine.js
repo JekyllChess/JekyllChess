@@ -183,7 +183,7 @@
       }
 
       index++;
-      updateStatus("Correct! ✅");
+      updateStatus("Correct move! ✅ Make your next move");
       hardSync(board, game);
 
       if (index >= moves.length) return finishSolved();

@@ -2,5 +2,3 @@ title: JekyllChess
 description: JekyllChess is a minimal-CSS Jekyll starter template for chess blogging. Features figurine notation, FEN (Forsyth–Edwards Notation) diagrams, and a simple PGN viewer. Built on **chess.js** and **chessboard.js** libraries.
 url: https://jekyllchess.github.io
 permalink: /:title
-exclude:
-- README.md

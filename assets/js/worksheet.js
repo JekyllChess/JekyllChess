@@ -15,8 +15,14 @@ document.addEventListener("DOMContentLoaded", () => {
     fetch(url)
       .then(r => r.text())
       .then(pgnText => {
+
         const puzzles = splitPGN(pgnText);
-        renderBoards(ws, puzzles.slice(0, 10));
+
+        ws._puzzles = puzzles;
+        ws._page = 0;
+
+        renderPage(ws);
+
       })
       .catch(err => {
         ws.innerHTML = "Failed to load PGN.";
@@ -60,12 +66,10 @@ function extractPuzzle(pgn) {
 
   let solver = "white";
 
-  // Example: "31. Qe3 Rxa4# *"  → black solves
   if (moveLine && /^[0-9]+\.\s/.test(moveLine)) {
     solver = "black";
   }
 
-  // Example: "14... Qxc3 15. Qc8# *" → white solves
   if (moveLine && /^[0-9]+\.\.\./.test(moveLine)) {
     solver = "white";
   }
@@ -79,18 +83,22 @@ function extractPuzzle(pgn) {
 
 
 /* ============================= */
-/* Render Boards                 */
+/* Render Current Page           */
 /* ============================= */
 
-function renderBoards(container, puzzles) {
+function renderPage(ws) {
 
-  container.innerHTML = "";
+  const start = ws._page * 10;
+  const end = start + 10;
+  const slice = ws._puzzles.slice(start, end);
+
+  ws.innerHTML = "";
 
   const grid = document.createElement("div");
   grid.className = "worksheet-grid";
-  container.appendChild(grid);
+  ws.appendChild(grid);
 
-  puzzles.forEach(puzzle => {
+  slice.forEach(puzzle => {
 
     const cell = document.createElement("div");
     cell.className = "worksheet-item";
@@ -113,5 +121,20 @@ function renderBoards(container, puzzles) {
     });
 
   });
+
+  if (end < ws._puzzles.length) {
+
+    const nextBtn = document.createElement("button");
+    nextBtn.textContent = "Next";
+    nextBtn.className = "worksheet-next";
+
+    nextBtn.addEventListener("click", () => {
+      ws._page++;
+      renderPage(ws);
+    });
+
+    ws.appendChild(nextBtn);
+
+  }
 
 }

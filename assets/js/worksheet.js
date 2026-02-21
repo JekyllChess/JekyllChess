@@ -1,7 +1,9 @@
 document.addEventListener("DOMContentLoaded", () => {
+
   const worksheets = document.querySelectorAll("worksheet");
 
   worksheets.forEach(ws => {
+
     const pgnLine = ws.innerText
       .split("\n")
       .find(l => l.trim().startsWith("PGN:"));
@@ -20,48 +22,76 @@ document.addEventListener("DOMContentLoaded", () => {
         ws.innerHTML = "Failed to load PGN.";
         console.error(err);
       });
+
   });
+
 });
 
-/* ----------------------------- */
-/* Split PGN into individual games */
-/* ----------------------------- */
+
+/* ============================= */
+/* Split PGN into puzzles        */
+/* ============================= */
 
 function splitPGN(text) {
+
   const games = text
     .replace(/\r/g, "")
     .split(/\n\s*\n(?=\[)/g)
     .map(g => g.trim())
     .filter(Boolean);
 
-  return games.map(extractFEN);
+  return games.map(extractPuzzle);
+
 }
 
-/* ----------------------------- */
-/* Extract starting FEN */
-/* ----------------------------- */
 
-function extractFEN(pgn) {
+/* ============================= */
+/* Extract FEN + solver color    */
+/* ============================= */
+
+function extractPuzzle(pgn) {
+
   const fenMatch = pgn.match(/\[FEN\s+"([^"]+)"\]/);
+  const fen = fenMatch ? fenMatch[1] : "start";
 
-  if (fenMatch) return fenMatch[1];
+  const moveLine = pgn
+    .split("\n")
+    .find(l => /^[0-9]/.test(l));
 
-  // If no FEN tag, assume standard start
-  return "start";
+  let solver = "white";
+
+  // Example: "31. Qe3 Rxa4# *"  → black solves
+  if (moveLine && /^[0-9]+\.\s/.test(moveLine)) {
+    solver = "black";
+  }
+
+  // Example: "14... Qxc3 15. Qc8# *" → white solves
+  if (moveLine && /^[0-9]+\.\.\./.test(moveLine)) {
+    solver = "white";
+  }
+
+  return {
+    fen: fen,
+    orientation: solver === "black" ? "black" : "white"
+  };
+
 }
 
-/* ----------------------------- */
-/* Render Boards */
-/* ----------------------------- */
 
-function renderBoards(container, fens) {
+/* ============================= */
+/* Render Boards                 */
+/* ============================= */
+
+function renderBoards(container, puzzles) {
+
   container.innerHTML = "";
 
   const grid = document.createElement("div");
   grid.className = "worksheet-grid";
   container.appendChild(grid);
 
-  fens.forEach(fen => {
+  puzzles.forEach(puzzle => {
+
     const cell = document.createElement("div");
     cell.className = "worksheet-item";
 
@@ -72,11 +102,16 @@ function renderBoards(container, fens) {
     grid.appendChild(cell);
 
     requestAnimationFrame(() => {
+
       Chessboard(boardDiv, {
-        position: fen === "start" ? "start" : fen,
+        position: puzzle.fen === "start" ? "start" : puzzle.fen,
+        orientation: puzzle.orientation,
         draggable: false,
         pieceTheme: "https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png"
       });
+
     });
+
   });
+
 }

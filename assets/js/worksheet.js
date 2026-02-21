@@ -73,13 +73,13 @@ const correctMove = solutionMoves[0];
 const playGame = new Chess(startFen);
 
       const board = Chessboard(boardDiv.id, {
-        position: puzzleGame.fen(),
+        position: startFen,
         draggable: true,
         pieceTheme: "https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png",
 
         onDrop: (source, target) => {
 
-          const move = puzzleGame.move({
+          const move = playGame.move({
             from: source,
             to: target,
             promotion: "q"
@@ -92,12 +92,12 @@ const playGame = new Chess(startFen);
             move.from !== correctMove.from ||
             move.to !== correctMove.to
           ) {
-            puzzleGame.undo();
+            playGame.undo();
             return "snapback";
           }
 
           // Correct move
-          board.position(puzzleGame.fen());
+          board.position(playGame.fen());
           wrapper.classList.add("solved");
           solvedCount++;
 

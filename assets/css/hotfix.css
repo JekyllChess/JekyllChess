@@ -4,6 +4,17 @@
 #board,.pgn-diagram,.board{width:400px}
 #board *,#board *::before,#board *::after,#sticky-chessboard *,#sticky-chessboard *::before,#sticky-chessboard *::after,.board *,.board *::before,.board *::after,.fen-board *,.fen-board *::before,.fen-board *::after,.pgn-diagram *,.pgn-diagram *::before,.pgn-diagram *::after,.board-wrapper{box-sizing:content-box!important}
 
-/* Chessboard square colors fix */
-.white-1e1d7 {background-color: #f0d9b5 !important;}
-.black-3c85d {background-color: #b58863 !important;}
+  /* Chessboard absolute fix */
+.chessboard-63f37,
+.chessboard-63f37 div,
+.chessboard-63f37 img {
+  background: transparent !important;
+}
+
+/* Square colors */
+.chessboard-63f37 .white-1e1d7 {
+  background-color: #f0d9b5 !important;
+}
+
+.chessboard-63f37 .black-3c85d {
+  background-color: #b58863 !important;

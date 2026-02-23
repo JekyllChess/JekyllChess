@@ -1,1 +1,69 @@
-!function(){"use strict";const e="https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png";let t=0;function n(){return"function"==typeof window.Chessboard}function r(r){if(r.__fenRendered)return;const o=r.textContent.trim();if(!o||!n())return;const i="fen-board-"+ ++t,c=document.createElement("div");c.className="fen-board",c.id=i,r.replaceWith(c);try{Chessboard(i,{position:o,draggable:!1,pieceTheme:e}),r.__fenRendered=!0}catch(e){}}function o(e=document){e.querySelectorAll("fen").forEach(r)}function i(){o();new MutationObserver(e=>{for(const t of e)t.addedNodes&&t.addedNodes.forEach(e=>{1===e.nodeType&&o(e)})}).observe(document.body,{childList:!0,subtree:!0}),window.FENRenderer=Object.freeze({run:e=>{o(e||document.body)}})}"loading"===document.readyState?document.addEventListener("DOMContentLoaded",i,{once:!0}):i()}();
+!function () {
+  "use strict";
+
+  const PIECE_THEME =
+    "https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png";
+
+  let counter = 0;
+
+  function chessboardReady() {
+    return typeof window.Chessboard === "function";
+  }
+
+  function renderFen(el) {
+    if (el.__fenRendered) return;
+
+    const fen = el.textContent.trim();
+    if (!fen || !chessboardReady()) return;
+
+    const isBlack = el.tagName.toLowerCase() === "fen-black";
+    const boardId = "fen-board-" + (++counter);
+
+    const boardDiv = document.createElement("div");
+    boardDiv.className = "fen-board";
+    boardDiv.id = boardId;
+
+    el.replaceWith(boardDiv);
+
+    try {
+      Chessboard(boardId, {
+        position: fen,
+        draggable: false,
+        pieceTheme: PIECE_THEME,
+        orientation: isBlack ? "black" : "white"
+      });
+
+      el.__fenRendered = true;
+    } catch (e) {}
+  }
+
+  function scan(root = document) {
+    root.querySelectorAll("fen, fen-black").forEach(renderFen);
+  }
+
+  function init() {
+    scan();
+
+    new MutationObserver(mutations => {
+      for (const m of mutations) {
+        m.addedNodes &&
+          m.addedNodes.forEach(node => {
+            if (node.nodeType === 1) scan(node);
+          });
+      }
+    }).observe(document.body, {
+      childList: true,
+      subtree: true
+    });
+
+    window.FENRenderer = Object.freeze({
+      run: root => scan(root || document.body)
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init, { once: true });
+  } else {
+    init();
+  }
+}();
